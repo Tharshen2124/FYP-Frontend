@@ -142,15 +142,27 @@ export default function SharpenTheSawPage() {
             <span className="text-2xl font-bold text-foreground">HabitFlow</span>
           </Link>
 
-          <Button
-            variant="outline"
-            className="border-border text-foreground hover:bg-secondary/20 disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={!allDimensionsFilled}
-            onClick={() => {}}
-          >
-            Next
-            <ChevronRight className="w-4 h-4 ml-1" />
-          </Button>
+          {allDimensionsFilled ? (
+            <Button
+              variant="outline"
+              className="border-border text-foreground hover:bg-secondary/20"
+              asChild
+            >
+              <Link href="/fixed-appointments">
+                Next
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </Link>
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              disabled
+              className="border-border text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+              <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          )}
         </div>
       </nav>
 
