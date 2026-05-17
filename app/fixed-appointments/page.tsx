@@ -15,16 +15,18 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog"
+import { ClashWarningModal } from "@/components/clash-warning-modal"
+import { ClashBlockModal } from "@/components/clash-block-modal"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const DAYS_FULL = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+const DAYS_FULL  = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 const DAYS_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
-const CAL_START = 6   // 6 AM
-const CAL_END   = 22  // 10 PM
+const CAL_START = 6    // 6 AM
+const CAL_END   = 22   // 10 PM
 const TOTAL_HRS = CAL_END - CAL_START
-const HR_PX     = 64  // pixels per hour  →  1 min = HR_PX/60 px
+const HR_PX     = 64   // pixels per hour  →  1 min = HR_PX/60 px
 
 const COLORS = ["#B13BFF", "#FFCC00", "#14b8a6", "#f97316", "#f43f5e", "#3b82f6", "#22c55e", "#471396"]
 
@@ -47,6 +49,38 @@ function fmtTime(mins: number) {
 
 function snapMins(mins: number) {
   return Math.round(mins / 15) * 15
+}
+
+/** Returns the overlapping appointments for a given time range on a given day. */
+function getOverlaps(all: Appt[], dayIndex: number, startMins: number, endMins: number, excludeId: string) {
+  return all.filter(
+    a => a.id !== excludeId &&
+         a.dayIndex === dayIndex &&
+         a.startMins < endMins &&
+         a.endMins   > startMins
+  )
+}
+
+/**
+ * Returns inline style overrides for an appointment card.
+ * When 2 events overlap, they split the column 50/50 (Google Calendar style).
+ * Sort order: earlier startMins goes left; ties broken by id for stability.
+ */
+function getApptPositionStyle(appt: Appt, allAppts: Appt[]): React.CSSProperties {
+  const overlapping = getOverlaps(allAppts, appt.dayIndex, appt.startMins, appt.endMins, appt.id)
+
+  if (overlapping.length === 0) {
+    return { left: "2px", right: "2px", width: "auto" }
+  }
+
+  const group = [appt, ...overlapping].sort(
+    (a, b) => a.startMins - b.startMins || a.id.localeCompare(b.id)
+  )
+  const col = group.findIndex(a => a.id === appt.id)
+
+  return col === 0
+    ? { left: "2px",              width: "calc(50% - 3px)", right: "auto" }
+    : { left: "calc(50% + 1px)", width: "calc(50% - 3px)", right: "auto" }
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -72,6 +106,12 @@ interface ModalState {
   description: string
 }
 
+interface PendingDrop {
+  draggedId: string
+  dayIndex: number
+  newStart: number
+}
+
 const EMPTY_MODAL: ModalState = {
   open: false,
   mode: "add",
@@ -85,18 +125,21 @@ const EMPTY_MODAL: ModalState = {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function FixedAppointmentsPage() {
-  const [appts, setAppts]     = useState<Appt[]>([])
-  const [modal, setModal]     = useState<ModalState>(EMPTY_MODAL)
-  const colorCursor           = useRef(0)
-  const dragInfo              = useRef<{ id: string; offsetMins: number } | null>(null)
-  const colRefs               = useRef<(HTMLDivElement | null)[]>(Array(7).fill(null))
+  const [appts, setAppts]               = useState<Appt[]>([])
+  const [modal, setModal]               = useState<ModalState>(EMPTY_MODAL)
+  const [pendingDrop, setPendingDrop]   = useState<PendingDrop | null>(null)
+  const [clashWarning, setClashWarning] = useState<{ open: boolean; conflictingTitle: string }>({ open: false, conflictingTitle: "" })
+  const [clashBlock, setClashBlock]     = useState(false)
+  const colorCursor                     = useRef(0)
+  const dragInfo                        = useRef<{ id: string; offsetMins: number } | null>(null)
+  const colRefs                         = useRef<(HTMLDivElement | null)[]>(Array(7).fill(null))
 
   // ── colour cycling ──
   const nextColor = () => COLORS[colorCursor.current++ % COLORS.length]
 
   // ── open add modal from click on empty slot ──
   const openAdd = (dayIndex: number, clickY: number) => {
-    const raw = CAL_START * 60 + (clickY / HR_PX) * 60
+    const raw   = CAL_START * 60 + (clickY / HR_PX) * 60
     const start = Math.max(CAL_START * 60, Math.min((CAL_END - 1) * 60, snapMins(raw)))
     const end   = Math.min(CAL_END * 60, start + 60)
     setModal({ open: true, mode: "add", dayIndex, startTime: minsToStr(start), endTime: minsToStr(end), title: "", description: "" })
@@ -105,9 +148,11 @@ export default function FixedAppointmentsPage() {
   const openEdit = (appt: Appt) =>
     setModal({
       open: true, mode: "edit", editId: appt.id,
-      dayIndex: appt.dayIndex,
-      startTime: minsToStr(appt.startMins), endTime: minsToStr(appt.endMins),
-      title: appt.title, description: appt.description,
+      dayIndex:  appt.dayIndex,
+      startTime: minsToStr(appt.startMins),
+      endTime:   minsToStr(appt.endMins),
+      title:       appt.title,
+      description: appt.description,
     })
 
   const handleColClick = (e: React.MouseEvent<HTMLDivElement>, dayIndex: number) => {
@@ -125,9 +170,9 @@ export default function FixedAppointmentsPage() {
     if (modal.mode === "add") {
       setAppts(prev => [...prev, {
         id: Date.now().toString(),
-        title: modal.title.trim(),
+        title:       modal.title.trim(),
         description: modal.description.trim(),
-        dayIndex: modal.dayIndex,
+        dayIndex:    modal.dayIndex,
         startMins: s, endMins: e,
         color: nextColor(),
       }])
@@ -141,11 +186,19 @@ export default function FixedAppointmentsPage() {
     setModal(EMPTY_MODAL)
   }
 
+  // ── apply a confirmed drop ──
+  const applyDrop = (draggedId: string, dayIndex: number, newStart: number) => {
+    setAppts(prev => prev.map(a => {
+      if (a.id !== draggedId) return a
+      const dur = a.endMins - a.startMins
+      return { ...a, dayIndex, startMins: newStart, endMins: newStart + dur }
+    }))
+  }
+
   // ── drag ──
   const onDragStart = (e: React.DragEvent, appt: Appt) => {
-    const offsetY  = e.clientY - (e.currentTarget as HTMLElement).getBoundingClientRect().top
+    const offsetY = e.clientY - (e.currentTarget as HTMLElement).getBoundingClientRect().top
     dragInfo.current = { id: appt.id, offsetMins: Math.round((offsetY / HR_PX) * 60) }
-    // invisible drag ghost
     const ghost = document.createElement("div")
     Object.assign(ghost.style, { position: "fixed", top: "-9999px", width: "1px", height: "1px" })
     document.body.appendChild(ghost)
@@ -161,24 +214,50 @@ export default function FixedAppointmentsPage() {
     if (!dragInfo.current) return
     const col = colRefs.current[dayIndex]
     if (!col) return
+
     const y        = e.clientY - col.getBoundingClientRect().top
     const rawStart = CAL_START * 60 + (y / HR_PX) * 60 - dragInfo.current.offsetMins
     const snapped  = snapMins(rawStart)
-    // Capture id before clearing the ref — the state updater runs asynchronously
-    // and dragInfo.current would already be null by the time it executes.
+
     const draggedId = dragInfo.current.id
     dragInfo.current = null
-    setAppts(prev => prev.map(a => {
-      if (a.id !== draggedId) return a
-      const dur     = a.endMins - a.startMins
-      const clamped = Math.max(CAL_START * 60, Math.min(CAL_END * 60 - dur, snapped))
-      return { ...a, dayIndex, startMins: clamped, endMins: clamped + dur }
-    }))
+
+    const dragged = appts.find(a => a.id === draggedId)
+    if (!dragged) return
+
+    const dur      = dragged.endMins - dragged.startMins
+    const newStart = Math.max(CAL_START * 60, Math.min(CAL_END * 60 - dur, snapped))
+    const newEnd   = newStart + dur
+
+    const overlapping = getOverlaps(appts, dayIndex, newStart, newEnd, draggedId)
+
+    if (overlapping.length === 0) {
+      applyDrop(draggedId, dayIndex, newStart)
+    } else if (overlapping.length === 1) {
+      setPendingDrop({ draggedId, dayIndex, newStart })
+      setClashWarning({ open: true, conflictingTitle: overlapping[0].title })
+    } else {
+      setClashBlock(true)
+    }
+  }
+
+  // ── clash modal handlers ──
+  const handleClashProceed = () => {
+    if (pendingDrop) {
+      applyDrop(pendingDrop.draggedId, pendingDrop.dayIndex, pendingDrop.newStart)
+      setPendingDrop(null)
+    }
+    setClashWarning({ open: false, conflictingTitle: "" })
+  }
+
+  const handleClashCancel = () => {
+    setPendingDrop(null)
+    setClashWarning({ open: false, conflictingTitle: "" })
   }
 
   // ── derived ──
-  const canProceed    = appts.length > 0
-  const calH          = TOTAL_HRS * HR_PX
+  const canProceed     = appts.length > 0
+  const calH           = TOTAL_HRS * HR_PX
   const endTimeInvalid = strToMins(modal.endTime) <= strToMins(modal.startTime)
 
   return (
@@ -241,7 +320,7 @@ export default function FixedAppointmentsPage() {
                 {/* time gutter */}
                 <div className="relative select-none">
                   {Array.from({ length: TOTAL_HRS }, (_, i) => {
-                    const hour = i + CAL_START
+                    const hour  = i + CAL_START
                     const label = hour === 12 ? "12 PM" : hour > 12 ? `${hour - 12} PM` : `${hour} AM`
                     return (
                       <div
@@ -268,7 +347,7 @@ export default function FixedAppointmentsPage() {
                   >
                     {/* hour lines */}
                     {Array.from({ length: TOTAL_HRS }, (_, i) => (
-                      <div key={i} className="absolute w-full border-t border-border/50" style={{ top: i * HR_PX }} />
+                      <div key={i}       className="absolute w-full border-t border-border/50" style={{ top: i * HR_PX }} />
                     ))}
                     {/* half-hour lines */}
                     {Array.from({ length: TOTAL_HRS }, (_, i) => (
@@ -279,6 +358,7 @@ export default function FixedAppointmentsPage() {
                     {appts.filter(a => a.dayIndex === di).map(appt => {
                       const top    = (appt.startMins - CAL_START * 60) * (HR_PX / 60)
                       const height = Math.max((appt.endMins - appt.startMins) * (HR_PX / 60), 22)
+                      const posStyle = getApptPositionStyle(appt, appts)
                       return (
                         <div
                           key={appt.id}
@@ -286,8 +366,14 @@ export default function FixedAppointmentsPage() {
                           draggable
                           onDragStart={e => onDragStart(e, appt)}
                           onClick={e => e.stopPropagation()}
-                          className="absolute left-1 right-1 rounded-[5px] px-2 py-0.5 cursor-grab active:cursor-grabbing overflow-hidden group"
-                          style={{ top, height, backgroundColor: `${appt.color}25`, borderLeft: `3px solid ${appt.color}` }}
+                          className="absolute rounded-[5px] px-2 py-0.5 cursor-grab active:cursor-grabbing overflow-hidden group"
+                          style={{
+                            top,
+                            height,
+                            backgroundColor: `${appt.color}25`,
+                            borderLeft: `3px solid ${appt.color}`,
+                            ...posStyle,
+                          }}
                         >
                           <p className="text-xs font-bold truncate leading-tight" style={{ color: appt.color }}>
                             {appt.title}
@@ -333,7 +419,7 @@ export default function FixedAppointmentsPage() {
         </div>
       </main>
 
-      {/* ── Modal ── */}
+      {/* ── Add / Edit Modal ── */}
       <Dialog open={modal.open} onOpenChange={open => { if (!open) setModal(EMPTY_MODAL) }}>
         <DialogContent className="bg-card border-border text-foreground max-w-md">
           <DialogHeader>
@@ -348,7 +434,6 @@ export default function FixedAppointmentsPage() {
           </DialogHeader>
 
           <div className="space-y-4 py-1">
-            {/* title */}
             <div className="space-y-1.5">
               <Label className="text-foreground font-bold">Appointment</Label>
               <Input
@@ -361,7 +446,6 @@ export default function FixedAppointmentsPage() {
               />
             </div>
 
-            {/* day picker */}
             <div className="space-y-1.5">
               <Label className="text-foreground font-bold">Day</Label>
               <div className="grid grid-cols-7 gap-1">
@@ -382,7 +466,6 @@ export default function FixedAppointmentsPage() {
               </div>
             </div>
 
-            {/* time range */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-foreground font-bold">From</Label>
@@ -407,7 +490,6 @@ export default function FixedAppointmentsPage() {
               </div>
             </div>
 
-            {/* description */}
             <div className="space-y-1.5">
               <Label className="text-foreground font-bold">Description</Label>
               <Textarea
@@ -437,6 +519,18 @@ export default function FixedAppointmentsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ── Clash modals ── */}
+      <ClashWarningModal
+        open={clashWarning.open}
+        conflictingTitle={clashWarning.conflictingTitle}
+        onProceed={handleClashProceed}
+        onCancel={handleClashCancel}
+      />
+      <ClashBlockModal
+        open={clashBlock}
+        onClose={() => setClashBlock(false)}
+      />
     </div>
   )
 }
