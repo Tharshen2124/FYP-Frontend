@@ -223,7 +223,7 @@ export default function FixedAppointmentsPage() {
           </div>
 
           {/* ── Calendar ── */}
-          <div className="bg-card border-2 border-border rounded-2xl overflow-hidden">
+          <div className="bg-card border-2 border-border rounded-md overflow-hidden">
             {/* day header row */}
             <div className="grid border-b border-border" style={{ gridTemplateColumns: "56px repeat(7, 1fr)" }}>
               <div />
@@ -286,7 +286,7 @@ export default function FixedAppointmentsPage() {
                           draggable
                           onDragStart={e => onDragStart(e, appt)}
                           onClick={e => e.stopPropagation()}
-                          className="absolute left-1 right-1 rounded-lg px-2 py-0.5 cursor-grab active:cursor-grabbing overflow-hidden group"
+                          className="absolute left-1 right-1 rounded-[5px] px-2 py-0.5 cursor-grab active:cursor-grabbing overflow-hidden group"
                           style={{ top, height, backgroundColor: `${appt.color}25`, borderLeft: `3px solid ${appt.color}` }}
                         >
                           <p className="text-xs font-bold truncate leading-tight" style={{ color: appt.color }}>
@@ -370,7 +370,7 @@ export default function FixedAppointmentsPage() {
                     key={d}
                     type="button"
                     onClick={() => setModal(m => ({ ...m, dayIndex: i }))}
-                    className={`py-2 rounded-lg text-xs font-bold transition-all ${
+                    className={`py-2 rounded-sm text-xs font-bold transition-all ${
                       modal.dayIndex === i
                         ? "bg-primary text-primary-foreground"
                         : "bg-muted text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
