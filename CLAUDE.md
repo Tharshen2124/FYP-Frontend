@@ -29,15 +29,7 @@ There are no tests configured in this project.
 `@/*` maps to the repo root (e.g. `@/components/ui/button`).
 
 ### Design system
-The app uses a fixed dark color palette defined as CSS variables in `app/globals.css`. The theme does not change between light/dark — both modes use the same values:
-- Background: `#090040` (deep navy)
-- Card: `#130066`
-- Primary: `#B13BFF` (magenta)
-- Secondary: `#471396` (purple)
-- Accent: `#FFCC00` (yellow)
-- Muted: `#1a0080`
-
-All new UI should use these semantic CSS variables (`bg-background`, `text-foreground`, `bg-card`, etc.) rather than raw hex values. Inline `style={{ color: ... }}` is only used for dynamic per-role colors.
+Reference DESIGN_GUIDELINES.md file for more information.
 
 ### Typography
 Two Google Fonts are loaded in `app/layout.tsx` as CSS variables:

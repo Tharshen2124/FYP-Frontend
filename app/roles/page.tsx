@@ -236,23 +236,34 @@ export default function RolesPage() {
                 <AlertTriangle className="w-4 h-4 text-accent" />
               )}
             </div>
-            <Button 
-              variant="outline" 
-              className="border-border text-foreground hover:bg-secondary/20"
-              asChild
-            >
-              <Link href="/tasks">
-                Next: Tasks
+            {roles.length >= 1 && totalGoals >= 1 ? (
+              <Button
+                variant="outline"
+                className="border-border text-foreground hover:bg-secondary/20"
+                asChild
+              >
+                <Link href="/sharpen-the-saw">
+                  Next
+                  <ChevronRight className="w-4 h-4 ml-1" />
+                </Link>
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                className="border-border text-foreground"
+                disabled
+              >
+                Next
                 <ChevronRight className="w-4 h-4 ml-1" />
-              </Link>
-            </Button>
+              </Button>
+            )}
           </div>
         </div>
       </nav>
 
       {/* Main Content */}
       <main className="relative z-10 px-6 py-8">
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-8">
             <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
