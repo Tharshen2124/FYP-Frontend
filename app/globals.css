@@ -3,88 +3,83 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Color Palette:
-   #091413 - Deep dark (background)
-   #285A48 - Forest green (primary)
-   #408A71 - Sage green (accent)
-   #B0E4CC - Soft mint (highlights)
-*/
-
 :root {
-  --background: #FAFBFA;
-  --foreground: #091413;
-  --card: #FFFFFF;
-  --card-foreground: #091413;
-  --popover: #FFFFFF;
-  --popover-foreground: #091413;
-  --primary: #285A48;
-  --primary-foreground: #FFFFFF;
-  --secondary: #B0E4CC;
-  --secondary-foreground: #091413;
-  --muted: #E8F5EE;
-  --muted-foreground: #285A48;
-  --accent: #408A71;
-  --accent-foreground: #FFFFFF;
+  /* Cartoony Scheduler Color Palette */
+  /* Deep Navy: #090040, Purple: #471396, Magenta: #B13BFF, Yellow: #FFCC00 */
+  --background: #090040;
+  --foreground: #ffffff;
+  --card: #130066;
+  --card-foreground: #ffffff;
+  --popover: #130066;
+  --popover-foreground: #ffffff;
+  --primary: #B13BFF;
+  --primary-foreground: #ffffff;
+  --secondary: #471396;
+  --secondary-foreground: #ffffff;
+  --muted: #1a0080;
+  --muted-foreground: #b8b8ff;
+  --accent: #FFCC00;
+  --accent-foreground: #090040;
   --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.577 0.245 27.325);
-  --border: #D4E8DE;
-  --input: #D4E8DE;
-  --ring: #408A71;
-  --chart-1: #285A48;
-  --chart-2: #408A71;
-  --chart-3: #B0E4CC;
-  --chart-4: #091413;
-  --chart-5: #1a3d32;
-  --radius: 0.625rem;
-  --sidebar: #F5FAF8;
-  --sidebar-foreground: #091413;
-  --sidebar-primary: #285A48;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #E8F5EE;
-  --sidebar-accent-foreground: #091413;
-  --sidebar-border: #D4E8DE;
-  --sidebar-ring: #408A71;
+  --destructive-foreground: #ffffff;
+  --border: #471396;
+  --input: #1a0080;
+  --ring: #B13BFF;
+  --chart-1: #B13BFF;
+  --chart-2: #FFCC00;
+  --chart-3: #471396;
+  --chart-4: #7c3aed;
+  --chart-5: #fbbf24;
+  --radius: 1rem;
+  --sidebar: #130066;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #B13BFF;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #471396;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #471396;
+  --sidebar-ring: #B13BFF;
 }
 
 .dark {
-  --background: #091413;
-  --foreground: #FAFBFA;
-  --card: #0f1f1c;
-  --card-foreground: #FAFBFA;
-  --popover: #0f1f1c;
-  --popover-foreground: #FAFBFA;
-  --primary: #408A71;
-  --primary-foreground: #FFFFFF;
-  --secondary: #1a3d32;
-  --secondary-foreground: #B0E4CC;
-  --muted: #142926;
-  --muted-foreground: #B0E4CC;
-  --accent: #285A48;
-  --accent-foreground: #FFFFFF;
+  --background: #090040;
+  --foreground: #ffffff;
+  --card: #130066;
+  --card-foreground: #ffffff;
+  --popover: #130066;
+  --popover-foreground: #ffffff;
+  --primary: #B13BFF;
+  --primary-foreground: #ffffff;
+  --secondary: #471396;
+  --secondary-foreground: #ffffff;
+  --muted: #1a0080;
+  --muted-foreground: #b8b8ff;
+  --accent: #FFCC00;
+  --accent-foreground: #090040;
   --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: #1a3d32;
-  --input: #1a3d32;
-  --ring: #408A71;
-  --chart-1: #408A71;
-  --chart-2: #285A48;
-  --chart-3: #B0E4CC;
-  --chart-4: #1a3d32;
-  --chart-5: #0f1f1c;
-  --sidebar: #0f1f1c;
-  --sidebar-foreground: #FAFBFA;
-  --sidebar-primary: #408A71;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #142926;
-  --sidebar-accent-foreground: #B0E4CC;
-  --sidebar-border: #1a3d32;
-  --sidebar-ring: #408A71;
+  --destructive-foreground: #ffffff;
+  --border: #471396;
+  --input: #1a0080;
+  --ring: #B13BFF;
+  --chart-1: #B13BFF;
+  --chart-2: #FFCC00;
+  --chart-3: #471396;
+  --chart-4: #7c3aed;
+  --chart-5: #fbbf24;
+  --sidebar: #130066;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #B13BFF;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #471396;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #471396;
+  --sidebar-ring: #B13BFF;
 }
 
 @theme inline {
-  --font-sans: var(--font-ubuntu), 'Ubuntu', system-ui, sans-serif;
-  --font-serif: var(--font-bricolage), 'Bricolage Grotesque', serif;
-  --font-mono: 'Geist Mono', 'Geist Mono Fallback', monospace;
+  --font-sans: var(--font-bricolage), 'Bricolage Grotesque', system-ui, sans-serif;
+  --font-serif: var(--font-ubuntu), 'Ubuntu', Georgia, serif;
+  --font-mono: 'Geist Mono', 'Geist Mono Fallback';
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);

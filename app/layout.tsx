@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Bricolage_Grotesque, Ubuntu } from 'next/font/google'
-import './globals.css'
+import { Toaster } from '@/components/ui/sonner'
+import "./globals.css"
 
 const bricolage = Bricolage_Grotesque({ 
   subsets: ["latin"],
@@ -16,8 +17,8 @@ const ubuntu = Ubuntu({
 });
 
 export const metadata: Metadata = {
-  title: 'HabitFlow | Principle-Centered Scheduling',
-  description: 'Plan your week around what matters most. Based on The 7 Habits of Highly Effective People framework.',
+  title: 'HabitFlow - 7 Habits Schedule Planner',
+  description: 'Plan your week using the 7 Habits of Highly Effective People framework. Define goals, organize tasks, and export to Google Calendar.',
   generator: 'v0.app',
   icons: {
     icon: [
@@ -44,9 +45,10 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
-      <body className={`${bricolage.variable} ${ubuntu.variable} font-sans antialiased`}>
+    <html lang="en" className={`${bricolage.variable} ${ubuntu.variable}`}>
+      <body className="font-sans antialiased">
         {children}
+        <Toaster />
       </body>
     </html>
   )
