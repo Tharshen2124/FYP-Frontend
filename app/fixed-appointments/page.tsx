@@ -106,11 +106,9 @@ interface ModalState {
   description: string
 }
 
-interface PendingDrop {
-  draggedId: string
-  dayIndex: number
-  newStart: number
-}
+type PendingAction =
+  | { type: "drop"; draggedId: string; dayIndex: number; newStart: number }
+  | { type: "save"; editId: string; title: string; description: string; dayIndex: number; startMins: number; endMins: number }
 
 const EMPTY_MODAL: ModalState = {
   open: false,
@@ -127,7 +125,7 @@ const EMPTY_MODAL: ModalState = {
 export default function FixedAppointmentsPage() {
   const [appts, setAppts]               = useState<Appt[]>([])
   const [modal, setModal]               = useState<ModalState>(EMPTY_MODAL)
-  const [pendingDrop, setPendingDrop]   = useState<PendingDrop | null>(null)
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null)
   const [clashWarning, setClashWarning] = useState<{ open: boolean; conflictingTitle: string }>({ open: false, conflictingTitle: "" })
   const [clashBlock, setClashBlock]     = useState(false)
   const colorCursor                     = useRef(0)
@@ -176,14 +174,20 @@ export default function FixedAppointmentsPage() {
         startMins: s, endMins: e,
         color: nextColor(),
       }])
+      setModal(EMPTY_MODAL)
     } else {
-      setAppts(prev => prev.map(a =>
-        a.id === modal.editId
-          ? { ...a, title: modal.title.trim(), description: modal.description.trim(), dayIndex: modal.dayIndex, startMins: s, endMins: e }
-          : a
-      ))
+      const overlapping = getOverlaps(appts, modal.dayIndex, s, e, modal.editId!)
+      if (overlapping.length === 0) {
+        applySave(modal.editId!, modal.title.trim(), modal.description.trim(), modal.dayIndex, s, e)
+        setModal(EMPTY_MODAL)
+      } else if (overlapping.length === 1) {
+        setPendingAction({ type: "save", editId: modal.editId!, title: modal.title.trim(), description: modal.description.trim(), dayIndex: modal.dayIndex, startMins: s, endMins: e })
+        setClashWarning({ open: true, conflictingTitle: overlapping[0].title })
+        // keep modal open — it closes only on proceed or cancel
+      } else {
+        setClashBlock(true)
+      }
     }
-    setModal(EMPTY_MODAL)
   }
 
   // ── apply a confirmed drop ──
@@ -193,6 +197,13 @@ export default function FixedAppointmentsPage() {
       const dur = a.endMins - a.startMins
       return { ...a, dayIndex, startMins: newStart, endMins: newStart + dur }
     }))
+  }
+
+  // ── apply a confirmed edit save ──
+  const applySave = (editId: string, title: string, description: string, dayIndex: number, startMins: number, endMins: number) => {
+    setAppts(prev => prev.map(a =>
+      a.id === editId ? { ...a, title, description, dayIndex, startMins, endMins } : a
+    ))
   }
 
   // ── drag ──
@@ -234,7 +245,7 @@ export default function FixedAppointmentsPage() {
     if (overlapping.length === 0) {
       applyDrop(draggedId, dayIndex, newStart)
     } else if (overlapping.length === 1) {
-      setPendingDrop({ draggedId, dayIndex, newStart })
+      setPendingAction({ type: "drop", draggedId, dayIndex, newStart })
       setClashWarning({ open: true, conflictingTitle: overlapping[0].title })
     } else {
       setClashBlock(true)
@@ -243,15 +254,18 @@ export default function FixedAppointmentsPage() {
 
   // ── clash modal handlers ──
   const handleClashProceed = () => {
-    if (pendingDrop) {
-      applyDrop(pendingDrop.draggedId, pendingDrop.dayIndex, pendingDrop.newStart)
-      setPendingDrop(null)
+    if (pendingAction?.type === "drop") {
+      applyDrop(pendingAction.draggedId, pendingAction.dayIndex, pendingAction.newStart)
+    } else if (pendingAction?.type === "save") {
+      applySave(pendingAction.editId, pendingAction.title, pendingAction.description, pendingAction.dayIndex, pendingAction.startMins, pendingAction.endMins)
+      setModal(EMPTY_MODAL)
     }
+    setPendingAction(null)
     setClashWarning({ open: false, conflictingTitle: "" })
   }
 
   const handleClashCancel = () => {
-    setPendingDrop(null)
+    setPendingAction(null)
     setClashWarning({ open: false, conflictingTitle: "" })
   }
 
