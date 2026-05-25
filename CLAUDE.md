@@ -45,6 +45,7 @@ Landing → Login → `/roles` → `/sharpen-the-saw` → `/fixed-appointments` 
 - `/roles` — Role & goal management; Next enabled when ≥1 role and ≥1 goal exist; links to `/sharpen-the-saw`
 - `/sharpen-the-saw` — Four dimension cards (Physical, Spiritual, Mental, Social/Emotional), each with add/inline-edit/delete activities; Next enabled when every dimension has ≥1 activity; links to `/fixed-appointments`
 - `/fixed-appointments` — Google Calendar-style weekly view (Mon–Sun, 6 AM–10 PM); click slot to add, hover card to edit/delete, drag-and-drop to reschedule; clash detection (warn on 1 overlap, block on 2+); Next enabled when ≥1 appointment exists
+- `/schedule-tasks` — Same Google Calendar–style weekly view as Fixed Appointments. Fixed appointments from the previous step appear in blue (`#3b82f6`) with a lock icon and are non-interactive. Tasks are added via a modal that requires linking to either a Role Goal (select role → select goal) or a Sharpen the Saw activity (select dimension → select activity); the task's color inherits from the linked role/dimension. An optional "Daily Priority" toggle (star icon) marks the task as a daily priority and shows a filled star badge on the calendar card. Clash detection works across fixed appointments AND tasks combined. `canProceed = tasks.length > 0`.
 - `/evening-reflections` — Sidebar lists 8 weeks (current week first); main area shows a Weekly Summary card (AI-simulated, 1.8 s delay) and a 7-day card grid; Edit/Create button opens a Dialog with a Textarea; weeks with any entry show a purple dot indicator; not part of the onboarding flow (Back button)
 - `/google-calendar` — Two states: disconnected (connect card) and connected (settings cards). Connected state: connection status + Disconnect, Allow Sync Changes toggle, Export Categories tree (Fixed Appointments leaf, Sharpen the Saw with 4 sub-dimensions, Role Tasks with 4 mock roles); parent checkboxes support indeterminate state; sticky Discard/Save footer appears only when settings are dirty; not part of the onboarding flow (Back button)
 
@@ -73,4 +74,13 @@ All state is currently local React `useState` — no global store, no backend, n
 - `getOverlaps(all, dayIndex, startMins, endMins, excludeId)` — returns overlapping appointments.
 - `getApptPositionStyle(appt, allAppts)` — returns `left/right/width` inline styles; when 2 events overlap they split 50/50 sorted by `(startMins, id)` for stable column assignment.
 - `canProceed = appts.length > 0` — Next button gate.
-- Next button on this page: `onNext={() => {}}` (destination TBD).
+- Next button on this page: `nextHref="/schedule-tasks"`.
+
+### Schedule Tasks — key implementation details
+- Extends Fixed Appointments with a combined `allCalItems` array (fixed + tasks) so overlap detection covers both types.
+- Fixed appointments are hardcoded mock data (`MOCK_FIXED`) — read-only, rendered with a lock icon, not draggable.
+- Roles/goals and sharpen-the-saw dimensions/activities are also mock data (`MOCK_ROLES`, `MOCK_DIMENSIONS`) — in production these would come from a shared store.
+- Task color is derived from the linked role color or dimension color at save time.
+- Modal `getLinkMeta()` validates that a goal or activity is selected; Save button is disabled until valid.
+- `isDailyPriority` flag shows a filled `Star` badge on the calendar card and a styled toggle in the modal.
+- `canProceed = tasks.length > 0` — Next button gate (destination TBD).

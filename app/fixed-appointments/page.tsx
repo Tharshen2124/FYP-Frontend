@@ -282,7 +282,7 @@ export default function FixedAppointmentsPage() {
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-secondary/20 rounded-full blur-3xl" />
       </div>
 
-      <AppNav action="next" nextEnabled={canProceed} onNext={() => {}} />
+      <AppNav action="next" nextHref="/schedule-tasks" nextEnabled={canProceed} />
 
       {/* main */}
       <main className="relative z-10 px-6 py-8">
