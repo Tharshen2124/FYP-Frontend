@@ -54,6 +54,27 @@ Landing → Login → `/roles` → `/sharpen-the-saw` → `/fixed-appointments` 
 - Background decoration: two fixed blurred blobs (`bg-primary/10` top-left, `bg-secondary/20` bottom-right).
 - Page structure: `<AppNav>` → `<main className="relative z-10 px-6 py-8">` → `<div className="max-w-7xl mx-auto">`.
 
+### File structure convention
+Pages with non-trivial logic are split into private subfolders (prefixed with `_` to signal they are internal to that route and must not be imported from outside it):
+
+```
+app/<route>/
+  page.tsx          ← slim orchestrator: state + event handlers only
+  _types/
+    index.ts        ← all TypeScript interfaces and types
+  _constants/
+    calendar.ts     ← calendar dimensions, day labels, EMPTY_MODAL, color constants
+    mock-data.ts    ← placeholder data (roles, goals, dimensions, fixed appointments)
+  _utils/
+    time.ts         ← pure time helpers (minsToStr, strToMins, fmtTime, snapMins)
+    calendar.ts     ← overlap detection and position style calculation
+    tasks.ts        ← domain-specific helpers (e.g. getLinkMeta)
+  _components/
+    *.tsx           ← UI pieces consumed only by this route's page
+```
+
+`/schedule-tasks` is the reference implementation of this pattern. Apply the same structure to future complex pages. Simpler pages (roles, sharpen-the-saw) can stay as a single `page.tsx` until they grow large enough to warrant splitting.
+
 ### State management
 All state is currently local React `useState` — no global store, no backend, no auth integration yet. The login page has a UI-only Google OAuth button that is not connected.
 
