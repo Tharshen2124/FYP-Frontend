@@ -1,15 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import Link from "next/link"
-import { 
-  Plus, 
-  Trash2, 
-  Sparkles, 
-  Target, 
+import {
+  Plus,
+  Trash2,
+  Target,
   AlertTriangle,
   X,
-  ChevronRight,
   Users,
   Briefcase,
   Heart,
@@ -19,6 +16,7 @@ import {
   Palette,
   Landmark
 } from "lucide-react"
+import { AppNav } from "@/components/app-nav"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -216,50 +214,22 @@ export default function RolesPage() {
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-secondary/20 rounded-full blur-3xl" />
       </div>
 
-      {/* Navigation */}
-      <nav className="relative z-10 px-6 py-4 border-b border-border">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-              <Sparkles className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <span className="text-2xl font-bold text-foreground">HabitFlow</span>
-          </Link>
-          
-          <div className="flex items-center gap-4">
-            <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full bg-card border border-border">
-              <Target className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium text-foreground">
-                {totalGoals} {totalGoals === 1 ? "Goal" : "Goals"}
-              </span>
-              {totalGoals > MAX_RECOMMENDED_GOALS && (
-                <AlertTriangle className="w-4 h-4 text-accent" />
-              )}
-            </div>
-            {roles.length >= 1 && totalGoals >= 1 ? (
-              <Button
-                variant="outline"
-                className="border-border text-foreground hover:bg-secondary/20"
-                asChild
-              >
-                <Link href="/sharpen-the-saw">
-                  Next
-                  <ChevronRight className="w-4 h-4 ml-1" />
-                </Link>
-              </Button>
-            ) : (
-              <Button
-                variant="outline"
-                className="border-border text-foreground"
-                disabled
-              >
-                Next
-                <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
+      <AppNav
+        action="next"
+        nextHref="/sharpen-the-saw"
+        nextEnabled={roles.length >= 1 && totalGoals >= 1}
+        extra={
+          <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full bg-card border border-border">
+            <Target className="w-4 h-4 text-primary" />
+            <span className="text-sm font-medium text-foreground">
+              {totalGoals} {totalGoals === 1 ? "Goal" : "Goals"}
+            </span>
+            {totalGoals > MAX_RECOMMENDED_GOALS && (
+              <AlertTriangle className="w-4 h-4 text-accent" />
             )}
           </div>
-        </div>
-      </nav>
+        }
+      />
 
       {/* Main Content */}
       <main className="relative z-10 px-6 py-8">

@@ -1,13 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import Link from "next/link"
 import {
   Plus,
   Trash2,
   Sparkles,
   X,
-  ChevronRight,
   Flame,
   Brain,
   Heart,
@@ -15,6 +13,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { AppNav } from "@/components/app-nav"
 
 interface Activity {
   id: string
@@ -132,39 +131,7 @@ export default function SharpenTheSawPage() {
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-secondary/20 rounded-full blur-3xl" />
       </div>
 
-      {/* Navigation */}
-      <nav className="relative z-10 px-6 py-4 border-b border-border">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-              <Sparkles className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <span className="text-2xl font-bold text-foreground">HabitFlow</span>
-          </Link>
-
-          {allDimensionsFilled ? (
-            <Button
-              variant="outline"
-              className="border-border text-foreground hover:bg-secondary/20"
-              asChild
-            >
-              <Link href="/fixed-appointments">
-                Next
-                <ChevronRight className="w-4 h-4 ml-1" />
-              </Link>
-            </Button>
-          ) : (
-            <Button
-              variant="outline"
-              disabled
-              className="border-border text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Next
-              <ChevronRight className="w-4 h-4 ml-1" />
-            </Button>
-          )}
-        </div>
-      </nav>
+      <AppNav action="next" nextHref="/fixed-appointments" nextEnabled={allDimensionsFilled} />
 
       {/* Main Content */}
       <main className="relative z-10 px-6 py-8">

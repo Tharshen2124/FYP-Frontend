@@ -1,8 +1,8 @@
 "use client"
 
 import { useState, useRef } from "react"
-import Link from "next/link"
-import { Sparkles, ChevronRight, Pencil, X } from "lucide-react"
+import { Pencil, X } from "lucide-react"
+import { AppNav } from "@/components/app-nav"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -282,26 +282,7 @@ export default function FixedAppointmentsPage() {
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-secondary/20 rounded-full blur-3xl" />
       </div>
 
-      {/* nav */}
-      <nav className="relative z-10 px-6 py-4 border-b border-border">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-              <Sparkles className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <span className="text-2xl font-bold text-foreground">HabitFlow</span>
-          </Link>
-          <Button
-            variant="outline"
-            disabled={!canProceed}
-            className="border-border text-foreground hover:bg-secondary/20 disabled:opacity-50 disabled:cursor-not-allowed"
-            onClick={() => {}}
-          >
-            Next
-            <ChevronRight className="w-4 h-4 ml-1" />
-          </Button>
-        </div>
-      </nav>
+      <AppNav action="next" nextEnabled={canProceed} onNext={() => {}} />
 
       {/* main */}
       <main className="relative z-10 px-6 py-8">
