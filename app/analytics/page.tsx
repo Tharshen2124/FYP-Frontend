@@ -1,6 +1,6 @@
 "use client"
 
-import { Sidebar } from "@/app/dashboard/_components/sidebar"
+import { Sidebar } from "@/components/sidebar"
 import { SharpenSawChart } from "./_components/sharpen-saw-chart"
 import { RoleTaskTable } from "./_components/role-task-table"
 import { DailyPriorityChart } from "./_components/daily-priority-chart"

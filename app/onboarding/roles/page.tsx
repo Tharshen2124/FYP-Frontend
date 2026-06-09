@@ -16,7 +16,8 @@ import {
   Palette,
   Landmark
 } from "lucide-react"
-import { Sidebar } from "@/components/sidebar"
+import { AppNav } from "@/components/app-nav"
+import { OnboardingStepper } from "@/components/onboarding-stepper"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -72,7 +73,7 @@ interface Role {
 
 const MAX_RECOMMENDED_GOALS = 10
 
-export default function RolesPage() {
+export default function OnboardingRolesPage() {
   const [roles, setRoles] = useState<Role[]>([
     {
       id: "1",
@@ -190,26 +191,18 @@ export default function RolesPage() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="min-h-screen bg-background">
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-secondary/20 rounded-full blur-3xl" />
       </div>
 
-      <Sidebar />
-
-      <main className="relative z-10 flex-1 overflow-y-auto px-8 py-8">
-        {/* Page header */}
-        <div className="flex items-start justify-between mb-6">
-          <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-1">
-              Roles &amp; <span className="text-primary">Goals</span>
-            </h1>
-            <p className="text-muted-foreground font-serif">
-              Manage your life roles and set meaningful goals for each one.
-            </p>
-          </div>
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-card border border-border shrink-0">
+      <AppNav
+        action="next"
+        nextHref="/onboarding/sharpen-the-saw"
+        nextEnabled={roles.length >= 1 && totalGoals >= 1}
+        extra={
+          <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full bg-card border border-border">
             <Target className="w-4 h-4 text-primary" />
             <span className="text-sm font-medium text-foreground">
               {totalGoals} {totalGoals === 1 ? "Goal" : "Goals"}
@@ -218,78 +211,95 @@ export default function RolesPage() {
               <AlertTriangle className="w-4 h-4 text-accent" />
             )}
           </div>
-        </div>
+        }
+      />
 
-        {totalGoals > MAX_RECOMMENDED_GOALS && (
-          <div className="mb-6 p-4 rounded-2xl bg-accent/10 border-2 border-accent/30 flex items-start gap-3">
-            <AlertTriangle className="w-6 h-6 text-accent flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-bold text-foreground">You have {totalGoals} goals</p>
-              <p className="text-sm text-muted-foreground font-serif">
-                Consider focusing on fewer goals. Research shows that limiting yourself to 7-10 goals leads to better outcomes.
-              </p>
-            </div>
+      <main className="relative z-10 px-6 py-8">
+        <div className="max-w-7xl mx-auto">
+          <OnboardingStepper currentStep={1} />
+
+          <div className="mb-8">
+            <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
+              Define Your <span className="text-primary">Roles</span>
+            </h1>
+            <p className="text-muted-foreground font-serif text-lg">
+              Identify the key roles in your life and set meaningful goals for each one.
+              Focus on what matters most this week.
+            </p>
           </div>
-        )}
 
-        <div className="grid gap-6">
-          {roles.map((role) => {
-            const IconComponent = getIconComponent(role.iconId)
-            const color = getColor(role.colorId)
-            return (
-              <div key={role.id} className="p-6 rounded-2xl bg-card border-2 border-border hover:border-primary/30 transition-colors">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${color}20` }}>
-                      <IconComponent className="w-6 h-6" style={{ color }} />
+          {totalGoals > MAX_RECOMMENDED_GOALS && (
+            <div className="mb-6 p-4 rounded-2xl bg-accent/10 border-2 border-accent/30 flex items-start gap-3">
+              <AlertTriangle className="w-6 h-6 text-accent flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-foreground">You have {totalGoals} goals this week</p>
+                <p className="text-sm text-muted-foreground font-serif">
+                  Consider focusing on fewer goals to increase your chances of success.
+                  Research shows that limiting yourself to 7-10 weekly goals leads to better outcomes.
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className="grid gap-6">
+            {roles.map((role) => {
+              const IconComponent = getIconComponent(role.iconId)
+              const color = getColor(role.colorId)
+              return (
+                <div key={role.id} className="p-6 rounded-2xl bg-card border-2 border-border hover:border-primary/30 transition-colors">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${color}20` }}>
+                        <IconComponent className="w-6 h-6" style={{ color }} />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-bold text-foreground">{role.name}</h2>
+                        <p className="text-sm text-muted-foreground">{role.goals.length} {role.goals.length === 1 ? "goal" : "goals"}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h2 className="text-xl font-bold text-foreground">{role.name}</h2>
-                      <p className="text-sm text-muted-foreground">{role.goals.length} {role.goals.length === 1 ? "goal" : "goals"}</p>
+                    <div className="flex items-center gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => handleEditRole(role)} className="text-muted-foreground hover:text-foreground">Edit</Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleDeleteRole(role.id)} className="text-muted-foreground hover:text-destructive">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm" onClick={() => handleEditRole(role)} className="text-muted-foreground hover:text-foreground">Edit</Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleDeleteRole(role.id)} className="text-muted-foreground hover:text-destructive">
-                      <Trash2 className="w-4 h-4" />
+                  <div className="space-y-2 mb-4">
+                    {role.goals.map((goal) => (
+                      <div key={goal.id} className="flex items-center justify-between p-3 rounded-xl bg-muted/50 group">
+                        <div className="flex items-center gap-3">
+                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+                          <span className="text-foreground font-serif">{goal.text}</span>
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={() => handleDeleteGoal(role.id, goal.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity">
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Add a goal for this role..."
+                      value={goalInputs[role.id] || ""}
+                      onChange={(e) => setGoalInputs(prev => ({ ...prev, [role.id]: e.target.value }))}
+                      onKeyDown={(e) => { if (e.key === "Enter" && (goalInputs[role.id] || "").trim()) attemptAddGoal(role.id, goalInputs[role.id] || "") }}
+                      className="bg-muted border-border text-foreground placeholder:text-muted-foreground"
+                    />
+                    <Button onClick={() => attemptAddGoal(role.id, goalInputs[role.id] || "")} className="bg-secondary hover:bg-secondary/80 text-secondary-foreground">
+                      <Plus className="w-4 h-4" />
                     </Button>
                   </div>
                 </div>
-                <div className="space-y-2 mb-4">
-                  {role.goals.map((goal) => (
-                    <div key={goal.id} className="flex items-center justify-between p-3 rounded-xl bg-muted/50 group">
-                      <div className="flex items-center gap-3">
-                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
-                        <span className="text-foreground font-serif">{goal.text}</span>
-                      </div>
-                      <Button variant="ghost" size="sm" onClick={() => handleDeleteGoal(role.id, goal.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity">
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Add a goal for this role..."
-                    value={goalInputs[role.id] || ""}
-                    onChange={(e) => setGoalInputs(prev => ({ ...prev, [role.id]: e.target.value }))}
-                    onKeyDown={(e) => { if (e.key === "Enter" && (goalInputs[role.id] || "").trim()) attemptAddGoal(role.id, goalInputs[role.id] || "") }}
-                    className="bg-muted border-border text-foreground placeholder:text-muted-foreground"
-                  />
-                  <Button onClick={() => attemptAddGoal(role.id, goalInputs[role.id] || "")} className="bg-secondary hover:bg-secondary/80 text-secondary-foreground">
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            )
-          })}
+              )
+            })}
 
-          <button onClick={() => setIsAddRoleOpen(true)} className="p-8 rounded-2xl border-2 border-dashed border-border hover:border-primary/50 transition-colors flex flex-col items-center justify-center gap-3 group">
-            <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-              <Plus className="w-7 h-7 text-primary" />
-            </div>
-            <span className="text-lg font-bold text-muted-foreground group-hover:text-foreground transition-colors">Add New Role</span>
-          </button>
+            <button onClick={() => setIsAddRoleOpen(true)} className="p-8 rounded-2xl border-2 border-dashed border-border hover:border-primary/50 transition-colors flex flex-col items-center justify-center gap-3 group">
+              <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                <Plus className="w-7 h-7 text-primary" />
+              </div>
+              <span className="text-lg font-bold text-muted-foreground group-hover:text-foreground transition-colors">Add New Role</span>
+            </button>
+          </div>
         </div>
       </main>
 
@@ -381,13 +391,14 @@ export default function RolesPage() {
               Too Many Goals?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground font-serif">
-              You already have <span className="font-bold text-foreground">{totalGoals} goals</span>.
+              You already have <span className="font-bold text-foreground">{totalGoals} goals</span> for this week.
               Adding more may reduce your effectiveness and increase overwhelm.
               <br /><br />
               <span className="text-foreground">&quot;The main thing is to keep the main thing the main thing.&quot;</span>
               <br />
               <span className="text-sm italic">— Stephen Covey</span>
               <br /><br />
+              Consider completing or removing some goals before adding new ones.
               Are you sure you want to add this goal?
             </AlertDialogDescription>
           </AlertDialogHeader>

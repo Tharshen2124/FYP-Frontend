@@ -1,12 +1,37 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { CalendarDays, Lock, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Sidebar } from "./_components/sidebar"
+import { Sidebar } from "@/components/sidebar"
 import { WeeklyTimetable } from "./_components/weekly-timetable"
+import { EndOfDayModal } from "./_components/end-of-day-modal"
 
 export default function DashboardPage() {
+  const [showEodModal, setShowEodModal] = useState(false)
+
+  useEffect(() => {
+    const today = new Date().toDateString()
+    const lastShown = localStorage.getItem("eod_shown_date")
+    if (lastShown === today) return
+
+    const savedTime = localStorage.getItem("eod_time") ?? "21:00"
+    const [h, m] = savedTime.split(":").map(Number)
+    const now = new Date()
+    const trigger = new Date()
+    trigger.setHours(h, m, 0, 0)
+
+    if (now >= trigger) {
+      setShowEodModal(true)
+    }
+  }, [])
+
+  const handleEodClose = () => {
+    localStorage.setItem("eod_shown_date", new Date().toDateString())
+    setShowEodModal(false)
+  }
+
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       {/* Background decorations */}
@@ -29,7 +54,7 @@ export default function DashboardPage() {
             </p>
           </div>
           <Button className="bg-primary hover:bg-primary/90 text-primary-foreground shrink-0" asChild>
-            <Link href="/schedule-tasks">
+            <Link href="/weekly-plan/schedule">
               <CalendarDays className="w-4 h-4 mr-2" />
               Edit Weekly Plan
             </Link>
@@ -54,6 +79,8 @@ export default function DashboardPage() {
 
         <WeeklyTimetable />
       </main>
+
+      <EndOfDayModal open={showEodModal} onClose={handleEodClose} />
     </div>
   )
 }

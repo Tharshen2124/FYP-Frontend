@@ -12,14 +12,16 @@ import {
   Clock,
   BarChart2,
   LogOut,
+  LayoutDashboard,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 const NAV_ITEMS = [
+  { label: "Dashboard",                      href: "/dashboard",            icon: LayoutDashboard },
   { label: "Roles and Goals",                href: "/roles",                icon: Target },
   { label: "Sharpen the Saw",                href: "/sharpen-the-saw",      icon: Zap },
-  { label: "Schedule Upcoming Weekly Plan",  href: "/schedule-tasks",       icon: CalendarDays },
-  { label: "Google Calendar Settings",       href: "/google-calendar",      icon: Settings },
+  { label: "Schedule Upcoming Weekly Plan",  href: "/weekly-plan/goals",    icon: CalendarDays },
+  { label: "Settings",                        href: "/settings",             icon: Settings },
   { label: "Evening Reflections",            href: "/evening-reflections",  icon: Moon },
   { label: "History",                        href: "/history",              icon: Clock },
   { label: "Analytics",                      href: "/analytics",            icon: BarChart2 },

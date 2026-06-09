@@ -9,7 +9,7 @@ import {
   CalendarDays,
   Loader2,
 } from "lucide-react"
-import { AppNav } from "@/components/app-nav"
+import { Sidebar } from "@/components/sidebar"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -116,16 +116,16 @@ export default function EveningReflectionsPage() {
   )
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="flex h-screen overflow-hidden bg-background">
       {/* Background decorations */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-secondary/20 rounded-full blur-3xl" />
       </div>
 
-      <AppNav action="back" />
+      <Sidebar />
 
-      {/* Body: sidebar + main */}
+      {/* Body: week list + main */}
       <div className="relative z-10 flex flex-1 overflow-hidden">
         {/* Sidebar */}
         <aside className="w-64 shrink-0 border-r border-border flex flex-col overflow-y-auto">

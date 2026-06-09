@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog"
 import { ClashWarningModal } from "@/components/clash-warning-modal"
 import { ClashBlockModal } from "@/components/clash-block-modal"
+import { OnboardingStepper } from "@/components/onboarding-stepper"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -282,11 +283,13 @@ export default function FixedAppointmentsPage() {
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-secondary/20 rounded-full blur-3xl" />
       </div>
 
-      <AppNav action="next" nextHref="/schedule-tasks" nextEnabled={canProceed} />
+      <AppNav action="next" nextHref="/onboarding/schedule-tasks" nextEnabled={canProceed} />
 
       {/* main */}
       <main className="relative z-10 px-6 py-8">
         <div className="max-w-7xl mx-auto">
+          <OnboardingStepper currentStep={3} />
+
           <div className="mb-6">
             <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
               Fixed <span className="text-primary">Appointments</span>
