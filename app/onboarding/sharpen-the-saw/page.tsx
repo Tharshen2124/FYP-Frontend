@@ -4,6 +4,7 @@ import { useState } from "react"
 import {
   Plus,
   Sparkles,
+  Star,
   X,
   Flame,
   Brain,
@@ -17,6 +18,7 @@ import { OnboardingStepper } from "@/components/onboarding-stepper"
 interface Activity {
   id: string
   text: string
+  isWeeklyPriority?: boolean
 }
 
 interface Dimension {
@@ -80,6 +82,16 @@ export default function OnboardingSharpenTheSawPage() {
       )
     )
     setInputs(prev => ({ ...prev, [dimId]: "" }))
+  }
+
+  const togglePriority = (dimId: string, actId: string) => {
+    setDimensions(prev =>
+      prev.map(d =>
+        d.id === dimId
+          ? { ...d, activities: d.activities.map(a => a.id === actId ? { ...a, isWeeklyPriority: !a.isWeeklyPriority } : a) }
+          : d
+      )
+    )
   }
 
   const deleteActivity = (dimId: string, actId: string) => {
@@ -153,7 +165,7 @@ export default function OnboardingSharpenTheSawPage() {
 
                   <div className="space-y-2 mb-4">
                     {dim.activities.map(act => (
-                      <div key={act.id} className="flex items-center justify-between p-3 rounded-xl bg-muted/50 group">
+                      <div key={act.id} className={`flex items-center justify-between p-3 rounded-xl group transition-colors ${act.isWeeklyPriority ? "bg-accent/10 border border-accent/30" : "bg-muted/50"}`}>
                         {editingId?.dimId === dim.id && editingId?.actId === act.id ? (
                           <Input
                             autoFocus
@@ -172,11 +184,25 @@ export default function OnboardingSharpenTheSawPage() {
                             <span className="text-foreground font-serif truncate cursor-pointer hover:text-primary transition-colors" onClick={() => startEdit(dim.id, act.id, act.text)}>
                               {act.text}
                             </span>
+                            {act.isWeeklyPriority && (
+                              <span className="text-xs font-medium bg-accent/20 text-accent rounded-full px-2 py-0.5 whitespace-nowrap">Priority</span>
+                            )}
                           </div>
                         )}
-                        <Button variant="ghost" size="sm" onClick={() => deleteActivity(dim.id, act.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity flex-shrink-0">
-                          <X className="w-4 h-4" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => togglePriority(dim.id, act.id)}
+                            className={`p-1 h-auto transition-opacity ${act.isWeeklyPriority ? "text-accent" : "text-muted-foreground hover:text-accent opacity-0 group-hover:opacity-100"}`}
+                            title={act.isWeeklyPriority ? "Remove weekly priority" : "Mark as weekly priority"}
+                          >
+                            <Star className={`w-4 h-4 ${act.isWeeklyPriority ? "fill-accent" : ""}`} />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => deleteActivity(dim.id, act.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity flex-shrink-0 p-1 h-auto">
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>

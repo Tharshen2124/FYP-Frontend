@@ -1,21 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import { Plus, X, Check } from "lucide-react"
+import { Check } from "lucide-react"
 import { AppNav } from "@/components/app-nav"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { MOCK_DIMENSIONS } from "@/app/weekly-plan/schedule/_constants/mock-data"
-
-interface WeeklyActivity {
-  id: string
-  text: string
-}
 
 export default function WeeklyPlanSharpenTheSawPage() {
   const [selectedActivityIds, setSelectedActivityIds] = useState<Set<string>>(new Set())
-  const [weeklyActivities, setWeeklyActivities] = useState<Record<string, WeeklyActivity[]>>({})
-  const [activityInputs, setActivityInputs] = useState<Record<string, string>>({})
 
   const toggleActivity = (actId: string) => {
     setSelectedActivityIds(prev => {
@@ -26,23 +17,7 @@ export default function WeeklyPlanSharpenTheSawPage() {
     })
   }
 
-  const addWeeklyActivity = (dimId: string) => {
-    const text = (activityInputs[dimId] || "").trim()
-    if (!text) return
-    const newAct: WeeklyActivity = { id: `wa-${Date.now()}`, text }
-    setWeeklyActivities(prev => ({ ...prev, [dimId]: [...(prev[dimId] || []), newAct] }))
-    setActivityInputs(prev => ({ ...prev, [dimId]: "" }))
-  }
-
-  const removeWeeklyActivity = (dimId: string, actId: string) => {
-    setWeeklyActivities(prev => ({
-      ...prev,
-      [dimId]: (prev[dimId] || []).filter(a => a.id !== actId),
-    }))
-  }
-
-  const totalWeeklyActivities = Object.values(weeklyActivities).reduce((sum, as) => sum + as.length, 0)
-  const canProceed = selectedActivityIds.size + totalWeeklyActivities > 0
+  const canProceed = selectedActivityIds.size > 0
 
   return (
     <div className="min-h-screen bg-background">
@@ -67,7 +42,6 @@ export default function WeeklyPlanSharpenTheSawPage() {
           <div className="grid gap-6">
             {MOCK_DIMENSIONS.map(dim => {
               const Icon = dim.icon
-              const dimWeeklyActivities = weeklyActivities[dim.id] || []
               return (
                 <div
                   key={dim.id}
@@ -86,8 +60,8 @@ export default function WeeklyPlanSharpenTheSawPage() {
                     </div>
                   </div>
 
-                  {/* Existing activities — checkboxes */}
-                  <div className="space-y-2 mb-4">
+                  {/* Activities — select which to commit to this week */}
+                  <div className="space-y-2">
                     {dim.activities.map(act => {
                       const isSelected = selectedActivityIds.has(act.id)
                       return (
@@ -102,7 +76,7 @@ export default function WeeklyPlanSharpenTheSawPage() {
                           style={isSelected ? { backgroundColor: `${dim.color}15`, borderColor: dim.color } : {}}
                         >
                           <div
-                            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all`}
+                            className="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all"
                             style={
                               isSelected
                                 ? { backgroundColor: dim.color, borderColor: dim.color }
@@ -115,49 +89,6 @@ export default function WeeklyPlanSharpenTheSawPage() {
                         </button>
                       )
                     })}
-
-                    {/* Weekly-only activities */}
-                    {dimWeeklyActivities.map(wa => (
-                      <div
-                        key={wa.id}
-                        className="flex items-center gap-3 p-3 rounded-xl bg-accent/10 border-2 border-accent/30"
-                      >
-                        <div className="w-5 h-5 rounded-full bg-accent border-accent border-2 flex items-center justify-center flex-shrink-0">
-                          <Check className="w-3 h-3 text-background" />
-                        </div>
-                        <span className="font-serif text-foreground text-sm flex-1">{wa.text}</span>
-                        <span className="text-xs font-medium bg-accent/20 text-accent rounded-full px-2 py-0.5 whitespace-nowrap">
-                          This week
-                        </span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeWeeklyActivity(dim.id, wa.id)}
-                          className="text-muted-foreground hover:text-destructive p-1 h-auto"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Add weekly activity */}
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder={`Add a one-off ${dim.label.toLowerCase()} activity for this week...`}
-                      value={activityInputs[dim.id] || ""}
-                      onChange={e => setActivityInputs(prev => ({ ...prev, [dim.id]: e.target.value }))}
-                      onKeyDown={e => {
-                        if (e.key === "Enter") addWeeklyActivity(dim.id)
-                      }}
-                      className="bg-muted border-border text-foreground placeholder:text-muted-foreground text-sm"
-                    />
-                    <Button
-                      onClick={() => addWeeklyActivity(dim.id)}
-                      className="bg-secondary hover:bg-secondary/80 text-secondary-foreground"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </Button>
                   </div>
                 </div>
               )

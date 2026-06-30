@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion"
 import Link from "next/link"
-import { Sparkles, Mail, Lock, User, ArrowRight, Eye, EyeOff, CheckCircle2 } from "lucide-react"
+import { Sparkles, Mail, Lock, ArrowRight, Eye, EyeOff, CheckCircle2, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -119,8 +119,8 @@ export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true)
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState("")
+  const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
-  const [name, setName] = useState("")
   const [focusedField, setFocusedField] = useState<string | null>(null)
 
   // Password strength indicator
@@ -245,81 +245,42 @@ export default function LoginPage() {
               </motion.div>
             </AnimatePresence>
 
-            {/* Google Sign In */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-            >
-              <Button
-                variant="outline"
-                className="w-full py-6 rounded-xl border-2 border-border hover:border-primary/50 hover:bg-muted/50 transition-all duration-300 group"
+            {/* Google Sign In (login only) */}
+            {isLogin && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
               >
-                <motion.div
-                  whileHover={{ rotate: 360 }}
-                  transition={{ duration: 0.5 }}
+                <Button
+                  variant="outline"
+                  className="w-full py-6 rounded-xl border-2 border-border hover:border-primary/50 hover:bg-muted/50 transition-all duration-300 group"
                 >
-                  <GoogleIcon className="w-5 h-5 mr-3" />
-                </motion.div>
-                <span className="font-bold">Continue with Google</span>
-              </Button>
-            </motion.div>
+                  <motion.div
+                    whileHover={{ rotate: 360 }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    <GoogleIcon className="w-5 h-5 mr-3" />
+                  </motion.div>
+                  <span className="font-bold">Continue with Google</span>
+                </Button>
+              </motion.div>
+            )}
 
-            {/* Divider */}
-            <div className="relative my-8">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-border" />
+            {/* Divider (login only) */}
+            {isLogin && (
+              <div className="relative my-8">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-border" />
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-4 bg-card text-muted-foreground font-serif">or continue with email</span>
+                </div>
               </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-card text-muted-foreground font-serif">or continue with email</span>
-              </div>
-            </div>
+            )}
 
             {/* Form */}
             <form className="space-y-5" onSubmit={(e) => e.preventDefault()}>
-              <AnimatePresence mode="wait">
-                {!isLogin && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    <div className="space-y-2">
-                      <Label htmlFor="name" className="text-foreground font-bold">
-                        Full Name
-                      </Label>
-                      <div className="relative">
-                        <motion.div
-                          className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                          animate={{
-                            color: focusedField === "name" ? "#B13BFF" : "#b8b8ff",
-                            scale: focusedField === "name" ? 1.1 : 1,
-                          }}
-                        >
-                          <User className="w-5 h-5" />
-                        </motion.div>
-                        <Input
-                          id="name"
-                          type="text"
-                          placeholder="John Doe"
-                          value={name}
-                          onChange={(e) => setName(e.target.value)}
-                          onFocus={() => setFocusedField("name")}
-                          onBlur={() => setFocusedField(null)}
-                          className="pl-11 py-6 rounded-xl bg-muted border-2 border-border focus:border-primary text-foreground placeholder:text-muted-foreground"
-                        />
-                        {name.length > 2 && (
-                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                            <AnimatedCheckmark />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
               {/* Email Field */}
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
@@ -357,6 +318,49 @@ export default function LoginPage() {
                   )}
                 </div>
               </motion.div>
+
+              {/* Username Field (sign up only) */}
+              <AnimatePresence>
+                {!isLogin && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="space-y-2 overflow-hidden"
+                  >
+                    <Label htmlFor="username" className="text-foreground font-bold">
+                      Username
+                    </Label>
+                    <div className="relative">
+                      <motion.div
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                        animate={{
+                          color: focusedField === "username" ? "#B13BFF" : "#b8b8ff",
+                          scale: focusedField === "username" ? 1.1 : 1,
+                        }}
+                      >
+                        <User className="w-5 h-5" />
+                      </motion.div>
+                      <Input
+                        id="username"
+                        type="text"
+                        placeholder="Choose a username"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        onFocus={() => setFocusedField("username")}
+                        onBlur={() => setFocusedField(null)}
+                        className="pl-11 py-6 rounded-xl bg-muted border-2 border-border focus:border-primary text-foreground placeholder:text-muted-foreground"
+                      />
+                      {username.length >= 3 && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <AnimatedCheckmark />
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Password Field */}
               <motion.div
@@ -507,24 +511,6 @@ export default function LoginPage() {
               </button>
             </motion.p>
 
-            {/* Terms */}
-            {!isLogin && (
-              <motion.p
-                className="text-center text-xs text-muted-foreground mt-4 font-serif"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.9 }}
-              >
-                By creating an account, you agree to our{" "}
-                <a href="#" className="text-primary hover:underline">
-                  Terms of Service
-                </a>{" "}
-                and{" "}
-                <a href="#" className="text-primary hover:underline">
-                  Privacy Policy
-                </a>
-              </motion.p>
-            )}
           </div>
         </div>
 

@@ -49,21 +49,22 @@ export default function OnboardingCompletePage() {
               </p>
             </div>
 
-            {/* Mark Completed Tasks card */}
+            {/* End-of-Day Check-in card */}
             <div className="p-6 rounded-2xl bg-card border-2 border-border">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center">
                   <CheckCircle2 className="w-6 h-6 text-accent" />
                 </div>
-                <h2 className="text-xl font-bold text-foreground">Mark Completed Tasks</h2>
+                <h2 className="text-xl font-bold text-foreground">End-of-Day Check-in</h2>
               </div>
               <p className="text-muted-foreground font-serif leading-relaxed mb-4">
-                After completing a scheduled task, mark it as done in your weekly schedule. Tracking your
-                completions helps you see your progress and feeds your weekly analytics.
+                Each day at a time you choose, a modal will appear on the dashboard prompting you to mark
+                which tasks you completed and write a short evening reflection. This daily check-in keeps
+                your progress accurate and feeds your weekly analytics.
               </p>
               <p className="text-sm font-medium text-foreground">
-                Access from the dashboard under{" "}
-                <span className="text-primary">Schedule</span>.
+                Set your check-in time under{" "}
+                <span className="text-primary">Settings</span>.
               </p>
             </div>
           </div>

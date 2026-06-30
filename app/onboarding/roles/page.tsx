@@ -14,7 +14,9 @@ import {
   Dumbbell,
   Home,
   Palette,
-  Landmark
+  Landmark,
+  Star,
+  Check
 } from "lucide-react"
 import { AppNav } from "@/components/app-nav"
 import { OnboardingStepper } from "@/components/onboarding-stepper"
@@ -61,6 +63,7 @@ const ROLE_COLORS = [
 interface Goal {
   id: string
   text: string
+  isWeeklyPriority?: boolean
 }
 
 interface Role {
@@ -105,6 +108,8 @@ export default function OnboardingRolesPage() {
   const [goalInputs, setGoalInputs] = useState<Record<string, string>>({})
   const [showGoalWarning, setShowGoalWarning] = useState(false)
   const [pendingGoal, setPendingGoal] = useState<{ roleId: string; text: string } | null>(null)
+  const [goalToDelete, setGoalToDelete] = useState<{ roleId: string; goal: Goal } | null>(null)
+  const [editingGoal, setEditingGoal] = useState<{ roleId: string; goalId: string; text: string } | null>(null)
 
   const totalGoals = roles.reduce((sum, role) => sum + role.goals.length, 0)
 
@@ -185,8 +190,38 @@ export default function OnboardingRolesPage() {
   }
 
   const handleDeleteGoal = (roleId: string, goalId: string) => {
+    const role = roles.find(r => r.id === roleId)
+    const goal = role?.goals.find(g => g.id === goalId)
+    if (goal) setGoalToDelete({ roleId, goal })
+  }
+
+  const handleConfirmDeleteGoal = () => {
+    if (goalToDelete) {
+      setRoles(roles.map(r =>
+        r.id === goalToDelete.roleId ? { ...r, goals: r.goals.filter(g => g.id !== goalToDelete.goal.id) } : r
+      ))
+      setGoalToDelete(null)
+    }
+  }
+
+  const handleSaveGoalEdit = () => {
+    if (!editingGoal || !editingGoal.text.trim()) {
+      setEditingGoal(null)
+      return
+    }
     setRoles(roles.map(r =>
-      r.id === roleId ? { ...r, goals: r.goals.filter(g => g.id !== goalId) } : r
+      r.id === editingGoal.roleId
+        ? { ...r, goals: r.goals.map(g => g.id === editingGoal.goalId ? { ...g, text: editingGoal.text.trim() } : g) }
+        : r
+    ))
+    setEditingGoal(null)
+  }
+
+  const handleTogglePriority = (roleId: string, goalId: string) => {
+    setRoles(roles.map(r =>
+      r.id === roleId
+        ? { ...r, goals: r.goals.map(g => g.id === goalId ? { ...g, isWeeklyPriority: !g.isWeeklyPriority } : g) }
+        : r
     ))
   }
 
@@ -266,14 +301,54 @@ export default function OnboardingRolesPage() {
                   </div>
                   <div className="space-y-2 mb-4">
                     {role.goals.map((goal) => (
-                      <div key={goal.id} className="flex items-center justify-between p-3 rounded-xl bg-muted/50 group">
-                        <div className="flex items-center gap-3">
-                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
-                          <span className="text-foreground font-serif">{goal.text}</span>
+                      <div key={goal.id} className={`flex items-center justify-between p-3 rounded-xl group transition-colors ${goal.isWeeklyPriority ? "bg-accent/10 border border-accent/30" : "bg-muted/50"}`}>
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                          {editingGoal?.goalId === goal.id ? (
+                            <>
+                              <input
+                                autoFocus
+                                className="flex-1 bg-transparent text-foreground font-serif outline-none border-b border-primary"
+                                value={editingGoal.text}
+                                onChange={(e) => setEditingGoal({ ...editingGoal, text: e.target.value })}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") handleSaveGoalEdit()
+                                  if (e.key === "Escape") setEditingGoal(null)
+                                }}
+                              />
+                              <button
+                                onMouseDown={(e) => { e.preventDefault(); handleSaveGoalEdit() }}
+                                className="shrink-0 w-6 h-6 rounded-full bg-primary flex items-center justify-center hover:bg-primary/80 transition-colors"
+                              >
+                                <Check className="w-3.5 h-3.5 text-primary-foreground" />
+                              </button>
+                            </>
+                          ) : (
+                            <span
+                              className="text-foreground font-serif cursor-text hover:text-primary transition-colors"
+                              onClick={() => setEditingGoal({ roleId: role.id, goalId: goal.id, text: goal.text })}
+                            >
+                              {goal.text}
+                            </span>
+                          )}
+                          {goal.isWeeklyPriority && (
+                            <span className="text-xs font-medium bg-accent/20 text-accent rounded-full px-2 py-0.5 whitespace-nowrap">Priority</span>
+                          )}
                         </div>
-                        <Button variant="ghost" size="sm" onClick={() => handleDeleteGoal(role.id, goal.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity">
-                          <X className="w-4 h-4" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleTogglePriority(role.id, goal.id)}
+                            className={`p-1 h-auto transition-opacity ${goal.isWeeklyPriority ? "text-accent" : "text-muted-foreground hover:text-accent opacity-0 group-hover:opacity-100"}`}
+                            title={goal.isWeeklyPriority ? "Remove weekly priority" : "Mark as weekly priority"}
+                          >
+                            <Star className={`w-4 h-4 ${goal.isWeeklyPriority ? "fill-accent" : ""}`} />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleDeleteGoal(role.id, goal.id)} className="text-muted-foreground hover:text-destructive p-1 h-auto opacity-0 group-hover:opacity-100 transition-opacity">
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -382,6 +457,27 @@ export default function OnboardingRolesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!goalToDelete} onOpenChange={(open) => { if (!open) setGoalToDelete(null) }}>
+        <AlertDialogContent className="bg-card border-border text-foreground">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-xl font-bold">
+              <Trash2 className="w-6 h-6 text-destructive" />
+              Delete Goal?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground font-serif">
+              Are you sure you want to delete{" "}
+              <span className="font-bold text-foreground">&ldquo;{goalToDelete?.goal.text}&rdquo;</span>?
+              <br /><br />
+              This goal may be linked to scheduled tasks. Deleting it will not remove those tasks, but they will lose their goal association.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <Button variant="outline" onClick={() => setGoalToDelete(null)} className="border-border text-foreground hover:bg-secondary/20">Cancel</Button>
+            <Button onClick={handleConfirmDeleteGoal} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete Goal</Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={showGoalWarning}>
         <AlertDialogContent className="bg-card border-border text-foreground">

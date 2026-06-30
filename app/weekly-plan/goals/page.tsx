@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Plus, X, Check, ArrowUpRight } from "lucide-react"
+import { Plus, X, Check, ArrowUpRight, Star } from "lucide-react"
 import { AppNav } from "@/components/app-nav"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,11 +15,25 @@ interface WeeklyGoal {
 
 export default function WeeklyPlanGoalsPage() {
   const [selectedGoalIds, setSelectedGoalIds] = useState<Set<string>>(new Set())
+  const [priorityGoalIds, setPriorityGoalIds] = useState<Set<string>>(new Set())
   const [weeklyGoals, setWeeklyGoals] = useState<Record<string, WeeklyGoal[]>>({})
   const [goalInputs, setGoalInputs] = useState<Record<string, string>>({})
 
   const toggleGoal = (goalId: string) => {
     setSelectedGoalIds(prev => {
+      const next = new Set(prev)
+      if (next.has(goalId)) {
+        next.delete(goalId)
+        setPriorityGoalIds(p => { const pn = new Set(p); pn.delete(goalId); return pn })
+      } else {
+        next.add(goalId)
+      }
+      return next
+    })
+  }
+
+  const togglePriority = (goalId: string) => {
+    setPriorityGoalIds(prev => {
       const next = new Set(prev)
       if (next.has(goalId)) next.delete(goalId)
       else next.add(goalId)
@@ -97,51 +111,80 @@ export default function WeeklyPlanGoalsPage() {
                   <div className="space-y-2 mb-4">
                     {role.goals.map(goal => {
                       const isSelected = selectedGoalIds.has(goal.id)
+                      const isPriority = priorityGoalIds.has(goal.id)
                       return (
-                        <button
+                        <div
                           key={goal.id}
-                          onClick={() => toggleGoal(goal.id)}
-                          className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
-                            isSelected
+                          className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${
+                            isPriority
+                              ? "bg-accent/10 border-accent"
+                              : isSelected
                               ? "bg-primary/10 border-primary"
-                              : "bg-muted border-border hover:border-primary/30"
+                              : "bg-muted border-border"
                           }`}
                         >
-                          <div
-                            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${
-                              isSelected ? "bg-primary border-primary" : "border-muted-foreground"
-                            }`}
+                          <button
+                            onClick={() => toggleGoal(goal.id)}
+                            className="flex items-center gap-3 flex-1 text-left"
                           >
-                            {isSelected && <Check className="w-3 h-3 text-primary-foreground" />}
-                          </div>
-                          <span className="font-serif text-foreground text-sm">{goal.text}</span>
-                        </button>
+                            <div
+                              className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                                isSelected ? "bg-primary border-primary" : "border-muted-foreground"
+                              }`}
+                            >
+                              {isSelected && <Check className="w-3 h-3 text-primary-foreground" />}
+                            </div>
+                            <span className="font-serif text-foreground text-sm">{goal.text}</span>
+                            {isPriority && (
+                              <span className="text-xs font-medium bg-accent/20 text-accent rounded-full px-2 py-0.5 whitespace-nowrap">Priority</span>
+                            )}
+                          </button>
+                          {isSelected && (
+                            <button
+                              onClick={() => togglePriority(goal.id)}
+                              className={`flex-shrink-0 p-1 rounded-lg transition-colors ${isPriority ? "text-accent" : "text-muted-foreground hover:text-accent"}`}
+                              title={isPriority ? "Remove priority" : "Mark as weekly priority"}
+                            >
+                              <Star className={`w-4 h-4 ${isPriority ? "fill-accent" : ""}`} />
+                            </button>
+                          )}
+                        </div>
                       )
                     })}
 
                     {/* Weekly-only goals */}
-                    {roleWeeklyGoals.map(wg => (
-                      <div
-                        key={wg.id}
-                        className="flex items-center gap-3 p-3 rounded-xl bg-accent/10 border-2 border-accent/30"
-                      >
-                        <div className="w-5 h-5 rounded-full bg-accent border-accent border-2 flex items-center justify-center flex-shrink-0">
-                          <Check className="w-3 h-3 text-background" />
-                        </div>
-                        <span className="font-serif text-foreground text-sm flex-1">{wg.text}</span>
-                        <span className="text-xs font-medium bg-accent/20 text-accent rounded-full px-2 py-0.5 whitespace-nowrap">
-                          This week
-                        </span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeWeeklyGoal(role.id, wg.id)}
-                          className="text-muted-foreground hover:text-destructive p-1 h-auto"
+                    {roleWeeklyGoals.map(wg => {
+                      const isPriority = priorityGoalIds.has(wg.id)
+                      return (
+                        <div
+                          key={wg.id}
+                          className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-colors ${isPriority ? "bg-accent/10 border-accent" : "bg-accent/5 border-accent/30"}`}
                         >
-                          <X className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                    ))}
+                          <div className="w-5 h-5 rounded-full bg-accent border-accent border-2 flex items-center justify-center flex-shrink-0">
+                            <Check className="w-3 h-3 text-background" />
+                          </div>
+                          <span className="font-serif text-foreground text-sm flex-1">{wg.text}</span>
+                          <span className="text-xs font-medium bg-accent/20 text-accent rounded-full px-2 py-0.5 whitespace-nowrap">
+                            This week
+                          </span>
+                          <button
+                            onClick={() => togglePriority(wg.id)}
+                            className={`flex-shrink-0 p-1 rounded-lg transition-colors ${isPriority ? "text-accent" : "text-muted-foreground hover:text-accent"}`}
+                            title={isPriority ? "Remove priority" : "Mark as weekly priority"}
+                          >
+                            <Star className={`w-4 h-4 ${isPriority ? "fill-accent" : ""}`} />
+                          </button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeWeeklyGoal(role.id, wg.id)}
+                            className="text-muted-foreground hover:text-destructive p-1 h-auto"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      )
+                    })}
                   </div>
 
                   {/* Add weekly goal */}
