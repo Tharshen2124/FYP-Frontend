@@ -1,17 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import Link from "next/link"
-import { Plus, X, Check, ArrowUpRight, Star } from "lucide-react"
 import { AppNav } from "@/components/app-nav"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { MOCK_ROLES } from "@/app/weekly-plan/schedule/_constants/mock-data"
-
-interface WeeklyGoal {
-  id: string
-  text: string
-}
+import { MOCK_ROLES } from "../_constants/mock-data"
+import { RoleGoalsCard } from "./_components/role-goals-card"
+import type { WeeklyGoal } from "./_types"
 
 export default function WeeklyPlanGoalsPage() {
   const [selectedGoalIds, setSelectedGoalIds] = useState<Set<string>>(new Set())
@@ -80,134 +73,21 @@ export default function WeeklyPlanGoalsPage() {
           </div>
 
           <div className="grid gap-6">
-            {MOCK_ROLES.map(role => {
-              const roleWeeklyGoals = weeklyGoals[role.id] || []
-              return (
-                <div
-                  key={role.id}
-                  className="p-6 rounded-2xl bg-card border-2 border-border"
-                >
-                  {/* Role header */}
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-10 h-10 rounded-xl flex items-center justify-center"
-                        style={{ backgroundColor: `${role.color}20` }}
-                      >
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: role.color }} />
-                      </div>
-                      <h2 className="text-xl font-bold text-foreground">{role.name}</h2>
-                    </div>
-                    <Link
-                      href="/roles"
-                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
-                    >
-                      Manage goals
-                      <ArrowUpRight className="w-3 h-3" />
-                    </Link>
-                  </div>
-
-                  {/* Standing goals — checkboxes */}
-                  <div className="space-y-2 mb-4">
-                    {role.goals.map(goal => {
-                      const isSelected = selectedGoalIds.has(goal.id)
-                      const isPriority = priorityGoalIds.has(goal.id)
-                      return (
-                        <div
-                          key={goal.id}
-                          className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${
-                            isPriority
-                              ? "bg-accent/10 border-accent"
-                              : isSelected
-                              ? "bg-primary/10 border-primary"
-                              : "bg-muted border-border"
-                          }`}
-                        >
-                          <button
-                            onClick={() => toggleGoal(goal.id)}
-                            className="flex items-center gap-3 flex-1 text-left"
-                          >
-                            <div
-                              className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${
-                                isSelected ? "bg-primary border-primary" : "border-muted-foreground"
-                              }`}
-                            >
-                              {isSelected && <Check className="w-3 h-3 text-primary-foreground" />}
-                            </div>
-                            <span className="font-serif text-foreground text-sm">{goal.text}</span>
-                            {isPriority && (
-                              <span className="text-xs font-medium bg-accent/20 text-accent rounded-full px-2 py-0.5 whitespace-nowrap">Priority</span>
-                            )}
-                          </button>
-                          {isSelected && (
-                            <button
-                              onClick={() => togglePriority(goal.id)}
-                              className={`flex-shrink-0 p-1 rounded-lg transition-colors ${isPriority ? "text-accent" : "text-muted-foreground hover:text-accent"}`}
-                              title={isPriority ? "Remove priority" : "Mark as weekly priority"}
-                            >
-                              <Star className={`w-4 h-4 ${isPriority ? "fill-accent" : ""}`} />
-                            </button>
-                          )}
-                        </div>
-                      )
-                    })}
-
-                    {/* Weekly-only goals */}
-                    {roleWeeklyGoals.map(wg => {
-                      const isPriority = priorityGoalIds.has(wg.id)
-                      return (
-                        <div
-                          key={wg.id}
-                          className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-colors ${isPriority ? "bg-accent/10 border-accent" : "bg-accent/5 border-accent/30"}`}
-                        >
-                          <div className="w-5 h-5 rounded-full bg-accent border-accent border-2 flex items-center justify-center flex-shrink-0">
-                            <Check className="w-3 h-3 text-background" />
-                          </div>
-                          <span className="font-serif text-foreground text-sm flex-1">{wg.text}</span>
-                          <span className="text-xs font-medium bg-accent/20 text-accent rounded-full px-2 py-0.5 whitespace-nowrap">
-                            This week
-                          </span>
-                          <button
-                            onClick={() => togglePriority(wg.id)}
-                            className={`flex-shrink-0 p-1 rounded-lg transition-colors ${isPriority ? "text-accent" : "text-muted-foreground hover:text-accent"}`}
-                            title={isPriority ? "Remove priority" : "Mark as weekly priority"}
-                          >
-                            <Star className={`w-4 h-4 ${isPriority ? "fill-accent" : ""}`} />
-                          </button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeWeeklyGoal(role.id, wg.id)}
-                            className="text-muted-foreground hover:text-destructive p-1 h-auto"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </Button>
-                        </div>
-                      )
-                    })}
-                  </div>
-
-                  {/* Add weekly goal */}
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Add a one-off goal just for this week..."
-                      value={goalInputs[role.id] || ""}
-                      onChange={e => setGoalInputs(prev => ({ ...prev, [role.id]: e.target.value }))}
-                      onKeyDown={e => {
-                        if (e.key === "Enter") addWeeklyGoal(role.id)
-                      }}
-                      className="bg-muted border-border text-foreground placeholder:text-muted-foreground text-sm"
-                    />
-                    <Button
-                      onClick={() => addWeeklyGoal(role.id)}
-                      className="bg-secondary hover:bg-secondary/80 text-secondary-foreground"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              )
-            })}
+            {MOCK_ROLES.map(role => (
+              <RoleGoalsCard
+                key={role.id}
+                role={role}
+                weeklyGoals={weeklyGoals[role.id] || []}
+                goalInput={goalInputs[role.id] || ""}
+                selectedGoalIds={selectedGoalIds}
+                priorityGoalIds={priorityGoalIds}
+                onGoalInputChange={value => setGoalInputs(prev => ({ ...prev, [role.id]: value }))}
+                onAddWeeklyGoal={() => addWeeklyGoal(role.id)}
+                onRemoveWeeklyGoal={goalId => removeWeeklyGoal(role.id, goalId)}
+                onToggleGoal={toggleGoal}
+                onTogglePriority={togglePriority}
+              />
+            ))}
           </div>
 
           {!canProceed && (

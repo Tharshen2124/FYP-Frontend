@@ -1,5 +1,5 @@
 import type { ModalState, ApptModalState } from "../_types"
-import { MOCK_ROLES, MOCK_DIMENSIONS } from "./mock-data"
+import { MOCK_ROLES, MOCK_DIMENSIONS } from "../../_constants/mock-data"
 
 export const DAYS_FULL  = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 export const DAYS_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]

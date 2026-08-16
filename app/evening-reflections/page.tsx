@@ -1,71 +1,15 @@
 "use client"
 
 import { useState } from "react"
-import {
-  Moon,
-  Pencil,
-  Plus,
-  Wand2,
-  CalendarDays,
-  Loader2,
-} from "lucide-react"
+import { Moon } from "lucide-react"
 import { Sidebar } from "@/components/sidebar"
-import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog"
-
-const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-
-interface DayReflection {
-  text: string
-}
-
-interface Week {
-  id: string
-  label: string
-  reflections: Record<string, DayReflection>
-  summary: string
-}
-
-function generateWeeks(): Week[] {
-  const weeks: Week[] = []
-  const today = new Date(2026, 4, 24) // May 24, 2026
-  const dayOfWeek = today.getDay()
-  const monday = new Date(today)
-  monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1))
-
-  const fmt = (d: Date) => {
-    const day = d.getDate()
-    const month = d.toLocaleString("default", { month: "short" })
-    return `${day} ${month}`
-  }
-
-  for (let i = 0; i < 8; i++) {
-    const start = new Date(monday)
-    start.setDate(monday.getDate() - i * 7)
-    const end = new Date(start)
-    end.setDate(start.getDate() + 6)
-
-    weeks.push({
-      id: `week-${i}`,
-      label: `${fmt(start)} – ${fmt(end)}`,
-      reflections: {},
-      summary: "",
-    })
-  }
-  return weeks
-}
-
-const INITIAL_WEEKS = generateWeeks()
-
-const SUMMARY_PLACEHOLDER =
-  "This week showed meaningful progress across your daily reflections. You maintained consistency through mid-week, with particular depth on Wednesday and Thursday. Your reflections reveal a recurring theme of gratitude and focus on personal growth. Consider carrying forward your Wednesday insights into next week's planning."
+import { DAYS, INITIAL_WEEKS, SUMMARY_DELAY_MS, SUMMARY_PLACEHOLDER } from "./_constants/reflections"
+import { hasAnyReflection } from "./_utils/weeks"
+import { WeekList } from "./_components/week-list"
+import { WeeklySummaryCard } from "./_components/weekly-summary-card"
+import { DayReflectionCard } from "./_components/day-reflection-card"
+import { ReflectionDialog } from "./_components/reflection-dialog"
+import type { Week } from "./_types"
 
 export default function EveningReflectionsPage() {
   const [weeks, setWeeks] = useState<Week[]>(INITIAL_WEEKS)
@@ -81,39 +25,34 @@ export default function EveningReflectionsPage() {
     setEditingDay(day)
   }
 
+  const closeEdit = () => {
+    setEditingDay(null)
+    setDraftText("")
+  }
+
   const saveReflection = () => {
     setWeeks(prev =>
       prev.map(w =>
         w.id === selectedWeekId
           ? {
               ...w,
-              reflections: {
-                ...w.reflections,
-                [editingDay!]: { text: draftText.trim() },
-              },
+              reflections: { ...w.reflections, [editingDay!]: { text: draftText.trim() } },
             }
           : w
       )
     )
-    setEditingDay(null)
-    setDraftText("")
+    closeEdit()
   }
 
   const generateSummary = () => {
     setGeneratingSummary(true)
     setTimeout(() => {
       setWeeks(prev =>
-        prev.map(w =>
-          w.id === selectedWeekId ? { ...w, summary: SUMMARY_PLACEHOLDER } : w
-        )
+        prev.map(w => (w.id === selectedWeekId ? { ...w, summary: SUMMARY_PLACEHOLDER } : w))
       )
       setGeneratingSummary(false)
-    }, 1800)
+    }, SUMMARY_DELAY_MS)
   }
-
-  const hasAnyReflection = Object.keys(selectedWeek.reflections).some(
-    k => selectedWeek.reflections[k]?.text
-  )
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -127,41 +66,8 @@ export default function EveningReflectionsPage() {
 
       {/* Body: week list + main */}
       <div className="relative z-10 flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <aside className="w-64 shrink-0 border-r border-border flex flex-col overflow-y-auto">
-          <div className="px-4 py-5 border-b border-border">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <CalendarDays className="w-4 h-4" />
-              <span className="text-sm font-semibold uppercase tracking-wide">Weeks</span>
-            </div>
-          </div>
-          <ul className="flex-1 py-2">
-            {weeks.map(week => {
-              const hasEntries = Object.keys(week.reflections).some(
-                k => week.reflections[k]?.text
-              )
-              return (
-                <li key={week.id}>
-                  <button
-                    onClick={() => setSelectedWeekId(week.id)}
-                    className={`w-full text-left px-4 py-3 transition-colors flex items-center justify-between gap-2 group ${
-                      week.id === selectedWeekId
-                        ? "bg-primary/15 border-r-2 border-primary text-foreground"
-                        : "text-muted-foreground hover:bg-secondary/20 hover:text-foreground"
-                    }`}
-                  >
-                    <span className="text-sm font-serif">{week.label}</span>
-                    {hasEntries && (
-                      <span className="w-2 h-2 rounded-full bg-primary shrink-0" />
-                    )}
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-        </aside>
+        <WeekList weeks={weeks} selectedWeekId={selectedWeekId} onSelectWeek={setSelectedWeekId} />
 
-        {/* Main content */}
         <main className="flex-1 overflow-y-auto px-6 py-8">
           <div className="max-w-5xl mx-auto">
             {/* Header */}
@@ -179,57 +85,12 @@ export default function EveningReflectionsPage() {
               </p>
             </div>
 
-            {/* Weekly Summary */}
-            <div className="p-6 rounded-2xl bg-card border-2 border-border mb-8">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-xl font-bold text-foreground">Weekly Summary</h2>
-                {!selectedWeek.summary && (
-                  <Button
-                    onClick={generateSummary}
-                    disabled={generatingSummary || !hasAnyReflection}
-                    className="bg-accent hover:bg-accent/90 text-accent-foreground disabled:opacity-50"
-                  >
-                    {generatingSummary ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Generating…
-                      </>
-                    ) : (
-                      <>
-                        <Wand2 className="w-4 h-4 mr-2" />
-                        Generate Summary
-                      </>
-                    )}
-                  </Button>
-                )}
-                {selectedWeek.summary && (
-                  <Button
-                    variant="outline"
-                    onClick={generateSummary}
-                    disabled={generatingSummary}
-                    className="border-border text-foreground hover:bg-secondary/20"
-                  >
-                    {generatingSummary ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Wand2 className="w-4 h-4 mr-2" />
-                    )}
-                    Regenerate
-                  </Button>
-                )}
-              </div>
-              {selectedWeek.summary ? (
-                <p className="text-muted-foreground font-serif leading-relaxed">
-                  {selectedWeek.summary}
-                </p>
-              ) : (
-                <p className="text-muted-foreground font-serif text-sm italic">
-                  {hasAnyReflection
-                    ? "Click 'Generate Summary' to get an AI-powered overview of your week's reflections."
-                    : "Add at least one daily reflection before generating a summary."}
-                </p>
-              )}
-            </div>
+            <WeeklySummaryCard
+              summary={selectedWeek.summary}
+              hasAnyReflection={hasAnyReflection(selectedWeek)}
+              generating={generatingSummary}
+              onGenerate={generateSummary}
+            />
 
             {/* Days label */}
             <div className="flex items-center gap-2 mb-4">
@@ -241,113 +102,28 @@ export default function EveningReflectionsPage() {
 
             {/* Days grid */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {DAYS.map(day => {
-                const reflection = selectedWeek.reflections[day]
-                const hasText = !!reflection?.text
-                return (
-                  <div
-                    key={day}
-                    className="p-4 rounded-2xl bg-card border-2 border-border hover:border-primary/30 transition-colors flex flex-col gap-3"
-                  >
-                    {/* Day header */}
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-bold text-foreground">{day}</span>
-                      {hasText && (
-                        <span className="w-2 h-2 rounded-full bg-primary shrink-0" />
-                      )}
-                    </div>
-
-                    {/* Reflection text */}
-                    <div className="flex-1 min-h-[80px]">
-                      {hasText ? (
-                        <p className="text-xs text-muted-foreground font-serif leading-relaxed line-clamp-5">
-                          {reflection.text}
-                        </p>
-                      ) : (
-                        <p className="text-xs text-muted-foreground/50 font-serif italic">
-                          No reflection yet…
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Action button */}
-                    <Button
-                      onClick={() => openEdit(day)}
-                      size="sm"
-                      className={
-                        hasText
-                          ? "bg-secondary hover:bg-secondary/80 text-secondary-foreground w-full"
-                          : "bg-primary hover:bg-primary/90 text-primary-foreground w-full"
-                      }
-                    >
-                      {hasText ? (
-                        <>
-                          <Pencil className="w-3 h-3 mr-1.5" />
-                          Edit
-                        </>
-                      ) : (
-                        <>
-                          <Plus className="w-3 h-3 mr-1.5" />
-                          Create
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                )
-              })}
+              {DAYS.map(day => (
+                <DayReflectionCard
+                  key={day}
+                  day={day}
+                  reflection={selectedWeek.reflections[day]}
+                  onEdit={() => openEdit(day)}
+                />
+              ))}
             </div>
           </div>
         </main>
       </div>
 
-      {/* Edit / Create Dialog */}
-      <Dialog
-        open={editingDay !== null}
-        onOpenChange={open => {
-          if (!open) {
-            setEditingDay(null)
-            setDraftText("")
-          }
-        }}
-      >
-        <DialogContent className="bg-card border-border text-foreground max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold">
-              {editingDay} — {selectedWeek.label}
-            </DialogTitle>
-            <DialogDescription className="text-muted-foreground font-serif">
-              Write your reflection for this evening. What went well? What could be better?
-            </DialogDescription>
-          </DialogHeader>
-          <Textarea
-            autoFocus
-            value={draftText}
-            onChange={e => setDraftText(e.target.value)}
-            placeholder="Today I reflected on…"
-            rows={8}
-            className="bg-muted border-border text-foreground placeholder:text-muted-foreground resize-none font-serif"
-          />
-          <div className="flex gap-3 justify-end pt-2">
-            <Button
-              variant="outline"
-              className="border-border text-foreground hover:bg-secondary/20"
-              onClick={() => {
-                setEditingDay(null)
-                setDraftText("")
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={saveReflection}
-              disabled={!draftText.trim()}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground disabled:opacity-50"
-            >
-              Save Reflection
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ReflectionDialog
+        day={editingDay}
+        weekLabel={selectedWeek.label}
+        draftText={draftText}
+        onDraftChange={setDraftText}
+        onOpenChange={open => { if (!open) closeEdit() }}
+        onCancel={closeEdit}
+        onSave={saveReflection}
+      />
     </div>
   )
 }

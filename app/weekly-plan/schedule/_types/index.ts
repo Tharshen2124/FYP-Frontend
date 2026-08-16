@@ -1,5 +1,3 @@
-import type { ElementType } from "react"
-
 export type LinkType = "role-goal" | "sharpen-the-saw"
 
 export interface Appt {
@@ -75,29 +73,4 @@ export type CalItem = {
   dayIndex: number
   startMins: number
   endMins: number
-}
-
-export interface MockGoal {
-  id: string
-  text: string
-}
-
-export interface MockRole {
-  id: string
-  name: string
-  color: string
-  goals: MockGoal[]
-}
-
-export interface MockActivity {
-  id: string
-  text: string
-}
-
-export interface MockDimension {
-  id: string
-  label: string
-  color: string
-  icon: ElementType
-  activities: MockActivity[]
 }

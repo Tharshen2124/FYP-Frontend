@@ -1,5 +1,5 @@
 import type { ModalState } from "../_types"
-import { MOCK_ROLES, MOCK_DIMENSIONS } from "../_constants/mock-data"
+import { MOCK_ROLES, MOCK_DIMENSIONS } from "../../_constants/mock-data"
 
 export function getLinkMeta(
   modal: Pick<

@@ -3,10 +3,10 @@
 import { useState } from "react"
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts"
 import { Star } from "lucide-react"
-import {
-  getDailyPriority, getWeekLabel, DEFAULT_DATE, type DateSelection,
-} from "../_constants/mock-data"
-import { SingleDateSelector } from "./week-range-selector"
+import { DEFAULT_DATE } from "../_constants/mock-data"
+import { getDailyPriority, getWeekLabel } from "../_utils/analytics"
+import { SingleDateSelector } from "./date-selectors"
+import type { DateSelection } from "../_types"
 
 interface TooltipPayload {
   payload: { day: string; completed: number; total: number; pct: number }
