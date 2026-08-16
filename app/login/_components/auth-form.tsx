@@ -4,10 +4,13 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { ArrowRight, Eye, EyeOff, Lock, Mail, User } from "lucide-react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { POST_AUTH_HREF } from "../_constants/auth"
+import { api } from "@/lib/api"
+import { useAuthStore } from "@/stores/auth-store"
+import { ONBOARDING_HREF, DASHBOARD_HREF } from "../_constants/auth"
 import { getPasswordStrength, isValidEmail } from "../_utils/password"
 import { AnimatedCheckmark } from "./animated-checkmark"
 import { PasswordStrengthMeter } from "./password-strength-meter"
@@ -18,22 +21,38 @@ const IDLE_COLOR = "#b8b8ff"
 
 interface Props {
   isLogin: boolean
+  onSignupSuccess?: () => void
 }
 
-export function AuthForm({ isLogin }: Props) {
+export function AuthForm({ isLogin, onSignupSuccess }: Props) {
   const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState("")
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [focusedField, setFocusedField] = useState<FocusedField>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const passwordInfo = getPasswordStrength(password)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // No auth backend yet — send the user straight into onboarding.
-    router.push(POST_AUTH_HREF)
+    setIsSubmitting(true)
+    try {
+      if (isLogin) {
+        const { token } = await api.login({ email, password })
+        useAuthStore.getState().setAuthFromToken(token)
+        router.push(useAuthStore.getState().isOnboarded ? DASHBOARD_HREF : ONBOARDING_HREF)
+      } else {
+        await api.signup({ email, username, password })
+        toast.success("Account created — sign in to continue")
+        onSignupSuccess?.()
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Something went wrong")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -172,6 +191,7 @@ export function AuthForm({ isLogin }: Props) {
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }}>
         <Button
           type="submit"
+          disabled={isSubmitting}
           className="w-full py-6 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-lg group relative overflow-hidden"
         >
           <motion.div
@@ -180,7 +200,7 @@ export function AuthForm({ isLogin }: Props) {
             transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
           />
           <span className="relative z-10 flex items-center justify-center gap-2">
-            {isLogin ? "Sign In" : "Create Account"}
+            {isSubmitting ? "Please wait..." : isLogin ? "Sign In" : "Create Account"}
             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
           </span>
         </Button>

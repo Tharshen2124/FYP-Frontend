@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test"
-import { suppressEndOfDayModal } from "./helpers"
+import { suppressEndOfDayModal, authenticateAsNewUser } from "./helpers"
 
 test.beforeEach(async ({ page }) => {
   await suppressEndOfDayModal(page)
@@ -18,6 +18,7 @@ const SIDEBAR_ROUTES: [string, string][] = [
 
 test.describe("app navigation", () => {
   test("every sidebar link reaches its route", async ({ page }) => {
+    await authenticateAsNewUser(page)
     await page.goto("/dashboard")
 
     for (const [label, href] of SIDEBAR_ROUTES) {
@@ -33,28 +34,47 @@ test.describe("app navigation", () => {
     await expect(active).toHaveClass(/text-primary/)
   })
 
-  test("landing CTAs lead to login, and login leads into onboarding", async ({ page }) => {
+  test("landing CTAs lead to login, and signing up then in leads into onboarding", async ({ page }) => {
     await page.goto("/")
     await page.getByRole("link", { name: /Start Planning Free/ }).click()
     await expect(page).toHaveURL(/\/login$/)
 
-    await page.getByRole("button", { name: "Sign In", exact: true }).last().click()
+    const unique = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    const email = `e2e-${unique}@example.com`
+    const password = "password123"
+
+    await page.getByRole("button", { name: "Sign Up", exact: true }).click()
+    await page.getByLabel("Email Address").fill(email)
+    await page.getByLabel("Username").fill(`e2e_${unique}`)
+    await page.getByLabel("Password", { exact: true }).fill(password)
+    await page.locator("form").getByRole("button", { name: "Create Account" }).click()
+
+    // Signing up switches back to the Sign In tab rather than logging in automatically.
+    await page.locator("form").getByRole("button", { name: "Sign In", exact: true }).waitFor()
+    await page.getByLabel("Email Address").fill(email)
+    await page.getByLabel("Password", { exact: true }).fill(password)
+    await page.locator("form").getByRole("button", { name: "Sign In", exact: true }).click()
+
     await expect(page).toHaveURL(/\/onboarding\/roles$/)
   })
 
   test("dashboard links out to the weekly plan editor", async ({ page }) => {
+    await authenticateAsNewUser(page)
     await page.goto("/dashboard")
     await page.getByRole("link", { name: /Edit Weekly Plan/ }).click()
     await expect(page).toHaveURL(/\/weekly-plan\/schedule$/)
   })
 
   test("sign out returns to the login page", async ({ page }) => {
+    await authenticateAsNewUser(page)
     await page.goto("/dashboard")
-    await page.getByRole("link", { name: /Sign Out/ }).click()
+    await page.getByRole("button", { name: /Sign Out/ }).click()
     await expect(page).toHaveURL(/\/login$/)
   })
 
   test("every route renders without a client-side error", async ({ page }) => {
+    await authenticateAsNewUser(page)
+
     const errors: string[] = []
     page.on("pageerror", e => errors.push(e.message))
 

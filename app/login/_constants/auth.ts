@@ -8,5 +8,8 @@ export const FLOATING_TASKS = [
   { id: 6, text: "Family time", color: "#471396", delay: 7.5 },
 ]
 
-/** Where a successful sign-in / sign-up sends the user. */
-export const POST_AUTH_HREF = "/onboarding/roles"
+/** Where a successful login sends a first-time user. */
+export const ONBOARDING_HREF = "/onboarding/roles"
+
+/** Where a successful login sends a user who has already onboarded. */
+export const DASHBOARD_HREF = "/dashboard"

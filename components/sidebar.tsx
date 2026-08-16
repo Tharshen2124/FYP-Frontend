@@ -1,7 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
+import { useAuthStore } from "@/stores/auth-store"
 import {
   Sparkles,
   Target,
@@ -29,6 +30,12 @@ const NAV_ITEMS = [
 
 export function Sidebar() {
   const pathname = usePathname()
+  const router = useRouter()
+
+  const handleSignOut = () => {
+    useAuthStore.getState().logout()
+    router.push("/login")
+  }
 
   return (
     <aside className="flex flex-col w-64 shrink-0 h-screen bg-card border-r border-border">
@@ -69,12 +76,10 @@ export function Sidebar() {
         <Button
           variant="outline"
           className="w-full border-border text-muted-foreground hover:bg-secondary/20 hover:text-foreground justify-start gap-3"
-          asChild
+          onClick={handleSignOut}
         >
-          <Link href="/login">
-            <LogOut className="w-4 h-4" />
-            Sign Out
-          </Link>
+          <LogOut className="w-4 h-4" />
+          Sign Out
         </Button>
       </div>
     </aside>

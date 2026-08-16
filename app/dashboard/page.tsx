@@ -5,10 +5,12 @@ import Link from "next/link"
 import { CalendarDays, Lock, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sidebar } from "@/components/sidebar"
+import { useRequireAuth } from "@/hooks/use-require-auth"
 import { WeeklyTimetable } from "./_components/weekly-timetable"
 import { EndOfDayModal } from "./_components/end-of-day-modal"
 
 export default function DashboardPage() {
+  const { isReady } = useRequireAuth()
   const [showEodModal, setShowEodModal] = useState(false)
 
   useEffect(() => {
@@ -31,6 +33,8 @@ export default function DashboardPage() {
     localStorage.setItem("eod_shown_date", new Date().toDateString())
     setShowEodModal(false)
   }
+
+  if (!isReady) return null
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">

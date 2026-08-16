@@ -1,8 +1,9 @@
 import { test, expect, type Page } from "@playwright/test"
-import { suppressEndOfDayModal } from "./helpers"
+import { suppressEndOfDayModal, authenticateAsNewUser } from "./helpers"
 
 test.beforeEach(async ({ page }) => {
   await suppressEndOfDayModal(page)
+  await authenticateAsNewUser(page)
 })
 
 /**
@@ -152,7 +153,9 @@ test.describe("onboarding", () => {
     await expect(page.getByRole("heading", { name: "Evening Reflection", exact: true })).toBeVisible()
     await expect(page.getByRole("heading", { name: "End-of-Day Check-in" })).toBeVisible()
 
-    await nextLink(page).click()
+    // The final step's Next button completes onboarding via the backend rather
+    // than being a plain link, so it renders as a button, not a link.
+    await page.getByRole("button", { name: "Next", exact: true }).click()
     await expect(page).toHaveURL(/\/dashboard$/)
   })
 

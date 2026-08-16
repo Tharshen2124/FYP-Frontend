@@ -1,17 +1,41 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import Link from "next/link"
 import { Sparkles } from "lucide-react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { api } from "@/lib/api"
+import { useAuthStore } from "@/stores/auth-store"
 import { AnimatedBackground } from "./_components/animated-background"
 import { AuthTabs } from "./_components/auth-tabs"
 import { AuthForm } from "./_components/auth-form"
 import { GoogleIcon } from "./_components/google-icon"
+import { ONBOARDING_HREF, DASHBOARD_HREF } from "./_constants/auth"
 
 export default function LoginPage() {
+  const router = useRouter()
   const [isLogin, setIsLogin] = useState(true)
+
+  // Handles the return trip from the backend's Google OAuth callback, which
+  // redirects here with either `#token=...` or `#error=...` in the URL hash.
+  useEffect(() => {
+    if (!window.location.hash) return
+    const params = new URLSearchParams(window.location.hash.slice(1))
+    const token = params.get("token")
+    const error = params.get("error")
+
+    if (token) {
+      useAuthStore.getState().setAuthFromToken(token)
+      window.history.replaceState(null, "", window.location.pathname)
+      router.push(useAuthStore.getState().isOnboarded ? DASHBOARD_HREF : ONBOARDING_HREF)
+    } else if (error) {
+      toast.error("Google sign-in failed. Please try again.")
+      window.history.replaceState(null, "", window.location.pathname)
+    }
+  }, [router])
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
@@ -83,12 +107,15 @@ export default function LoginPage() {
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
                   <Button
                     variant="outline"
+                    asChild
                     className="w-full py-6 rounded-xl border-2 border-border hover:border-primary/50 hover:bg-muted/50 transition-all duration-300 group"
                   >
-                    <motion.div whileHover={{ rotate: 360 }} transition={{ duration: 0.5 }}>
-                      <GoogleIcon className="w-5 h-5 mr-3" />
-                    </motion.div>
-                    <span className="font-bold">Continue with Google</span>
+                    <a href={api.googleLoginHref()}>
+                      <motion.div whileHover={{ rotate: 360 }} transition={{ duration: 0.5 }}>
+                        <GoogleIcon className="w-5 h-5 mr-3" />
+                      </motion.div>
+                      <span className="font-bold">Continue with Google</span>
+                    </a>
                   </Button>
                 </motion.div>
 
@@ -103,7 +130,11 @@ export default function LoginPage() {
               </>
             )}
 
-            <AuthForm key={isLogin ? "login" : "signup"} isLogin={isLogin} />
+            <AuthForm
+              key={isLogin ? "login" : "signup"}
+              isLogin={isLogin}
+              onSignupSuccess={() => setIsLogin(true)}
+            />
 
             {/* Footer Text */}
             <motion.p

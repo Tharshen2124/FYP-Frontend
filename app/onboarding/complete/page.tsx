@@ -1,10 +1,30 @@
 "use client"
 
+import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Moon, CheckCircle2 } from "lucide-react"
+import { toast } from "sonner"
 import { AppNav } from "@/components/app-nav"
 import { OnboardingStepper } from "@/components/onboarding-stepper"
+import { api } from "@/lib/api"
+import { useAuthStore } from "@/stores/auth-store"
 
 export default function OnboardingCompletePage() {
+  const router = useRouter()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleComplete = async () => {
+    setIsSubmitting(true)
+    try {
+      await api.completeOnboarding()
+      useAuthStore.getState().markOnboarded()
+      router.push("/dashboard")
+    } catch {
+      toast.error("Couldn't finish onboarding — please try again.")
+      setIsSubmitting(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Background decorations */}
@@ -13,7 +33,7 @@ export default function OnboardingCompletePage() {
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-secondary/20 rounded-full blur-3xl" />
       </div>
 
-      <AppNav action="next" nextHref="/dashboard" nextEnabled={true} />
+      <AppNav action="next" nextEnabled={!isSubmitting} onNext={handleComplete} />
 
       <main className="relative z-10 px-6 py-8">
         <div className="max-w-7xl mx-auto">
