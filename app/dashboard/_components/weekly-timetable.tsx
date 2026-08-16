@@ -3,7 +3,8 @@
 import { useMemo } from "react"
 import { DAYS_SHORT, CAL_START, CAL_END, TOTAL_HRS, HR_PX } from "../_constants/calendar"
 import { MOCK_EVENTS } from "../_constants/mock-data"
-import { getWeekStart, fmtShortDate } from "../_utils/time"
+import { fmtShortDate } from "../_utils/time"
+import { getWeekStart } from "@/lib/date"
 import { EventCard } from "./event-card"
 import type { CalItem } from "../_types"
 

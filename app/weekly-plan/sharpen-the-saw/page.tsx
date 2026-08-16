@@ -1,9 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import { Check } from "lucide-react"
 import { AppNav } from "@/components/app-nav"
-import { MOCK_DIMENSIONS } from "@/app/weekly-plan/schedule/_constants/mock-data"
+import { MOCK_DIMENSIONS } from "../_constants/mock-data"
+import { DimensionSelectCard } from "./_components/dimension-select-card"
 
 export default function WeeklyPlanSharpenTheSawPage() {
   const [selectedActivityIds, setSelectedActivityIds] = useState<Set<string>>(new Set())
@@ -40,59 +40,14 @@ export default function WeeklyPlanSharpenTheSawPage() {
           </div>
 
           <div className="grid gap-6">
-            {MOCK_DIMENSIONS.map(dim => {
-              const Icon = dim.icon
-              return (
-                <div
-                  key={dim.id}
-                  className="p-6 rounded-2xl bg-card border-2 border-border"
-                >
-                  {/* Dimension header */}
-                  <div className="flex items-center gap-3 mb-4">
-                    <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center"
-                      style={{ backgroundColor: `${dim.color}20` }}
-                    >
-                      <Icon className="w-5 h-5" style={{ color: dim.color }} />
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-bold text-foreground">{dim.label}</h2>
-                    </div>
-                  </div>
-
-                  {/* Activities — select which to commit to this week */}
-                  <div className="space-y-2">
-                    {dim.activities.map(act => {
-                      const isSelected = selectedActivityIds.has(act.id)
-                      return (
-                        <button
-                          key={act.id}
-                          onClick={() => toggleActivity(act.id)}
-                          className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
-                            isSelected
-                              ? "border-2 bg-opacity-10"
-                              : "bg-muted border-border hover:border-primary/30"
-                          }`}
-                          style={isSelected ? { backgroundColor: `${dim.color}15`, borderColor: dim.color } : {}}
-                        >
-                          <div
-                            className="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all"
-                            style={
-                              isSelected
-                                ? { backgroundColor: dim.color, borderColor: dim.color }
-                                : { borderColor: "#6b7280" }
-                            }
-                          >
-                            {isSelected && <Check className="w-3 h-3 text-white" />}
-                          </div>
-                          <span className="font-serif text-foreground text-sm">{act.text}</span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              )
-            })}
+            {MOCK_DIMENSIONS.map(dim => (
+              <DimensionSelectCard
+                key={dim.id}
+                dimension={dim}
+                selectedActivityIds={selectedActivityIds}
+                onToggleActivity={toggleActivity}
+              />
+            ))}
           </div>
 
           {!canProceed && (

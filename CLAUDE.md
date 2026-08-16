@@ -5,18 +5,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-npm run dev          # Start dev server with Turbopack
-npm run build        # Production build
-npm run lint         # Run ESLint
-npm run typecheck    # Type-check without emitting (tsc --noEmit)
-npm run format       # Format with Prettier (ts, tsx files)
+npm run dev            # Start dev server with Turbopack
+npm run build          # Production build
+npm run lint           # Run ESLint
+npm run typecheck      # Type-check without emitting (tsc --noEmit)
+npm run format         # Format with Prettier (ts, tsx files)
+
+npm run test           # Unit tests (Vitest, jsdom)
+npm run test:watch     # Unit tests in watch mode
+npm run test:coverage  # Unit tests with v8 coverage
+npm run test:e2e       # End-to-end tests (Playwright, boots the dev server itself)
+npm run test:e2e:ui    # Playwright UI mode
 ```
 
-There are no tests configured in this project.
+Unit tests live in `tests/unit/`, e2e specs in `tests/e2e/`. Vitest only picks up
+`tests/unit/**/*.{test,spec}.{ts,tsx}`, so a Playwright spec can never be run by Vitest.
 
 ## Architecture
 
-**HabitFlow** is a weekly planner app based on Stephen Covey's 7 Habits of Highly Effective People framework. The planned user flow is: Landing → Login → Roles/Goals → Tasks → Weekly Schedule → Google Calendar export.
+**HabitFlow** is a weekly planner app based on Stephen Covey's 7 Habits of Highly Effective People framework.
 
 ### Stack
 - Next.js 16 (App Router) with React 19 and TypeScript
@@ -36,36 +43,94 @@ Two Google Fonts are loaded in `app/layout.tsx` as CSS variables:
 - `--font-bricolage` (Bricolage Grotesque) — default `font-sans`, used for headings/bold text
 - `--font-ubuntu` — used for body/serif text (apply with `font-serif` Tailwind class)
 
-### User flow (implemented so far)
-Landing → Login → `/roles` → `/sharpen-the-saw` → `/fixed-appointments` → `/schedule-tasks` → `/dashboard`
+## Flows
 
-### Current pages
-- `/` — Landing page (`app/page.tsx`), all content inline; a `components/landing/` directory exists with extracted section components (header, hero, features, etc.) but is not yet wired up
-- `/login` — Login/signup page with animated background
-- `/roles` — Role & goal management; Next enabled when ≥1 role and ≥1 goal exist; links to `/sharpen-the-saw`
-- `/sharpen-the-saw` — Four dimension cards (Physical, Spiritual, Mental, Social/Emotional), each with add/inline-edit/delete activities; Next enabled when every dimension has ≥1 activity; links to `/fixed-appointments`
-- `/fixed-appointments` — Google Calendar-style weekly view (Mon–Sun, 6 AM–10 PM); click slot to add, hover card to edit/delete, drag-and-drop to reschedule; clash detection (warn on 1 overlap, block on 2+); Next enabled when ≥1 appointment exists
-- `/schedule-tasks` — Same Google Calendar–style weekly view as Fixed Appointments. Fixed appointments from the previous step appear in blue (`#3b82f6`) with a lock icon and are non-interactive. Tasks are added via a modal that requires linking to either a Role Goal (select role → select goal) or a Sharpen the Saw activity (select dimension → select activity); the task's color inherits from the linked role/dimension. An optional "Daily Priority" toggle (star icon) marks the task as a daily priority and shows a filled star badge on the calendar card. Clash detection works across fixed appointments AND tasks combined. `canProceed = tasks.length > 0`.
-- `/dashboard` — Post-onboarding home screen. Uses a **sidebar layout** (not `AppNav`): fixed left sidebar (`w-64`, `bg-card`) with HabitFlow logo, 7 nav links (Roles and Goals, Sharpen the Saw, Schedule Upcoming Weekly Plan, Google Calendar Settings, Evening Reflections, History, Analytics) with active-state highlight, and a Sign Out button. Main area shows "Schedule for this Week" heading, "Edit Weekly Plan" button (links to `/schedule-tasks`), a legend (fixed/priority/now), and a read-only weekly timetable. Timetable highlights today's column (`bg-primary/5`), circles today's date in primary, and shows a "now" indicator line. Events are non-interactive; uses the same `HR_PX=64`, `CAL_START=6`, `CAL_END=22` constants as other calendar pages. Mock data in `_constants/mock-data.ts` combines fixed appointments (blue, lock icon) and tasks (role/dimension colors, star badge for daily priority).
-- `/evening-reflections` — Sidebar lists 8 weeks (current week first); main area shows a Weekly Summary card (AI-simulated, 1.8 s delay) and a 7-day card grid; Edit/Create button opens a Dialog with a Textarea; weeks with any entry show a purple dot indicator; not part of the onboarding flow (Back button)
-- `/google-calendar` — Two states: disconnected (connect card) and connected (settings cards). Connected state: connection status + Disconnect, Allow Sync Changes toggle, Export Categories tree (Fixed Appointments leaf, Sharpen the Saw with 4 sub-dimensions, Role Tasks with 4 mock roles); parent checkboxes support indeterminate state; sticky Discard/Save footer appears only when settings are dirty; not part of the onboarding flow (Back button)
+There are three distinct groups of routes.
 
-### Layout conventions
-- Onboarding pages use `max-w-7xl mx-auto` for main content, matching the `<AppNav>` width.
-- Background decoration: two fixed blurred blobs (`bg-primary/10` top-left, `bg-secondary/20` bottom-right).
-- Onboarding page structure: `<AppNav>` → `<main className="relative z-10 px-6 py-8">` → `<div className="max-w-7xl mx-auto">`.
-- Dashboard and post-onboarding pages use a **sidebar layout**: `<div className="flex h-screen overflow-hidden bg-background">` → `<Sidebar />` → `<main className="relative z-10 flex-1 overflow-y-auto px-8 py-8">`. No `AppNav` or `max-w` wrapper.
+**1. Marketing** — `/` (landing) → `/login`. Every landing CTA links to `/login`; submitting
+either login form sends the user to `/onboarding/roles` (there is no auth backend yet).
 
-### File structure convention
-Pages with non-trivial logic are split into private subfolders (prefixed with `_` to signal they are internal to that route and must not be imported from outside it):
+**2. Onboarding** (`/onboarding/*`) — the five-step first-run flow, each step gated by an
+`<AppNav action="next">` button and tracked by `<OnboardingStepper>`:
+
+| Step | Route | Next unlocks when |
+| --- | --- | --- |
+| 1 | `/onboarding/roles` | ≥1 role and ≥1 goal exist |
+| 2 | `/onboarding/sharpen-the-saw` | every dimension has ≥1 activity |
+| 3 | `/onboarding/fixed-appointments` | ≥1 appointment exists |
+| 4 | `/onboarding/schedule-tasks` | ≥1 task exists |
+| 5 | `/onboarding/complete` | always (links to `/dashboard`) |
+
+**3. App** — everything reachable from the dashboard `<Sidebar>`:
+`/dashboard`, `/roles`, `/sharpen-the-saw`, `/weekly-plan/goals`, `/settings`,
+`/evening-reflections`, `/history`, `/analytics`.
+
+The weekly-plan sub-flow (`/weekly-plan/*`) is the repeatable version of onboarding steps 1–4:
+`/weekly-plan/goals` → `/weekly-plan/sharpen-the-saw` → `/weekly-plan/schedule` → `/dashboard`.
+Unlike onboarding it *selects* from existing roles/goals and activities rather than creating them,
+and it merges fixed appointments and tasks into one tabbed calendar page.
+
+## Current pages
+
+- `/` — Landing page. Sections live in `app/_components/`, copy/data in `app/_constants/landing.ts`.
+- `/login` — Sign-in / sign-up card with an animated background. Tab switcher, password strength meter
+  (sign-up only), UI-only Google OAuth button. Submitting navigates to `POST_AUTH_HREF`.
+- `/onboarding/roles` — Role & goal management: add/edit roles (icon + colour), inline goal edit,
+  weekly-priority star, warning dialog past `MAX_RECOMMENDED_GOALS` (10).
+- `/onboarding/sharpen-the-saw` — Four dimension cards (Physical, Spiritual, Mental, Social/Emotional),
+  each with add / inline-edit / delete activities.
+- `/onboarding/fixed-appointments` — Google Calendar-style weekly view (Mon–Sun, 6 AM–10 PM); click a
+  slot to add, hover a card to edit/delete, drag-and-drop to reschedule; clash detection
+  (warn on 1 overlap, block on 2+).
+- `/onboarding/schedule-tasks` — Same calendar. Fixed appointments render blue (`#3b82f6`) with a lock
+  icon and are non-interactive. Tasks must link to either a role goal or a sharpen-the-saw activity and
+  inherit that colour; an optional "Daily Priority" star shows a badge on the card. Clash detection
+  spans fixed appointments *and* tasks.
+- `/onboarding/complete` — Explains Evening Reflections and the End-of-Day check-in; links to `/dashboard`.
+- `/dashboard` — Read-only weekly timetable with today's column highlighted, a "now" indicator line, and
+  a legend. "Edit Weekly Plan" links to `/weekly-plan/schedule`. Shows the end-of-day check-in modal once
+  per day after the time saved in `localStorage["eod_time"]`.
+- `/roles` — Standing role & goal management (sidebar layout). Same card as onboarding step 1, plus a
+  confirmation dialog when deleting a role that still has goals.
+- `/sharpen-the-saw` — Standing renewal-activity management (sidebar layout), with a delete confirmation.
+- `/weekly-plan/goals` — Pick which standing goals to carry into this week; add one-off weekly goals.
+- `/weekly-plan/sharpen-the-saw` — Pick which renewal activities to commit to this week.
+- `/weekly-plan/schedule` — Tabbed calendar: "Fixed Appointments" and "Scheduled Tasks" share one
+  `appts` state so clash detection spans both tabs.
+- `/settings` — End-of-Day check-in time (persisted to `localStorage`) and Google Calendar settings
+  (connect/disconnect, sync toggle, export category tree with indeterminate parents, sticky
+  Discard/Save bar shown only while dirty).
+- `/evening-reflections` — Week list sidebar, AI-simulated weekly summary, and a 7-day reflection grid
+  with an edit dialog.
+- `/history` — Past-week snapshots: stats row, role goals, renewal activities, and a compact schedule grid.
+- `/analytics` — 2×2 grid: sharpen-the-saw radar, role task table, daily priority bar chart, weekly
+  completion trend. Date/range selectors filter against a fixed week registry.
+
+## Layout conventions
+
+- Onboarding and weekly-plan pages: `<AppNav>` → `<main className="relative z-10 px-6 py-8">` →
+  `<div className="max-w-7xl mx-auto">`.
+- Dashboard and post-onboarding pages use a **sidebar layout**:
+  `<div className="flex h-screen overflow-hidden bg-background">` → `<Sidebar />` →
+  `<main className="relative z-10 flex-1 overflow-y-auto px-8 py-8">`. No `AppNav`, no `max-w` wrapper.
+- Background decoration on every page: two fixed blurred blobs (`bg-primary/10` top-left,
+  `bg-secondary/20` bottom-right).
+
+## File structure convention
+
+**This convention is applied to every route in `app/`. Keep it that way.**
+
+`page.tsx` is a slim orchestrator — state plus event handlers — and everything else lives in
+private subfolders. The `_` prefix marks them as internal to that route: Next.js excludes them from
+routing, and **nothing outside the owning route may import from them**.
 
 ```
 app/<route>/
   page.tsx          ← slim orchestrator: state + event handlers only
   _types/
-    index.ts        ← all TypeScript interfaces and types
+    index.ts        ← all TypeScript interfaces and types for this route
   _constants/
-    calendar.ts     ← calendar dimensions, day labels, EMPTY_MODAL, color constants
+    calendar.ts     ← calendar dimensions, day labels, EMPTY_MODAL, colour constants
     mock-data.ts    ← placeholder data (roles, goals, dimensions, fixed appointments)
   _utils/
     time.ts         ← pure time helpers (minsToStr, strToMins, fmtTime, snapMins)
@@ -75,43 +140,64 @@ app/<route>/
     *.tsx           ← UI pieces consumed only by this route's page
 ```
 
-`/schedule-tasks` is the reference implementation of this pattern. Apply the same structure to future complex pages. Simpler pages (roles, sharpen-the-saw) can stay as a single `page.tsx` until they grow large enough to warrant splitting.
+Rules:
 
-### State management
-All state is currently local React `useState` — no global store, no backend, no auth integration yet. The login page has a UI-only Google OAuth button that is not connected.
+1. **File names are kebab-case.** `fixed-appointment-card.tsx`, never `fixedAppointmentCard.tsx`.
+2. **Imports inside a route are relative** (`../_utils/time`), not `@/app/...`. An `@/app/<route>/_*`
+   import from another route is a convention violation — hoist the shared thing instead (rule 3).
+3. **Flow-level private folders** hold what several routes in the same flow share. They sit at the
+   shared segment and follow the same naming: `app/weekly-plan/_types/`, `app/weekly-plan/_constants/`.
+   `/weekly-plan/goals`, `/weekly-plan/sharpen-the-saw` and `/weekly-plan/schedule` all read
+   `MOCK_ROLES` / `MOCK_DIMENSIONS` from `app/weekly-plan/_constants/mock-data.ts`.
+   The same private-import rule applies one level up: nothing outside `/weekly-plan` may import them.
+4. **Genuinely app-wide UI lives in `components/`**, not in a route folder — `AppNav`, `Sidebar`,
+   `OnboardingStepper`, the clash modals, and the shadcn primitives in `components/ui/`.
+5. **Derived/filtered data belongs in `_utils`, raw data in `_constants`.** `/analytics` is the model:
+   `_constants/mock-data.ts` holds the week registry and raw numbers, `_utils/analytics.ts` holds
+   `getSharpenData`, `getRoleStats`, `getDailyPriority`.
+6. Routes that are genuinely trivial (`/onboarding/complete` is pure markup) may stay a single
+   `page.tsx` — but add the folders as soon as they grow logic, types, or repeated markup.
 
-### Components
-- `components/ui/` — shadcn-generated primitives (Button, Input, Dialog, AlertDialog, etc.)
-- `components/app-nav.tsx` — Shared navigation bar used on all app pages. Props: `action` ("back"|"next"), `nextHref`, `nextEnabled`, `onNext`, `backHref`, `extra`. When `nextEnabled && nextHref`, renders a `<Link>` (no JS navigation); otherwise renders a disabled or `onNext`-callback button.
-- `components/clash-warning-modal.tsx` — Warning dialog for 1 overlapping appointment. Props: `open`, `conflictingTitle`, `onProceed`, `onCancel`.
-- `components/clash-block-modal.tsx` — Hard-block dialog when 2+ overlapping appointments. Props: `open`, `onClose`.
-- `components/animated-schedule.tsx` — Hero section animation showing a draggable schedule demo
-- `components/theme-provider.tsx` — `next-themes` wrapper
-- `components/landing/` — Decomposed landing page sections (not yet used in `app/page.tsx`)
+`/weekly-plan/schedule` and `/analytics` are the reference implementations.
 
-### Fixed Appointments — key implementation details
-- Constants: `CAL_START=6`, `CAL_END=22`, `HR_PX=64` (px/hour), `TOTAL_HRS=16`.
-- Drag uses invisible ghost image trick so the native drag preview is hidden; position is calculated from `colRefs`.
-- `dragInfo` is a `useRef` (not state) to avoid stale closure bugs in the `onDrop` handler.
-- `PendingAction` union type discriminated by `type: "drop" | "save"` — shared between drag-drop and edit-save clash flows.
-- `getOverlaps(all, dayIndex, startMins, endMins, excludeId)` — returns overlapping appointments.
-- `getApptPositionStyle(appt, allAppts)` — returns `left/right/width` inline styles; when 2 events overlap they split 50/50 sorted by `(startMins, id)` for stable column assignment.
-- `canProceed = appts.length > 0` — Next button gate.
-- Next button on this page: `nextHref="/schedule-tasks"`.
+## State management
 
-### Schedule Tasks — key implementation details
-- Extends Fixed Appointments with a combined `allCalItems` array (fixed + tasks) so overlap detection covers both types.
-- Fixed appointments are hardcoded mock data (`MOCK_FIXED`) — read-only, rendered with a lock icon, not draggable.
-- Roles/goals and sharpen-the-saw dimensions/activities are also mock data (`MOCK_ROLES`, `MOCK_DIMENSIONS`) — in production these would come from a shared store.
-- Task color is derived from the linked role color or dimension color at save time.
-- Modal `getLinkMeta()` validates that a goal or activity is selected; Save button is disabled until valid.
-- `isDailyPriority` flag shows a filled `Star` badge on the calendar card and a styled toggle in the modal.
-- `canProceed = tasks.length > 0` — Next button gate (destination TBD).
+All state is local React `useState` — no global store, no backend, no auth integration. Each route
+seeds itself from its own `_constants/mock-data.ts`, so edits made in one route are not visible in
+another. The only persistence is `localStorage` for the end-of-day check-in
+(`eod_time`, `eod_shown_date`), written by `/settings` and read by `/dashboard`.
 
-### Dashboard — key implementation details
-- Uses a sidebar layout (see Layout conventions above); `<Sidebar>` component lives in `app/dashboard/_components/sidebar.tsx`.
-- `<Sidebar>` uses `usePathname()` to highlight the active nav item with `bg-primary/20 text-primary`.
-- Timetable is **read-only** — no click-to-add, no drag, no modals. `EventCard` renders fixed appointments with a `<Lock>` icon and tasks with an optional filled `<Star>` for daily priority.
-- `getWeekStart(date)` computes the Monday of the current week; day dates are derived from it and rendered as date numbers in the column headers.
-- "Now" indicator (purple dot + horizontal rule) is drawn on the current day's column if the current time falls within `CAL_START–CAL_END`.
-- `MOCK_EVENTS` in `_constants/mock-data.ts` combines both fixed appointments and tasks; each event carries a `color` and optional `isFixed` / `isDailyPriority` flag.
+## Shared components
+
+- `components/ui/` — shadcn-generated primitives (Button, Input, Dialog, AlertDialog, Tabs, …)
+- `components/app-nav.tsx` — Top nav for onboarding/weekly-plan pages. Props: `action` ("back"|"next"),
+  `nextHref`, `nextEnabled`, `onNext`, `backHref`, `extra`. When `nextEnabled && nextHref` it renders a
+  `<Link>`; otherwise a disabled or `onNext`-callback button.
+- `components/sidebar.tsx` — Fixed left nav for dashboard-area pages; highlights the active route via
+  `usePathname()`.
+- `components/onboarding-stepper.tsx` — 5-step progress indicator. Props: `currentStep` (1–5).
+- `components/clash-warning-modal.tsx` — Warning dialog for exactly 1 overlapping appointment.
+  Props: `open`, `conflictingTitle`, `onProceed`, `onCancel`.
+- `components/clash-block-modal.tsx` — Hard-block dialog for 2+ overlaps. Props: `open`, `onClose`.
+- `components/animated-schedule.tsx` — Hero animation showing a draggable schedule demo.
+- `components/theme-provider.tsx` — `next-themes` wrapper.
+
+Landing-page sections are **not** here — they are route-private in `app/_components/`, since only `/`
+uses them. (A superseded v1 landing design used to live in `components/landing/`; it was deleted once
+v2 replaced it. Recover from git at `1937e12` if ever needed.)
+
+## Calendar implementation notes
+
+The three calendar routes (`/onboarding/fixed-appointments`, `/onboarding/schedule-tasks`,
+`/weekly-plan/schedule`) plus the read-only `/dashboard` timetable share the same geometry constants,
+each in their own `_constants/calendar.ts`: `CAL_START=6`, `CAL_END=22`, `HR_PX=64`,
+`TOTAL_HRS = CAL_END - CAL_START`.
+
+- Drag uses an invisible ghost image so the native drag preview is hidden; the drop position is
+  computed from `colRefs`.
+- `dragInfo` is a `useRef` (not state) to avoid stale-closure bugs in the `onDrop` handler.
+- `PendingAction` is a union discriminated by `type: "drop" | "save"`, shared between the drag-drop and
+  edit-save clash flows.
+- `getOverlaps(all, dayIndex, startMins, endMins, excludeId)` returns overlapping items.
+- `getPositionStyle(item, allItems)` returns `left/right/width` inline styles; two overlapping events
+  split the column 50/50, sorted by `(startMins, id)` for stable column assignment.

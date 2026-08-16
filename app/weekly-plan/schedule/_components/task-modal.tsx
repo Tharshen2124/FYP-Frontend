@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog"
 import type { ModalState } from "../_types"
 import { DAYS_SHORT, EMPTY_TASK_MODAL } from "../_constants/calendar"
-import { MOCK_ROLES, MOCK_DIMENSIONS } from "../_constants/mock-data"
+import { MOCK_ROLES, MOCK_DIMENSIONS } from "../../_constants/mock-data"
 import { strToMins } from "../_utils/time"
 import { getLinkMeta } from "../_utils/tasks"
 

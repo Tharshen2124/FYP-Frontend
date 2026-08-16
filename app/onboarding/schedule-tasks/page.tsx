@@ -6,10 +6,9 @@ import { ClashWarningModal } from "@/components/clash-warning-modal"
 import { ClashBlockModal } from "@/components/clash-block-modal"
 import { OnboardingStepper } from "@/components/onboarding-stepper"
 import { CalendarLegend } from "./_components/calendar-legend"
-import { FixedAppointmentCard } from "./_components/fixedAppointmentCard"
-import { TaskCard } from "./_components/task-card"
+import { WeekCalendar } from "./_components/week-calendar"
 import { TaskModal } from "./_components/task-modal"
-import { DAYS_FULL, DAYS_SHORT, CAL_START, CAL_END, TOTAL_HRS, HR_PX, EMPTY_MODAL } from "./_constants/calendar"
+import { CAL_START, CAL_END, HR_PX, EMPTY_MODAL } from "./_constants/calendar"
 import { MOCK_FIXED, MOCK_ROLES, MOCK_DIMENSIONS } from "./_constants/mock-data"
 import { getOverlaps } from "./_utils/calendar"
 import { minsToStr, strToMins, snapMins } from "./_utils/time"
@@ -190,8 +189,6 @@ export default function ScheduleTasksPage() {
     setClashWarning({ open: false, conflictingTitle: "" })
   }
 
-  const calH = TOTAL_HRS * HR_PX
-
   return (
     <div className="min-h-screen bg-background">
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
@@ -216,73 +213,18 @@ export default function ScheduleTasksPage() {
 
           <CalendarLegend />
 
-          {/* ── Calendar ── */}
-          <div className="bg-card border-2 border-border rounded-md overflow-hidden">
-            <div className="grid border-b border-border" style={{ gridTemplateColumns: "56px repeat(7, 1fr)" }}>
-              <div />
-              {DAYS_SHORT.map(d => (
-                <div key={d} className="py-3 text-center border-l border-border">
-                  <span className="text-sm font-bold text-foreground">{d}</span>
-                </div>
-              ))}
-            </div>
-
-            <div className="overflow-y-auto" style={{ maxHeight: 560 }}>
-              <div className="grid" style={{ gridTemplateColumns: "56px repeat(7, 1fr)", height: calH }}>
-                {/* time gutter */}
-                <div className="relative select-none">
-                  {Array.from({ length: TOTAL_HRS }, (_, i) => {
-                    const hour  = i + CAL_START
-                    const label = hour === 12 ? "12 PM" : hour > 12 ? `${hour - 12} PM` : `${hour} AM`
-                    return (
-                      <div
-                        key={hour}
-                        className="absolute right-2 text-[11px] text-muted-foreground leading-none"
-                        style={{ top: i * HR_PX - 7 }}
-                      >
-                        {label}
-                      </div>
-                    )
-                  })}
-                </div>
-
-                {/* day columns */}
-                {DAYS_FULL.map((day, di) => (
-                  <div
-                    key={day}
-                    ref={el => { colRefs.current[di] = el }}
-                    className="relative border-l border-border cursor-pointer select-none"
-                    style={{ height: calH }}
-                    onClick={e => handleColClick(e, di)}
-                    onDragOver={onDragOver}
-                    onDrop={e => onDrop(e, di)}
-                  >
-                    {Array.from({ length: TOTAL_HRS }, (_, i) => (
-                      <div key={i}       className="absolute w-full border-t border-border/50" style={{ top: i * HR_PX }} />
-                    ))}
-                    {Array.from({ length: TOTAL_HRS }, (_, i) => (
-                      <div key={`h${i}`} className="absolute w-full border-t border-border/20" style={{ top: i * HR_PX + HR_PX / 2 }} />
-                    ))}
-
-                    {MOCK_FIXED.filter(f => f.dayIndex === di).map(appt => (
-                      <FixedAppointmentCard key={appt.id} appt={appt} allCalItems={allCalItems} />
-                    ))}
-
-                    {tasks.filter(t => t.dayIndex === di).map(task => (
-                      <TaskCard
-                        key={task.id}
-                        task={task}
-                        allCalItems={allCalItems}
-                        onEdit={openEdit}
-                        onDelete={id => setTasks(prev => prev.filter(t => t.id !== id))}
-                        onDragStart={onDragStart}
-                      />
-                    ))}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+          <WeekCalendar
+            fixedAppts={MOCK_FIXED}
+            tasks={tasks}
+            allCalItems={allCalItems}
+            colRefs={colRefs}
+            onSlotClick={handleColClick}
+            onDragOver={onDragOver}
+            onDrop={onDrop}
+            onEditTask={openEdit}
+            onDeleteTask={id => setTasks(prev => prev.filter(t => t.id !== id))}
+            onDragStart={onDragStart}
+          />
 
           <p className="text-sm text-muted-foreground font-serif mt-3">
             Drag tasks to move them. Hover a task to edit or delete. Fixed appointments cannot be moved here.

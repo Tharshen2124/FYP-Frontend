@@ -11,7 +11,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog"
-import { MOCK_EVENTS } from "@/app/dashboard/_constants/mock-data"
+import { MOCK_EVENTS } from "../_constants/mock-data"
 
 interface Props {
   open: boolean

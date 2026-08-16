@@ -1,8 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { getRoleStats, DEFAULT_FROM, DEFAULT_TO, type DateSelection } from "../_constants/mock-data"
-import { DateRangeSelector } from "./week-range-selector"
+import { DEFAULT_FROM, DEFAULT_TO } from "../_constants/mock-data"
+import { getRoleStats } from "../_utils/analytics"
+import { DateRangeSelector } from "./date-selectors"
+import type { DateSelection } from "../_types"
 
 export function RoleTaskTable() {
   const [from, setFrom] = useState<DateSelection>(DEFAULT_FROM)
