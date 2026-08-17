@@ -1,18 +1,23 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 import { AppNav } from "@/components/app-nav"
 import { OnboardingStepper } from "@/components/onboarding-stepper"
+import { api } from "@/lib/api"
 import { INITIAL_DIMENSIONS } from "./_constants/dimensions"
-import { allDimensionsFilled, countActivities } from "./_utils/dimensions"
+import { allDimensionsFilled, countActivities, toSharpenTheSawPayload } from "./_utils/dimensions"
 import { DimensionCard } from "./_components/dimension-card"
 import type { Dimension, EditingActivityId } from "./_types"
 
 export default function OnboardingSharpenTheSawPage() {
+  const router = useRouter()
   const [dimensions, setDimensions] = useState<Dimension[]>(INITIAL_DIMENSIONS)
   const [inputs, setInputs] = useState<Record<string, string>>({})
   const [editingId, setEditingId] = useState<EditingActivityId | null>(null)
   const [editText, setEditText] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const addActivity = (dimId: string) => {
     const text = (inputs[dimId] || "").trim()
@@ -25,16 +30,6 @@ export default function OnboardingSharpenTheSawPage() {
       )
     )
     setInputs(prev => ({ ...prev, [dimId]: "" }))
-  }
-
-  const togglePriority = (dimId: string, actId: string) => {
-    setDimensions(prev =>
-      prev.map(d =>
-        d.id === dimId
-          ? { ...d, activities: d.activities.map(a => a.id === actId ? { ...a, isWeeklyPriority: !a.isWeeklyPriority } : a) }
-          : d
-      )
-    )
   }
 
   const deleteActivity = (dimId: string, actId: string) => {
@@ -67,6 +62,17 @@ export default function OnboardingSharpenTheSawPage() {
 
   const totalActivities = countActivities(dimensions)
 
+  const handleNext = async () => {
+    setIsSubmitting(true)
+    try {
+      await api.submitSharpenTheSaw(toSharpenTheSawPayload(dimensions))
+      router.push("/onboarding/fixed-appointments")
+    } catch {
+      toast.error("Couldn't save your activities — please try again.")
+      setIsSubmitting(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
@@ -76,8 +82,8 @@ export default function OnboardingSharpenTheSawPage() {
 
       <AppNav
         action="next"
-        nextHref="/onboarding/fixed-appointments"
-        nextEnabled={allDimensionsFilled(dimensions)}
+        onNext={handleNext}
+        nextEnabled={allDimensionsFilled(dimensions) && !isSubmitting}
       />
 
       <main className="relative z-10 px-6 py-8">
@@ -108,7 +114,6 @@ export default function OnboardingSharpenTheSawPage() {
                 onEditTextChange={setEditText}
                 onCommitEdit={commitEdit}
                 onCancelEdit={() => setEditingId(null)}
-                onTogglePriority={actId => togglePriority(dim.id, actId)}
                 onDeleteActivity={actId => deleteActivity(dim.id, actId)}
               />
             ))}

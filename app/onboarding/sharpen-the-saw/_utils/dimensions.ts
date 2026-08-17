@@ -8,3 +8,11 @@ export function countActivities(dimensions: Dimension[]): number {
 export function allDimensionsFilled(dimensions: Dimension[]): boolean {
   return dimensions.every(d => d.activities.length >= 1)
 }
+
+export function toSharpenTheSawPayload(dimensions: Dimension[]) {
+  return {
+    activities: dimensions.flatMap(d =>
+      d.activities.map(a => ({ dimension: d.id, activity_description: a.text }))
+    ),
+  }
+}

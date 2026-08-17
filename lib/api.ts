@@ -43,5 +43,10 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+  submitSharpenTheSaw: (data: { activities: { dimension: string; activity_description: string }[] }) =>
+    request<{ activities: unknown[] }>("/onboarding/sharpen-the-saw", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
   googleLoginHref: () => `${API_URL}/login`,
 }

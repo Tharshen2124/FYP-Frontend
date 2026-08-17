@@ -3,7 +3,6 @@ import type { ElementType } from "react"
 export interface Activity {
   id: string
   text: string
-  isWeeklyPriority?: boolean
 }
 
 export interface Dimension {
