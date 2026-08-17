@@ -36,5 +36,12 @@ export const api = {
     request<{ user: { is_onboarded: boolean } }>("/users/complete_onboarding", {
       method: "PATCH",
     }),
+  submitRoles: (data: {
+    roles: { name: string; icon_id: string; goals: { text: string; is_weekly_priority: boolean }[] }[]
+  }) =>
+    request<{ roles: unknown[] }>("/onboarding/roles", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
   googleLoginHref: () => `${API_URL}/login`,
 }

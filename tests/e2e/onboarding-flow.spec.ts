@@ -41,14 +41,23 @@ test.describe("onboarding", () => {
   test("step 1 gates Next on having a role and a goal", async ({ page }) => {
     await page.goto("/onboarding/roles")
 
-    // Seeded with 2 roles / 3 goals, so Next is live immediately.
+    // Seeded with 2 roles / 3 goals, so Next is live immediately. Step 1's Next
+    // button submits to the backend rather than being a plain link, so it
+    // renders as a button, not a link (see step 5 for the same pattern).
     await expect(page.getByText("3 Goals")).toBeVisible()
-    await expect(nextLink(page)).toHaveAttribute("href", "/onboarding/sharpen-the-saw")
+    await expect(nextButton(page)).toBeEnabled()
 
     // Removing every role disables it.
     await page.getByRole("button", { name: "Delete Professional" }).click()
     await page.getByRole("button", { name: "Delete Parent" }).click()
     await expect(nextButton(page)).toBeDisabled()
+  })
+
+  test("step 1 submits roles to the backend and advances", async ({ page }) => {
+    await page.goto("/onboarding/roles")
+
+    await nextButton(page).click()
+    await expect(page).toHaveURL(/\/onboarding\/sharpen-the-saw$/)
   })
 
   test("step 1 adds a role and a goal", async ({ page }) => {

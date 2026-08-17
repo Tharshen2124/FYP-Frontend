@@ -1,6 +1,6 @@
 import type { ElementType } from "react"
 import { Users } from "lucide-react"
-import { ROLE_COLORS, ROLE_ICONS } from "../_constants/roles"
+import { ROLE_ICONS } from "../_constants/roles"
 import type { Role } from "../_types"
 
 /**
@@ -13,10 +13,20 @@ export const ROLE_ICON_BY_ID: Record<string, ElementType> = Object.fromEntries(
 
 export const FALLBACK_ROLE_ICON: ElementType = Users
 
-export function getColor(colorId: string): string {
-  return ROLE_COLORS.find(c => c.id === colorId)?.value ?? "#B13BFF"
-}
-
 export function countGoals(roles: Role[]): number {
   return roles.reduce((sum, role) => sum + role.goals.length, 0)
+}
+
+/** Shapes local role/goal state into the snake_case payload the backend expects. */
+export function toRolesPayload(roles: Role[]) {
+  return {
+    roles: roles.map(role => ({
+      name: role.name,
+      icon_id: role.iconId,
+      goals: role.goals.map(goal => ({
+        text: goal.text,
+        is_weekly_priority: !!goal.isWeeklyPriority,
+      })),
+    })),
+  }
 }
