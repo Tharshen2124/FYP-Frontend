@@ -1,19 +1,25 @@
 "use client"
 
 import { useState, useRef } from "react"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 import { AppNav } from "@/components/app-nav"
 import { ClashWarningModal } from "@/components/clash-warning-modal"
 import { ClashBlockModal } from "@/components/clash-block-modal"
 import { OnboardingStepper } from "@/components/onboarding-stepper"
+import { api } from "@/lib/api"
 import { CAL_END, CAL_START, COLORS, EMPTY_MODAL, HR_PX } from "./_constants/calendar"
 import { getOverlaps } from "./_utils/calendar"
 import { minsToStr, snapMins, strToMins } from "./_utils/time"
+import { toFixedAppointmentsPayload } from "./_utils/appointments"
 import { WeekCalendar } from "./_components/week-calendar"
 import { AppointmentModal } from "./_components/appointment-modal"
 import type { Appt, ModalState, PendingAction } from "./_types"
 
 export default function FixedAppointmentsPage() {
+  const router = useRouter()
   const [appts, setAppts]                 = useState<Appt[]>([])
+  const [isSubmitting, setIsSubmitting]   = useState(false)
   const [modal, setModal]                 = useState<ModalState>(EMPTY_MODAL)
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null)
   const [clashWarning, setClashWarning]   = useState<{ open: boolean; conflictingTitle: string }>({ open: false, conflictingTitle: "" })
@@ -161,6 +167,17 @@ export default function FixedAppointmentsPage() {
 
   const canProceed = appts.length > 0
 
+  const handleNext = async () => {
+    setIsSubmitting(true)
+    try {
+      await api.submitFixedAppointments(toFixedAppointmentsPayload(appts))
+      router.push("/onboarding/schedule-tasks")
+    } catch {
+      toast.error("Couldn't save your appointments — please try again.")
+      setIsSubmitting(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* bg blobs */}
@@ -169,7 +186,7 @@ export default function FixedAppointmentsPage() {
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-secondary/20 rounded-full blur-3xl" />
       </div>
 
-      <AppNav action="next" nextHref="/onboarding/schedule-tasks" nextEnabled={canProceed} />
+      <AppNav action="next" onNext={handleNext} nextEnabled={canProceed && !isSubmitting} />
 
       <main className="relative z-10 px-6 py-8">
         <div className="max-w-7xl mx-auto">

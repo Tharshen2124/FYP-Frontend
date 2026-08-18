@@ -48,5 +48,12 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+  submitFixedAppointments: (data: {
+    appointments: { title: string; description: string; day_of_week: number; start_time: string; end_time: string }[]
+  }) =>
+    request<{ appointments: unknown[] }>("/onboarding/fixed-appointments", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
   googleLoginHref: () => `${API_URL}/login`,
 }
