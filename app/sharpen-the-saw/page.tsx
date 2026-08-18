@@ -1,29 +1,54 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
 import { Sidebar } from "@/components/sidebar"
+import { api } from "@/lib/api"
 import { INITIAL_DIMENSIONS } from "./_constants/dimensions"
+import { groupActivitiesByDimension } from "./_utils/dimensions"
 import { DimensionCard } from "./_components/dimension-card"
 import { DeleteActivityDialog } from "./_components/delete-activity-dialog"
 import type { Activity, Dimension, EditingActivity } from "./_types"
 
 export default function SharpenTheSawPage() {
   const [dimensions, setDimensions] = useState<Dimension[]>(INITIAL_DIMENSIONS)
+  const [isLoading, setIsLoading] = useState(true)
   const [inputs, setInputs] = useState<Record<string, string>>({})
   const [editingActivity, setEditingActivity] = useState<EditingActivity | null>(null)
   const [activityToDelete, setActivityToDelete] = useState<{ dimId: string; activity: Activity } | null>(null)
 
-  const addActivity = (dimId: string) => {
+  useEffect(() => {
+    let cancelled = false
+    api.fetchSharpenTheSawActivities()
+      .then(({ activities }) => {
+        if (!cancelled) setDimensions(groupActivitiesByDimension(activities))
+      })
+      .catch(() => {
+        if (!cancelled) toast.error("Couldn't load your renewal activities — please refresh.")
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [])
+
+  const addActivity = async (dimId: string) => {
     const text = (inputs[dimId] || "").trim()
     if (!text) return
-    setDimensions(prev =>
-      prev.map(d =>
-        d.id === dimId
-          ? { ...d, activities: [...d.activities, { id: Date.now().toString(), text }] }
-          : d
-      )
-    )
     setInputs(prev => ({ ...prev, [dimId]: "" }))
+    try {
+      const { activity } = await api.createSharpenTheSawActivity({ dimension: dimId, activity_description: text })
+      setDimensions(prev =>
+        prev.map(d =>
+          d.id === dimId
+            ? { ...d, activities: [...d.activities, { id: String(activity.sharpen_the_saw_activity_id), text: activity.activity_description }] }
+            : d
+        )
+      )
+    } catch {
+      toast.error("Couldn't add that activity — please try again.")
+      setInputs(prev => ({ ...prev, [dimId]: text }))
+    }
   }
 
   const togglePriority = (dimId: string, actId: string) => {
@@ -41,31 +66,44 @@ export default function SharpenTheSawPage() {
     if (activity) setActivityToDelete({ dimId, activity })
   }
 
-  const handleConfirmDeleteActivity = () => {
+  const handleConfirmDeleteActivity = async () => {
     if (!activityToDelete) return
-    setDimensions(prev =>
-      prev.map(d =>
-        d.id === activityToDelete.dimId
-          ? { ...d, activities: d.activities.filter(a => a.id !== activityToDelete.activity.id) }
-          : d
-      )
-    )
+    const { dimId, activity } = activityToDelete
     setActivityToDelete(null)
+    try {
+      await api.deleteSharpenTheSawActivity(Number(activity.id))
+      setDimensions(prev =>
+        prev.map(d =>
+          d.id === dimId
+            ? { ...d, activities: d.activities.filter(a => a.id !== activity.id) }
+            : d
+        )
+      )
+    } catch {
+      toast.error("Couldn't delete that activity — please try again.")
+    }
   }
 
-  const handleSaveActivityEdit = () => {
+  const handleSaveActivityEdit = async () => {
     if (!editingActivity || !editingActivity.text.trim()) {
       setEditingActivity(null)
       return
     }
-    setDimensions(prev =>
-      prev.map(d =>
-        d.id === editingActivity.dimId
-          ? { ...d, activities: d.activities.map(a => a.id === editingActivity.actId ? { ...a, text: editingActivity.text.trim() } : a) }
-          : d
-      )
-    )
+    const { dimId, actId, text } = editingActivity
+    const trimmed = text.trim()
     setEditingActivity(null)
+    try {
+      await api.updateSharpenTheSawActivity(Number(actId), { activity_description: trimmed })
+      setDimensions(prev =>
+        prev.map(d =>
+          d.id === dimId
+            ? { ...d, activities: d.activities.map(a => a.id === actId ? { ...a, text: trimmed } : a) }
+            : d
+        )
+      )
+    } catch {
+      toast.error("Couldn't save that change — please try again.")
+    }
   }
 
   return (
@@ -87,24 +125,28 @@ export default function SharpenTheSawPage() {
           </p>
         </div>
 
-        <div className="grid gap-6">
-          {dimensions.map(dim => (
-            <DimensionCard
-              key={dim.id}
-              dimension={dim}
-              input={inputs[dim.id] || ""}
-              editingActivity={editingActivity}
-              onInputChange={value => setInputs(prev => ({ ...prev, [dim.id]: value }))}
-              onAddActivity={() => addActivity(dim.id)}
-              onStartEdit={setEditingActivity}
-              onChangeEdit={setEditingActivity}
-              onSaveEdit={handleSaveActivityEdit}
-              onCancelEdit={() => setEditingActivity(null)}
-              onTogglePriority={actId => togglePriority(dim.id, actId)}
-              onDeleteActivity={actId => handleDeleteActivity(dim.id, actId)}
-            />
-          ))}
-        </div>
+        {isLoading ? (
+          <p className="text-muted-foreground font-serif">Loading your renewal activities…</p>
+        ) : (
+          <div className="grid gap-6">
+            {dimensions.map(dim => (
+              <DimensionCard
+                key={dim.id}
+                dimension={dim}
+                input={inputs[dim.id] || ""}
+                editingActivity={editingActivity}
+                onInputChange={value => setInputs(prev => ({ ...prev, [dim.id]: value }))}
+                onAddActivity={() => addActivity(dim.id)}
+                onStartEdit={setEditingActivity}
+                onChangeEdit={setEditingActivity}
+                onSaveEdit={handleSaveActivityEdit}
+                onCancelEdit={() => setEditingActivity(null)}
+                onTogglePriority={actId => togglePriority(dim.id, actId)}
+                onDeleteActivity={actId => handleDeleteActivity(dim.id, actId)}
+              />
+            ))}
+          </div>
+        )}
       </main>
 
       <DeleteActivityDialog

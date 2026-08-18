@@ -44,6 +44,7 @@ test.describe("roles management", () => {
 
 test.describe("sharpen the saw management", () => {
   test("adds an activity and confirms before deleting it", async ({ page }) => {
+    await authenticateAsNewUser(page)
     await page.goto("/sharpen-the-saw")
 
     await page.getByPlaceholder("Add a physical activity...").fill("Swim 1km")

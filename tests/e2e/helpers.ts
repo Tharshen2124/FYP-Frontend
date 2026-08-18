@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test"
+import { expect, type Page } from "@playwright/test"
 
 /**
  * The end-of-day check-in modal opens on /dashboard once the local clock passes the
@@ -44,4 +44,14 @@ export async function authenticateAsNewUser(page: Page) {
   await page.waitForURL(/\/onboarding\/roles$/)
 
   return { email, username, password }
+}
+
+/** Adds one activity to each of the four renewal dimensions on the onboarding sharpen-the-saw step. */
+export async function fillEveryDimension(page: Page) {
+  const dimensions = ["Physical", "Spiritual", "Mental", "Social / Emotional"]
+  for (const label of dimensions) {
+    await page.getByPlaceholder(`Add a ${label.toLowerCase()} activity...`).fill(`${label} activity`)
+    await page.getByRole("button", { name: `Add ${label} activity` }).click()
+    await expect(page.getByText(`${label} activity`)).toBeVisible()
+  }
 }

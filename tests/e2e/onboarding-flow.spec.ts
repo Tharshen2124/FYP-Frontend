@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test"
-import { suppressEndOfDayModal, authenticateAsNewUser } from "./helpers"
+import { suppressEndOfDayModal, authenticateAsNewUser, fillEveryDimension } from "./helpers"
 
 test.beforeEach(async ({ page }) => {
   await suppressEndOfDayModal(page)
@@ -20,15 +20,6 @@ const nextButton = (page: Page) => page.getByRole("button", { name: "Next", exac
 /** The card row that renders a given goal/activity, used to scope hover actions. */
 const rowFor = (page: Page, text: string) =>
   page.locator("div.group").filter({ hasText: text }).first()
-
-async function fillEveryDimension(page: Page) {
-  const dimensions = ["Physical", "Spiritual", "Mental", "Social / Emotional"]
-  for (const label of dimensions) {
-    await page.getByPlaceholder(`Add a ${label.toLowerCase()} activity...`).fill(`${label} activity`)
-    await page.getByRole("button", { name: `Add ${label} activity` }).click()
-    await expect(page.getByText(`${label} activity`)).toBeVisible()
-  }
-}
 
 /** Clicks a calendar column at roughly the given hour offset to open the add modal. */
 async function clickSlot(page: Page, dayIndex: number, hoursFromStart: number) {

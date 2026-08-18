@@ -56,6 +56,22 @@ export const api = {
     request<{ activities: { sharpen_the_saw_activity_id: number; dimension: string; activity_description: string }[] }>(
       "/onboarding/sharpen-the-saw"
     ),
+  fetchSharpenTheSawActivities: () =>
+    request<{ activities: { sharpen_the_saw_activity_id: number; dimension: string; activity_description: string }[] }>(
+      "/sharpen-the-saw-activities"
+    ),
+  createSharpenTheSawActivity: (data: { dimension: string; activity_description: string }) =>
+    request<{ activity: { sharpen_the_saw_activity_id: number; dimension: string; activity_description: string } }>(
+      "/sharpen-the-saw-activities",
+      { method: "POST", body: JSON.stringify(data) }
+    ),
+  updateSharpenTheSawActivity: (id: number, data: { dimension?: string; activity_description?: string }) =>
+    request<{ activity: { sharpen_the_saw_activity_id: number; dimension: string; activity_description: string } }>(
+      `/sharpen-the-saw-activities/${id}`,
+      { method: "PATCH", body: JSON.stringify(data) }
+    ),
+  deleteSharpenTheSawActivity: (id: number) =>
+    request<void>(`/sharpen-the-saw-activities/${id}`, { method: "DELETE" }),
   submitFixedAppointments: (data: {
     appointments: { title: string; description: string; day_of_week: number; start_time: string; end_time: string }[]
   }) =>

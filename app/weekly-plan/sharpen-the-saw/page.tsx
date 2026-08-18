@@ -1,12 +1,25 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { AppNav } from "@/components/app-nav"
-import { MOCK_DIMENSIONS } from "../_constants/mock-data"
+import { api } from "@/lib/api"
+import { toWeeklyPlanDimensions } from "./_utils/dimensions"
 import { DimensionSelectCard } from "./_components/dimension-select-card"
+import type { MockDimension } from "../_types"
 
 export default function WeeklyPlanSharpenTheSawPage() {
+  const [dimensions, setDimensions] = useState<MockDimension[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [selectedActivityIds, setSelectedActivityIds] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    let cancelled = false
+    api.fetchSharpenTheSawActivities()
+      .then(({ activities }) => { if (!cancelled) setDimensions(toWeeklyPlanDimensions(activities)) })
+      .catch(() => { if (!cancelled) setDimensions(toWeeklyPlanDimensions([])) })
+      .finally(() => { if (!cancelled) setIsLoading(false) })
+    return () => { cancelled = true }
+  }, [])
 
   const toggleActivity = (actId: string) => {
     setSelectedActivityIds(prev => {
@@ -39,21 +52,27 @@ export default function WeeklyPlanSharpenTheSawPage() {
             </p>
           </div>
 
-          <div className="grid gap-6">
-            {MOCK_DIMENSIONS.map(dim => (
-              <DimensionSelectCard
-                key={dim.id}
-                dimension={dim}
-                selectedActivityIds={selectedActivityIds}
-                onToggleActivity={toggleActivity}
-              />
-            ))}
-          </div>
+          {isLoading ? (
+            <p className="text-center text-muted-foreground font-serif mt-8">Loading your renewal activities…</p>
+          ) : (
+            <>
+              <div className="grid gap-6">
+                {dimensions.map(dim => (
+                  <DimensionSelectCard
+                    key={dim.id}
+                    dimension={dim}
+                    selectedActivityIds={selectedActivityIds}
+                    onToggleActivity={toggleActivity}
+                  />
+                ))}
+              </div>
 
-          {!canProceed && (
-            <p className="text-center text-muted-foreground font-serif mt-8">
-              Select at least one activity or add a new one to continue.
-            </p>
+              {!canProceed && (
+                <p className="text-center text-muted-foreground font-serif mt-8">
+                  Select at least one activity or add a new one to continue.
+                </p>
+              )}
+            </>
           )}
         </div>
       </main>
