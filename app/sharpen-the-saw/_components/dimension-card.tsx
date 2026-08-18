@@ -1,6 +1,6 @@
 "use client"
 
-import { Check, Plus, Star, X } from "lucide-react"
+import { Check, Plus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import type { Dimension, EditingActivity } from "../_types"
@@ -15,7 +15,6 @@ interface Props {
   onChangeEdit: (editing: EditingActivity) => void
   onSaveEdit: () => void
   onCancelEdit: () => void
-  onTogglePriority: (actId: string) => void
   onDeleteActivity: (actId: string) => void
 }
 
@@ -29,7 +28,6 @@ export function DimensionCard({
   onChangeEdit,
   onSaveEdit,
   onCancelEdit,
-  onTogglePriority,
   onDeleteActivity,
 }: Props) {
   const Icon = dimension.icon
@@ -50,7 +48,7 @@ export function DimensionCard({
         {dimension.activities.map(act => (
           <div
             key={act.id}
-            className={`flex items-center justify-between p-3 rounded-xl group transition-colors ${act.isWeeklyPriority ? "bg-accent/10 border border-accent/30" : "bg-muted/50"}`}
+            className="flex items-center justify-between p-3 rounded-xl group transition-colors bg-muted/50"
           >
             <div className="flex items-center gap-3 flex-1 min-w-0">
               <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: dimension.color }} />
@@ -83,22 +81,10 @@ export function DimensionCard({
                   >
                     {act.text}
                   </span>
-                  {act.isWeeklyPriority && (
-                    <span className="text-xs font-medium bg-accent/20 text-accent rounded-full px-2 py-0.5 whitespace-nowrap">Priority</span>
-                  )}
                 </>
               )}
             </div>
             <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onTogglePriority(act.id)}
-                className={`p-1 h-auto transition-opacity ${act.isWeeklyPriority ? "text-accent" : "text-muted-foreground hover:text-accent opacity-0 group-hover:opacity-100"}`}
-                title={act.isWeeklyPriority ? "Remove weekly priority" : "Mark as weekly priority"}
-              >
-                <Star className={`w-4 h-4 ${act.isWeeklyPriority ? "fill-accent" : ""}`} />
-              </Button>
               <Button
                 variant="ghost"
                 size="sm"

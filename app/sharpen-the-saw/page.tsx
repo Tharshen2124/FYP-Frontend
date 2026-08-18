@@ -51,16 +51,6 @@ export default function SharpenTheSawPage() {
     }
   }
 
-  const togglePriority = (dimId: string, actId: string) => {
-    setDimensions(prev =>
-      prev.map(d =>
-        d.id === dimId
-          ? { ...d, activities: d.activities.map(a => a.id === actId ? { ...a, isWeeklyPriority: !a.isWeeklyPriority } : a) }
-          : d
-      )
-    )
-  }
-
   const handleDeleteActivity = (dimId: string, actId: string) => {
     const activity = dimensions.find(d => d.id === dimId)?.activities.find(a => a.id === actId)
     if (activity) setActivityToDelete({ dimId, activity })
@@ -141,7 +131,6 @@ export default function SharpenTheSawPage() {
                 onChangeEdit={setEditingActivity}
                 onSaveEdit={handleSaveActivityEdit}
                 onCancelEdit={() => setEditingActivity(null)}
-                onTogglePriority={actId => togglePriority(dim.id, actId)}
                 onDeleteActivity={actId => handleDeleteActivity(dim.id, actId)}
               />
             ))}
