@@ -1,6 +1,6 @@
 import { Pencil, X, Star } from "lucide-react"
 import type { Task, CalItem } from "../_types"
-import { HR_PX, CAL_START } from "../_constants/calendar"
+import { HR_PX, CAL_START, TASK_COLOR, DAILY_PRIORITY_COLOR } from "../_constants/calendar"
 import { getPositionStyle } from "../_utils/calendar"
 import { fmtTime } from "../_utils/time"
 
@@ -16,6 +16,7 @@ export function TaskCard({ task, allCalItems, onEdit, onDelete, onDragStart }: P
   const top      = (task.startMins - CAL_START * 60) * (HR_PX / 60)
   const height   = Math.max((task.endMins - task.startMins) * (HR_PX / 60), 22)
   const posStyle = getPositionStyle(task, allCalItems)
+  const color    = task.isDailyPriority ? DAILY_PRIORITY_COLOR : TASK_COLOR
 
   return (
     <div
@@ -26,8 +27,8 @@ export function TaskCard({ task, allCalItems, onEdit, onDelete, onDragStart }: P
       className="absolute rounded-[5px] px-2 py-0.5 cursor-grab active:cursor-grabbing overflow-hidden group"
       style={{
         top, height,
-        backgroundColor: `${task.color}25`,
-        borderLeft: `3px solid ${task.color}`,
+        backgroundColor: `${color}25`,
+        borderLeft: `3px solid ${color}`,
         ...posStyle,
       }}
     >
@@ -35,7 +36,7 @@ export function TaskCard({ task, allCalItems, onEdit, onDelete, onDragStart }: P
         {task.isDailyPriority && (
           <Star className="w-2.5 h-2.5 flex-shrink-0 fill-accent text-accent" />
         )}
-        <p className="text-xs font-bold truncate leading-tight" style={{ color: task.color }}>
+        <p className="text-xs font-bold truncate leading-tight" style={{ color }}>
           {task.title}
         </p>
       </div>
@@ -45,7 +46,7 @@ export function TaskCard({ task, allCalItems, onEdit, onDelete, onDragStart }: P
         </p>
       )}
       {height >= 56 && (
-        <p className="text-[10px] leading-tight truncate mt-0.5" style={{ color: `${task.color}99` }}>
+        <p className="text-[10px] leading-tight truncate mt-0.5" style={{ color: `${color}99` }}>
           {task.linkLabel}
         </p>
       )}
@@ -55,7 +56,7 @@ export function TaskCard({ task, allCalItems, onEdit, onDelete, onDragStart }: P
           onClick={e => { e.stopPropagation(); onEdit(task) }}
           className="p-1 rounded bg-card/90 hover:bg-card transition-colors"
         >
-          <Pencil className="w-2.5 h-2.5" style={{ color: task.color }} />
+          <Pencil className="w-2.5 h-2.5" style={{ color }} />
         </button>
         <button
           onClick={e => { e.stopPropagation(); onDelete(task.id) }}

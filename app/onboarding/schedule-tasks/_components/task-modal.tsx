@@ -10,9 +10,9 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog"
-import type { ModalState } from "../_types"
+import type { ApiActivity, ApiRole, ModalState } from "../_types"
 import { DAYS_SHORT, EMPTY_MODAL } from "../_constants/calendar"
-import { MOCK_ROLES, MOCK_DIMENSIONS } from "../_constants/mock-data"
+import { DIMENSION_META } from "../_constants/dimensions"
 import { strToMins } from "../_utils/time"
 import { getLinkMeta } from "../_utils/tasks"
 
@@ -20,13 +20,19 @@ interface Props {
   modal: ModalState
   setModal: React.Dispatch<React.SetStateAction<ModalState>>
   onSave: () => void
+  roles: ApiRole[]
+  activitiesByDimension: Record<string, ApiActivity[]>
 }
 
-export function TaskModal({ modal, setModal, onSave }: Props) {
+const selectedPill    = "bg-primary text-primary-foreground border-transparent"
+const unselectedPill  = "bg-muted border-border text-muted-foreground hover:text-foreground"
+
+export function TaskModal({ modal, setModal, onSave, roles, activitiesByDimension }: Props) {
   const endTimeInvalid  = strToMins(modal.endTime) <= strToMins(modal.startTime)
-  const canSave         = modal.title.trim().length > 0 && !endTimeInvalid && getLinkMeta(modal) !== null
-  const selectedRole    = MOCK_ROLES.find(r => r.id === modal.selectedRoleId)
-  const selectedDim     = MOCK_DIMENSIONS.find(d => d.id === modal.selectedDimensionId)
+  const canSave         = modal.title.trim().length > 0 && !endTimeInvalid && getLinkMeta(modal, roles, activitiesByDimension) !== null
+  const selectedRole    = roles.find(r => r.id === modal.selectedRoleId)
+  const selectedDim     = DIMENSION_META.find(d => d.id === modal.selectedDimensionId)
+  const selectedDimActs = selectedDim ? activitiesByDimension[selectedDim.id] ?? [] : []
 
   return (
     <Dialog open={modal.open} onOpenChange={open => { if (!open) setModal(EMPTY_MODAL) }}>
@@ -134,17 +140,14 @@ export function TaskModal({ modal, setModal, onSave }: Props) {
             {modal.linkType === "role-goal" && (
               <div className="space-y-3">
                 <div className="flex flex-wrap gap-2">
-                  {MOCK_ROLES.map(role => (
+                  {roles.map(role => (
                     <button
                       key={role.id}
                       type="button"
                       onClick={() => setModal(m => ({ ...m, selectedRoleId: role.id, selectedGoalId: "" }))}
                       className={`px-3 py-1.5 rounded-full text-xs font-bold border-2 transition-all ${
-                        modal.selectedRoleId === role.id
-                          ? "text-background border-transparent"
-                          : "bg-muted border-border text-muted-foreground hover:text-foreground"
+                        modal.selectedRoleId === role.id ? selectedPill : unselectedPill
                       }`}
-                      style={modal.selectedRoleId === role.id ? { backgroundColor: role.color, borderColor: role.color } : {}}
                     >
                       {role.name}
                     </button>
@@ -154,10 +157,7 @@ export function TaskModal({ modal, setModal, onSave }: Props) {
                 {selectedRole && (
                   <div className="space-y-1.5">
                     <p className="text-xs text-muted-foreground font-serif">
-                      Select a goal from{" "}
-                      <span className="font-bold" style={{ color: selectedRole.color }}>
-                        {selectedRole.name}
-                      </span>
+                      Select a goal from <span className="font-bold text-foreground">{selectedRole.name}</span>
                     </p>
                     <div className="space-y-1.5">
                       {selectedRole.goals.map(goal => (
@@ -167,10 +167,9 @@ export function TaskModal({ modal, setModal, onSave }: Props) {
                           onClick={() => setModal(m => ({ ...m, selectedGoalId: goal.id }))}
                           className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-serif border-2 transition-all ${
                             modal.selectedGoalId === goal.id
-                              ? "border-transparent text-background font-bold"
+                              ? "bg-primary border-transparent text-primary-foreground font-bold"
                               : "bg-muted border-border text-muted-foreground hover:text-foreground hover:border-primary/30"
                           }`}
-                          style={modal.selectedGoalId === goal.id ? { backgroundColor: selectedRole.color, borderColor: selectedRole.color } : {}}
                         >
                           {goal.text}
                         </button>
@@ -184,7 +183,7 @@ export function TaskModal({ modal, setModal, onSave }: Props) {
             {modal.linkType === "sharpen-the-saw" && (
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-2">
-                  {MOCK_DIMENSIONS.map(dim => {
+                  {DIMENSION_META.map(dim => {
                     const Icon     = dim.icon
                     const selected = modal.selectedDimensionId === dim.id
                     return (
@@ -193,11 +192,10 @@ export function TaskModal({ modal, setModal, onSave }: Props) {
                         type="button"
                         onClick={() => setModal(m => ({ ...m, selectedDimensionId: dim.id, selectedActivityId: "" }))}
                         className={`flex items-center gap-2 px-3 py-2 rounded-xl border-2 text-sm font-bold transition-all ${
-                          selected ? "text-background border-transparent" : "bg-muted border-border text-muted-foreground hover:text-foreground"
+                          selected ? selectedPill : unselectedPill
                         }`}
-                        style={selected ? { backgroundColor: dim.color, borderColor: dim.color } : {}}
                       >
-                        <Icon className="w-4 h-4 flex-shrink-0" style={{ color: selected ? "currentColor" : dim.color }} />
+                        <Icon className="w-4 h-4 flex-shrink-0" />
                         {dim.label}
                       </button>
                     )
@@ -207,23 +205,19 @@ export function TaskModal({ modal, setModal, onSave }: Props) {
                 {selectedDim && (
                   <div className="space-y-1.5">
                     <p className="text-xs text-muted-foreground font-serif">
-                      Select an activity from{" "}
-                      <span className="font-bold" style={{ color: selectedDim.color }}>
-                        {selectedDim.label}
-                      </span>
+                      Select an activity from <span className="font-bold text-foreground">{selectedDim.label}</span>
                     </p>
                     <div className="space-y-1.5">
-                      {selectedDim.activities.map(act => (
+                      {selectedDimActs.map(act => (
                         <button
                           key={act.id}
                           type="button"
                           onClick={() => setModal(m => ({ ...m, selectedActivityId: act.id }))}
                           className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-serif border-2 transition-all ${
                             modal.selectedActivityId === act.id
-                              ? "border-transparent text-background font-bold"
+                              ? "bg-primary border-transparent text-primary-foreground font-bold"
                               : "bg-muted border-border text-muted-foreground hover:text-foreground hover:border-primary/30"
                           }`}
-                          style={modal.selectedActivityId === act.id ? { backgroundColor: selectedDim.color, borderColor: selectedDim.color } : {}}
                         >
                           {act.text}
                         </button>

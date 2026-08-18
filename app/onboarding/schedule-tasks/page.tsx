@@ -1,22 +1,36 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 import { AppNav } from "@/components/app-nav"
 import { ClashWarningModal } from "@/components/clash-warning-modal"
 import { ClashBlockModal } from "@/components/clash-block-modal"
 import { OnboardingStepper } from "@/components/onboarding-stepper"
+import { Spinner } from "@/components/ui/spinner"
+import { Button } from "@/components/ui/button"
+import { api } from "@/lib/api"
 import { CalendarLegend } from "./_components/calendar-legend"
 import { WeekCalendar } from "./_components/week-calendar"
 import { TaskModal } from "./_components/task-modal"
 import { CAL_START, CAL_END, HR_PX, EMPTY_MODAL } from "./_constants/calendar"
-import { MOCK_FIXED, MOCK_ROLES, MOCK_DIMENSIONS } from "./_constants/mock-data"
 import { getOverlaps } from "./_utils/calendar"
 import { minsToStr, strToMins, snapMins } from "./_utils/time"
-import { getLinkMeta } from "./_utils/tasks"
-import type { Task, ModalState, PendingAction, CalItem, LinkType } from "./_types"
+import { getLinkMeta, fromApiTask, toScheduleTasksPayload } from "./_utils/tasks"
+import type { ApiActivity, ApiRole, CalItem, FixedAppt, ModalState, PendingAction, Task } from "./_types"
 
 export default function ScheduleTasksPage() {
-  const [tasks, setTasks]                = useState<Task[]>([])
+  const router = useRouter()
+
+  const [isLoading, setIsLoading]         = useState(true)
+  const [loadError, setLoadError]         = useState(false)
+  const [isSubmitting, setIsSubmitting]   = useState(false)
+
+  const [fixedAppts, setFixedAppts]                       = useState<FixedAppt[]>([])
+  const [roles, setRoles]                                 = useState<ApiRole[]>([])
+  const [activitiesByDimension, setActivitiesByDimension] = useState<Record<string, ApiActivity[]>>({})
+  const [tasks, setTasks]                                 = useState<Task[]>([])
+
   const [modal, setModal]                = useState<ModalState>(EMPTY_MODAL)
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null)
   const [clashWarning, setClashWarning]  = useState<{ open: boolean; conflictingTitle: string }>({ open: false, conflictingTitle: "" })
@@ -25,13 +39,64 @@ export default function ScheduleTasksPage() {
   const dragInfo = useRef<{ id: string; offsetMins: number } | null>(null)
   const colRefs  = useRef<(HTMLDivElement | null)[]>(Array(7).fill(null))
 
+  const loadData = useCallback(async () => {
+    setIsLoading(true)
+    setLoadError(false)
+    try {
+      const [apptsRes, rolesRes, activitiesRes, tasksRes] = await Promise.all([
+        api.fetchFixedAppointments(),
+        api.fetchRoles(),
+        api.fetchSharpenTheSaw(),
+        api.fetchScheduleTasks(),
+      ])
+
+      const mappedRoles: ApiRole[] = rolesRes.roles.map(r => ({
+        id: String(r.role_id),
+        name: r.name,
+        goals: r.goals.map(g => ({ id: String(g.goal_id), text: g.text })),
+      }))
+
+      const mappedActivitiesByDimension: Record<string, ApiActivity[]> = {}
+      for (const a of activitiesRes.activities) {
+        const activity: ApiActivity = { id: String(a.sharpen_the_saw_activity_id), text: a.activity_description, dimension: a.dimension }
+        const bucket = mappedActivitiesByDimension[a.dimension] ?? []
+        bucket.push(activity)
+        mappedActivitiesByDimension[a.dimension] = bucket
+      }
+
+      const mappedFixed: FixedAppt[] = apptsRes.appointments.map(a => ({
+        id: String(a.task_id),
+        title: a.title,
+        dayIndex: a.day_of_week,
+        startMins: strToMins(a.start_time),
+        endMins: strToMins(a.end_time),
+      }))
+
+      const mappedTasks: Task[] = tasksRes.tasks.map(t => fromApiTask(t, mappedRoles, mappedActivitiesByDimension))
+
+      setFixedAppts(mappedFixed)
+      setRoles(mappedRoles)
+      setActivitiesByDimension(mappedActivitiesByDimension)
+      setTasks(mappedTasks)
+    } catch {
+      toast.error("Couldn't load your onboarding data — please try again.")
+      setLoadError(true)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
+
   const allCalItems: CalItem[] = [
-    ...MOCK_FIXED,
+    ...fixedAppts,
     ...tasks.map(t => ({ id: t.id, dayIndex: t.dayIndex, startMins: t.startMins, endMins: t.endMins })),
   ]
 
   function findTitle(id: string) {
-    return tasks.find(t => t.id === id)?.title ?? MOCK_FIXED.find(f => f.id === id)?.title ?? "Unknown"
+    return tasks.find(t => t.id === id)?.title ?? fixedAppts.find(f => f.id === id)?.title ?? "Unknown"
   }
 
   // ── open add modal ──
@@ -43,21 +108,19 @@ export default function ScheduleTasksPage() {
   }
 
   const openEdit = (task: Task) => {
-    let selectedRoleId      = MOCK_ROLES[0]?.id ?? ""
+    let selectedRoleId      = ""
     let selectedGoalId      = ""
-    let selectedDimensionId = MOCK_DIMENSIONS[0]?.id ?? ""
+    let selectedDimensionId = ""
     let selectedActivityId  = ""
 
     if (task.linkType === "role-goal") {
-      for (const role of MOCK_ROLES) {
-        const goal = role.goals.find(g => task.linkLabel.includes(g.text))
-        if (goal) { selectedRoleId = role.id; selectedGoalId = goal.id; break }
-      }
+      const role = roles.find(r => r.goals.some(g => g.id === task.linkId))
+      if (role) { selectedRoleId = role.id; selectedGoalId = task.linkId }
     } else {
-      for (const dim of MOCK_DIMENSIONS) {
-        const act = dim.activities.find(a => task.linkLabel.includes(a.text))
-        if (act) { selectedDimensionId = dim.id; selectedActivityId = act.id; break }
-      }
+      const dimId = Object.keys(activitiesByDimension).find(dim =>
+        activitiesByDimension[dim].some(a => a.id === task.linkId)
+      )
+      if (dimId) { selectedDimensionId = dimId; selectedActivityId = task.linkId }
     }
 
     setModal({
@@ -80,40 +143,6 @@ export default function ScheduleTasksPage() {
     openAdd(dayIndex, e.clientY - e.currentTarget.getBoundingClientRect().top)
   }
 
-  // ── save ──
-  const handleSave = () => {
-    const s    = strToMins(modal.startTime)
-    const e    = strToMins(modal.endTime)
-    const meta = getLinkMeta(modal)
-    if (!modal.title.trim() || e <= s || !meta) return
-
-    if (modal.mode === "add") {
-      setTasks(prev => [...prev, {
-        id: Date.now().toString(),
-        title: modal.title.trim(),
-        dayIndex: modal.dayIndex,
-        startMins: s, endMins: e,
-        color: meta.color,
-        linkType: modal.linkType,
-        linkLabel: meta.label,
-        isDailyPriority: modal.isDailyPriority,
-      }])
-      setModal(EMPTY_MODAL)
-      return
-    }
-
-    const overlapping = getOverlaps(allCalItems, modal.dayIndex, s, e, modal.editId!)
-    if (overlapping.length === 0) {
-      applyTaskSave(modal.editId!, modal.title.trim(), modal.dayIndex, s, e, meta.color, modal.linkType, meta.label, modal.isDailyPriority)
-      setModal(EMPTY_MODAL)
-    } else if (overlapping.length === 1) {
-      setPendingAction({ type: "save", editId: modal.editId!, title: modal.title.trim(), dayIndex: modal.dayIndex, startMins: s, endMins: e, color: meta.color, linkType: modal.linkType, linkLabel: meta.label, isDailyPriority: modal.isDailyPriority })
-      setClashWarning({ open: true, conflictingTitle: findTitle(overlapping[0].id) })
-    } else {
-      setClashBlock(true)
-    }
-  }
-
   // ── apply confirmed actions ──
   const applyDrop = (draggedId: string, dayIndex: number, newStart: number) => {
     setTasks(prev => prev.map(t => {
@@ -123,10 +152,39 @@ export default function ScheduleTasksPage() {
     }))
   }
 
-  const applyTaskSave = (editId: string, title: string, dayIndex: number, startMins: number, endMins: number, color: string, linkType: LinkType, linkLabel: string, isDailyPriority: boolean) => {
-    setTasks(prev => prev.map(t =>
-      t.id === editId ? { ...t, title, dayIndex, startMins, endMins, color, linkType, linkLabel, isDailyPriority } : t
-    ))
+  const applyTaskSave = (task: Task) => {
+    setTasks(prev => prev.some(t => t.id === task.id) ? prev.map(t => t.id === task.id ? task : t) : [...prev, task])
+  }
+
+  // ── save (add and edit share the same clash-check branching) ──
+  const handleSave = () => {
+    const s    = strToMins(modal.startTime)
+    const e    = strToMins(modal.endTime)
+    const meta = getLinkMeta(modal, roles, activitiesByDimension)
+    if (!modal.title.trim() || e <= s || !meta) return
+
+    const id: string = modal.mode === "edit" ? modal.editId! : crypto.randomUUID()
+    const task: Task = {
+      id,
+      title: modal.title.trim(),
+      dayIndex: modal.dayIndex,
+      startMins: s, endMins: e,
+      linkType: modal.linkType,
+      linkId: meta.id,
+      linkLabel: meta.label,
+      isDailyPriority: modal.isDailyPriority,
+    }
+
+    const overlapping = getOverlaps(allCalItems, modal.dayIndex, s, e, id)
+    if (overlapping.length === 0) {
+      applyTaskSave(task)
+      setModal(EMPTY_MODAL)
+    } else if (overlapping.length === 1) {
+      setPendingAction({ type: "save", task })
+      setClashWarning({ open: true, conflictingTitle: findTitle(overlapping[0].id) })
+    } else {
+      setClashBlock(true)
+    }
   }
 
   // ── drag ──
@@ -177,7 +235,7 @@ export default function ScheduleTasksPage() {
     if (pendingAction?.type === "drop") {
       applyDrop(pendingAction.draggedId, pendingAction.dayIndex, pendingAction.newStart)
     } else if (pendingAction?.type === "save") {
-      applyTaskSave(pendingAction.editId, pendingAction.title, pendingAction.dayIndex, pendingAction.startMins, pendingAction.endMins, pendingAction.color, pendingAction.linkType, pendingAction.linkLabel, pendingAction.isDailyPriority)
+      applyTaskSave(pendingAction.task)
       setModal(EMPTY_MODAL)
     }
     setPendingAction(null)
@@ -189,6 +247,18 @@ export default function ScheduleTasksPage() {
     setClashWarning({ open: false, conflictingTitle: "" })
   }
 
+  // ── submit ──
+  const handleNext = async () => {
+    setIsSubmitting(true)
+    try {
+      await api.submitScheduleTasks(toScheduleTasksPayload(tasks))
+      router.push("/onboarding/complete")
+    } catch {
+      toast.error("Couldn't save your tasks — please try again.")
+      setIsSubmitting(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
@@ -196,7 +266,7 @@ export default function ScheduleTasksPage() {
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-secondary/20 rounded-full blur-3xl" />
       </div>
 
-      <AppNav action="next" nextHref="/onboarding/complete" nextEnabled={tasks.length > 0} />
+      <AppNav action="next" onNext={handleNext} nextEnabled={tasks.length > 0 && !isSubmitting && !isLoading} />
 
       <main className="relative z-10 px-6 py-8">
         <div className="max-w-7xl mx-auto">
@@ -211,28 +281,44 @@ export default function ScheduleTasksPage() {
             </p>
           </div>
 
-          <CalendarLegend />
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-24">
+              <Spinner className="size-8 text-primary" />
+              <p className="text-sm text-muted-foreground font-serif">Loading your roles, activities, and appointments…</p>
+            </div>
+          ) : loadError ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-24">
+              <p className="text-sm text-muted-foreground font-serif">Something went wrong loading your data.</p>
+              <Button onClick={loadData} variant="outline" className="border-border text-foreground hover:bg-secondary/20">
+                Try Again
+              </Button>
+            </div>
+          ) : (
+            <>
+              <CalendarLegend />
 
-          <WeekCalendar
-            fixedAppts={MOCK_FIXED}
-            tasks={tasks}
-            allCalItems={allCalItems}
-            colRefs={colRefs}
-            onSlotClick={handleColClick}
-            onDragOver={onDragOver}
-            onDrop={onDrop}
-            onEditTask={openEdit}
-            onDeleteTask={id => setTasks(prev => prev.filter(t => t.id !== id))}
-            onDragStart={onDragStart}
-          />
+              <WeekCalendar
+                fixedAppts={fixedAppts}
+                tasks={tasks}
+                allCalItems={allCalItems}
+                colRefs={colRefs}
+                onSlotClick={handleColClick}
+                onDragOver={onDragOver}
+                onDrop={onDrop}
+                onEditTask={openEdit}
+                onDeleteTask={id => setTasks(prev => prev.filter(t => t.id !== id))}
+                onDragStart={onDragStart}
+              />
 
-          <p className="text-sm text-muted-foreground font-serif mt-3">
-            Drag tasks to move them. Hover a task to edit or delete. Fixed appointments cannot be moved here.
-          </p>
+              <p className="text-sm text-muted-foreground font-serif mt-3">
+                Drag tasks to move them. Hover a task to edit or delete. Fixed appointments cannot be moved here.
+              </p>
+            </>
+          )}
         </div>
       </main>
 
-      <TaskModal modal={modal} setModal={setModal} onSave={handleSave} />
+      <TaskModal modal={modal} setModal={setModal} onSave={handleSave} roles={roles} activitiesByDimension={activitiesByDimension} />
 
       <ClashWarningModal
         open={clashWarning.open}

@@ -43,11 +43,19 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+  fetchRoles: () =>
+    request<{
+      roles: { role_id: number; name: string; icon_id: string; goals: { goal_id: number; text: string; is_weekly_priority: boolean }[] }[]
+    }>("/onboarding/roles"),
   submitSharpenTheSaw: (data: { activities: { dimension: string; activity_description: string }[] }) =>
     request<{ activities: unknown[] }>("/onboarding/sharpen-the-saw", {
       method: "POST",
       body: JSON.stringify(data),
     }),
+  fetchSharpenTheSaw: () =>
+    request<{ activities: { sharpen_the_saw_activity_id: number; dimension: string; activity_description: string }[] }>(
+      "/onboarding/sharpen-the-saw"
+    ),
   submitFixedAppointments: (data: {
     appointments: { title: string; description: string; day_of_week: number; start_time: string; end_time: string }[]
   }) =>
@@ -55,5 +63,37 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+  fetchFixedAppointments: () =>
+    request<{
+      appointments: { task_id: number; title: string; description: string; day_of_week: number; start_time: string; end_time: string }[]
+    }>("/onboarding/fixed-appointments"),
+  submitScheduleTasks: (data: {
+    tasks: {
+      title: string
+      day_of_week: number
+      start_time: string
+      end_time: string
+      goal_id: string | null
+      sharpen_the_saw_activity_id: string | null
+      is_daily_priority: boolean
+    }[]
+  }) =>
+    request<{ tasks: unknown[] }>("/onboarding/schedule-tasks", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  fetchScheduleTasks: () =>
+    request<{
+      tasks: {
+        task_id: number
+        title: string
+        day_of_week: number
+        start_time: string
+        end_time: string
+        goal_id: number | null
+        sharpen_the_saw_activity_id: number | null
+        is_daily_priority: boolean
+      }[]
+    }>("/onboarding/schedule-tasks"),
   googleLoginHref: () => `${API_URL}/login`,
 }

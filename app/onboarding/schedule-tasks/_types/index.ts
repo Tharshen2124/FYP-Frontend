@@ -8,8 +8,8 @@ export interface Task {
   dayIndex: number
   startMins: number
   endMins: number
-  color: string
   linkType: LinkType
+  linkId: string
   linkLabel: string
   isDailyPriority: boolean
 }
@@ -32,18 +32,7 @@ export interface ModalState {
 
 export type PendingAction =
   | { type: "drop"; draggedId: string; dayIndex: number; newStart: number }
-  | {
-      type: "save"
-      editId: string
-      title: string
-      dayIndex: number
-      startMins: number
-      endMins: number
-      color: string
-      linkType: LinkType
-      linkLabel: string
-      isDailyPriority: boolean
-    }
+  | { type: "save"; task: Task }
 
 export type CalItem = {
   id: string
@@ -60,27 +49,25 @@ export interface FixedAppt {
   endMins: number
 }
 
-export interface MockGoal {
+export interface ApiGoal {
   id: string
   text: string
 }
 
-export interface MockRole {
+export interface ApiRole {
   id: string
   name: string
-  color: string
-  goals: MockGoal[]
+  goals: ApiGoal[]
 }
 
-export interface MockActivity {
+export interface ApiActivity {
   id: string
   text: string
+  dimension: string
 }
 
-export interface MockDimension {
+export interface DimensionMeta {
   id: string
   label: string
-  color: string
   icon: ElementType
-  activities: MockActivity[]
 }
