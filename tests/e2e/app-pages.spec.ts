@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test"
-import { suppressEndOfDayModal, authenticateAsNewUser } from "./helpers"
+import { suppressEndOfDayModal, authenticateAsNewUser, completeOnboarding } from "./helpers"
 
 test.beforeEach(async ({ page }) => {
   await suppressEndOfDayModal(page)
@@ -153,13 +153,40 @@ test.describe("history and analytics", () => {
 })
 
 test.describe("dashboard", () => {
-  test("shows the weekly timetable and its legend", async ({ page }) => {
+  test("asks an unplanned week to be planned, instead of an empty calendar", async ({ page }) => {
     await authenticateAsNewUser(page)
     await page.goto("/dashboard")
 
     await expect(page.getByRole("heading", { name: /Schedule for this Week/ })).toBeVisible()
-    await expect(page.getByText("Fixed appointment", { exact: true })).toBeVisible()
-    await expect(page.getByText("Daily priority")).toBeVisible()
-    await expect(page.getByText("Team Standup").first()).toBeVisible()
+    await expect(page.getByRole("heading", { name: /This week isn't planned yet/ })).toBeVisible()
+    await expect(page.getByRole("link", { name: /Create Weekly Plan/ })).toBeVisible()
+
+    // Nothing to edit or read a legend for while there is no plan.
+    await expect(page.getByRole("link", { name: /Edit Weekly Plan/ })).toHaveCount(0)
+    await expect(page.getByText("Daily Priority", { exact: true })).toHaveCount(0)
+  })
+
+  test("the create button leads into the weekly plan flow", async ({ page }) => {
+    await authenticateAsNewUser(page)
+    await page.goto("/dashboard")
+
+    await page.getByRole("link", { name: /Create Weekly Plan/ }).click()
+    await expect(page).toHaveURL(/\/weekly-plan\/goals$/)
+  })
+
+  test("shows the week the user actually planned during onboarding", async ({ page }) => {
+    await authenticateAsNewUser(page)
+    await completeOnboarding(page)
+
+    await expect(page.getByRole("heading", { name: /Schedule for this Week/ })).toBeVisible()
+    await expect(page.getByText("Fixed Appointments", { exact: true })).toBeVisible()
+    await expect(page.getByText("Your Tasks", { exact: true })).toBeVisible()
+    await expect(page.getByText("Daily Priority", { exact: true })).toBeVisible()
+
+    // Both of the items created in onboarding, read back from the backend.
+    await expect(page.getByText("Team standup").first()).toBeVisible()
+    await expect(page.getByText("Deep work").first()).toBeVisible()
+
+    await expect(page.getByRole("heading", { name: /This week isn't planned yet/ })).toHaveCount(0)
   })
 })

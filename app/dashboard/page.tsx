@@ -1,17 +1,46 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
-import { CalendarDays, Lock, Star } from "lucide-react"
+import { CalendarDays, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sidebar } from "@/components/sidebar"
 import { useRequireAuth } from "@/hooks/use-require-auth"
+import { api } from "@/lib/api"
 import { WeeklyTimetable } from "./_components/weekly-timetable"
 import { EndOfDayModal } from "./_components/end-of-day-modal"
+import { NoPlanCard } from "./_components/no-plan-card"
+import { TimetableLegend } from "./_components/timetable-legend"
+import { toCalEvents } from "./_utils/events"
+import { fmtShortDate } from "./_utils/time"
+import type { ApiWeeklyPlan } from "./_types"
+
+type LoadState = "loading" | "ready" | "error"
 
 export default function DashboardPage() {
   const { isReady } = useRequireAuth()
   const [showEodModal, setShowEodModal] = useState(false)
+  const [plan, setPlan] = useState<ApiWeeklyPlan | null>(null)
+  const [loadState, setLoadState] = useState<LoadState>("loading")
+  const [reloadKey, setReloadKey] = useState(0)
+
+  useEffect(() => {
+    if (!isReady) return
+    let cancelled = false
+
+    api
+      .fetchWeeklyPlan()
+      .then(({ weekly_plan }) => {
+        if (cancelled) return
+        setPlan(weekly_plan)
+        setLoadState("ready")
+      })
+      .catch(() => {
+        if (!cancelled) setLoadState("error")
+      })
+
+    return () => { cancelled = true }
+  }, [isReady, reloadKey])
 
   useEffect(() => {
     const today = new Date().toDateString()
@@ -29,12 +58,18 @@ export default function DashboardPage() {
     }
   }, [])
 
+  const events = useMemo(() => (plan ? toCalEvents(plan.tasks) : []), [plan])
+
   const handleEodClose = () => {
     localStorage.setItem("eod_shown_date", new Date().toDateString())
     setShowEodModal(false)
   }
 
   if (!isReady) return null
+
+  const dateRange = plan
+    ? `${fmtShortDate(new Date(`${plan.start_date}T00:00:00`))} – ${fmtShortDate(new Date(`${plan.end_date}T00:00:00`))}`
+    : null
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -54,37 +89,52 @@ export default function DashboardPage() {
               Schedule for <span className="text-primary">this Week</span>
             </h1>
             <p className="text-muted-foreground font-serif">
-              Your full week at a glance — fixed appointments and scheduled tasks.
+              {dateRange
+                ? `${dateRange} — fixed appointments and scheduled tasks.`
+                : "Your full week at a glance — fixed appointments and scheduled tasks."}
             </p>
           </div>
-          <Button className="bg-primary hover:bg-primary/90 text-primary-foreground shrink-0" asChild>
-            <Link href="/weekly-plan/schedule">
-              <CalendarDays className="w-4 h-4 mr-2" />
-              Edit Weekly Plan
-            </Link>
-          </Button>
+          {/* Nothing to edit until a plan exists for this week. */}
+          {plan && (
+            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground shrink-0" asChild>
+              <Link href="/weekly-plan/schedule">
+                <CalendarDays className="w-4 h-4 mr-2" />
+                Edit Weekly Plan
+              </Link>
+            </Button>
+          )}
         </div>
 
-        {/* Legend */}
-        <div className="flex items-center gap-6 mb-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Lock className="w-3.5 h-3.5 text-[#3b82f6]" />
-            <span>Fixed appointment</span>
+        {loadState === "loading" && (
+          <div className="flex items-center justify-center gap-3 py-24 text-muted-foreground">
+            <Loader2 className="w-5 h-5 animate-spin" />
+            <span className="font-serif">Loading your week…</span>
           </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Star className="w-3.5 h-3.5 text-primary fill-primary" />
-            <span>Daily priority</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <div className="w-3 h-3 rounded-full bg-primary" />
-            <span>Now</span>
-          </div>
-        </div>
+        )}
 
-        <WeeklyTimetable />
+        {loadState === "error" && (
+          <div className="bg-card border-2 border-border rounded-2xl px-6 py-20 text-center">
+            <p className="text-foreground font-bold mb-2">We couldn&apos;t load your week</p>
+            <p className="text-muted-foreground font-serif mb-5">
+              Check your connection and try again.
+            </p>
+            <Button variant="outline" onClick={() => { setLoadState("loading"); setReloadKey(k => k + 1) }}>
+              Try Again
+            </Button>
+          </div>
+        )}
+
+        {loadState === "ready" && plan && (
+          <>
+            <TimetableLegend />
+            <WeeklyTimetable events={events} />
+          </>
+        )}
+
+        {loadState === "ready" && !plan && <NoPlanCard />}
       </main>
 
-      <EndOfDayModal open={showEodModal} onClose={handleEodClose} />
+      <EndOfDayModal open={showEodModal} onClose={handleEodClose} events={events} />
     </div>
   )
 }

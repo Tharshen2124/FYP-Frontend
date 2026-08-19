@@ -128,5 +128,32 @@ export const api = {
         is_daily_priority: boolean
       }[]
     }>(weekScoped("/onboarding/schedule-tasks")),
+  /**
+   * Read-only view of one week for the dashboard. `weekly_plan` is `null` when the user has not
+   * planned this week — that is a normal answer, not an error, and looking does not create a plan.
+   */
+  fetchWeeklyPlan: () =>
+    request<{
+      weekly_plan: {
+        weekly_plan_id: number
+        start_date: string
+        end_date: string
+        tasks: {
+          task_id: number
+          title: string
+          description: string | null
+          day_of_week: number
+          start_time: string
+          end_time: string
+          is_fixed_appointment: boolean
+          is_daily_priority: boolean
+          is_completed: boolean
+          link_kind: "goal" | "activity" | null
+          link_text: string | null
+          role_name: string | null
+          dimension: string | null
+        }[]
+      } | null
+    }>(weekScoped("/weekly-plans")),
   googleLoginHref: () => `${API_URL}/login`,
 }

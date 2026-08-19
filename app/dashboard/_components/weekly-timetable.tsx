@@ -1,27 +1,17 @@
 "use client"
 
-import { useMemo } from "react"
 import { DAYS_SHORT, CAL_START, CAL_END, TOTAL_HRS, HR_PX } from "../_constants/calendar"
-import { MOCK_EVENTS } from "../_constants/mock-data"
-import { fmtShortDate } from "../_utils/time"
-import { getWeekStart } from "@/lib/date"
+import { useCurrentWeek } from "@/hooks/use-current-week"
 import { EventCard } from "./event-card"
-import type { CalItem } from "../_types"
+import type { CalEvent, CalItem } from "../_types"
 
-export function WeeklyTimetable() {
-  const today     = new Date()
-  const weekStart = getWeekStart(today)
-  const todayIdx  = ((today.getDay() + 6) % 7) // 0=Mon … 6=Sun
+interface Props {
+  events: CalEvent[]
+}
 
-  const dayDates = useMemo(() =>
-    Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(weekStart)
-      d.setDate(d.getDate() + i)
-      return d
-    }),
-  [weekStart])
-
-  const calItems: CalItem[] = MOCK_EVENTS.map(e => ({
+export function WeeklyTimetable({ events }: Props) {
+  const week = useCurrentWeek()
+  const calItems: CalItem[] = events.map(e => ({
     id: e.id,
     dayIndex: e.dayIndex,
     startMins: e.startMins,
@@ -36,15 +26,17 @@ export function WeeklyTimetable() {
       <div className="grid border-b border-border" style={{ gridTemplateColumns: "52px repeat(7, 1fr)" }}>
         <div />
         {DAYS_SHORT.map((d, i) => {
-          const isToday = i === todayIdx
+          const isToday = week?.todayIdx === i
+          const isPast  = week != null && i < week.todayIdx
           return (
-            <div key={d} className="py-3 px-1 text-center border-l border-border">
+            <div key={d} className={["py-3 px-1 text-center border-l border-border", isPast ? "opacity-40" : ""].join(" ")}>
               <p className="text-xs font-medium text-muted-foreground">{d}</p>
+              {/* Empty until the week resolves on the client, so the row does not shift on mount. */}
               <p className={[
                 "text-sm font-bold mt-0.5 w-7 h-7 mx-auto flex items-center justify-center rounded-full",
                 isToday ? "bg-primary text-primary-foreground" : "text-foreground",
               ].join(" ")}>
-                {dayDates[i].getDate()}
+                {week ? week.dayDates[i].getDate() : ""}
               </p>
             </div>
           )
@@ -73,11 +65,16 @@ export function WeeklyTimetable() {
 
           {/* Day columns */}
           {Array.from({ length: 7 }, (_, di) => {
-            const isToday = di === todayIdx
+            const isToday = week?.todayIdx === di
+            const isPast  = week != null && di < week.todayIdx
             return (
               <div
                 key={di}
-                className={["relative border-l border-border select-none", isToday ? "bg-primary/5" : ""].join(" ")}
+                className={[
+                  "relative border-l border-border select-none",
+                  isToday ? "bg-primary/5" : "",
+                  isPast ? "bg-foreground/[0.06]" : "",
+                ].join(" ")}
                 style={{ height: calH }}
               >
                 {/* Hour + half-hour lines */}
@@ -89,13 +86,14 @@ export function WeeklyTimetable() {
                 ))}
 
                 {/* Events */}
-                {MOCK_EVENTS.filter(e => e.dayIndex === di).map(event => (
+                {events.filter(e => e.dayIndex === di).map(event => (
                   <EventCard key={event.id} event={event} allItems={calItems} />
                 ))}
 
-                {/* "Now" indicator on today */}
+                {/* "Now" indicator — only ever runs on the client, since isToday needs `week`. */}
                 {isToday && (() => {
-                  const nowMins = today.getHours() * 60 + today.getMinutes()
+                  const now = new Date()
+                  const nowMins = now.getHours() * 60 + now.getMinutes()
                   if (nowMins < CAL_START * 60 || nowMins > CAL_END * 60) return null
                   const top = (nowMins - CAL_START * 60) / 60 * HR_PX
                   return (

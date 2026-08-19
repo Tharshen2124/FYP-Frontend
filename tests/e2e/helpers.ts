@@ -55,3 +55,57 @@ export async function fillEveryDimension(page: Page) {
     await expect(page.getByText(`${label} activity`)).toBeVisible()
   }
 }
+
+/** Clicks a calendar column at roughly the given hour offset to open its add modal. */
+export async function clickSlot(page: Page, dayIndex: number, hoursFromStart: number) {
+  const column = page.locator(`[data-day-column="${dayIndex}"]`)
+  const box = (await column.boundingBox())!
+  await page.mouse.click(box.x + box.width / 2, box.y + hoursFromStart * 64 + 10)
+}
+
+/**
+ * Runs step 1 only, which is enough to bring a weekly plan into existence: submitting the roles
+ * page is the first request that carries a `week_start`, and the backend creates the plan on
+ * first use. The plan has goals but no scheduled items.
+ */
+export async function seedWeeklyPlan(page: Page) {
+  await page.goto("/onboarding/roles")
+  // The page is seeded with two roles and three goals, so Next is live immediately.
+  await page.getByRole("button", { name: "Next", exact: true }).click()
+  await page.waitForURL(/\/onboarding\/sharpen-the-saw$/)
+}
+
+/**
+ * Walks the whole onboarding flow against the live backend and lands on /dashboard, leaving the
+ * user with a real weekly plan: three goals, four renewal activities, one fixed appointment
+ * ("Team standup", Monday) and one goal-linked task ("Deep work", Wednesday).
+ *
+ * Used by tests that need a dashboard with something on it.
+ */
+export async function completeOnboarding(page: Page) {
+  await seedWeeklyPlan(page)
+
+  await fillEveryDimension(page)
+  await page.getByRole("button", { name: "Next", exact: true }).click()
+  await page.waitForURL(/\/onboarding\/fixed-appointments$/)
+
+  await clickSlot(page, 0, 3)
+  await page.getByRole("textbox", { name: "Appointment" }).fill("Team standup")
+  await page.getByRole("button", { name: "Add Appointment" }).click()
+  await expect(page.getByText("Team standup")).toBeVisible()
+  await page.getByRole("button", { name: "Next", exact: true }).click()
+  await page.waitForURL(/\/onboarding\/schedule-tasks$/)
+
+  await clickSlot(page, 2, 5)
+  const taskModal = page.getByRole("dialog")
+  await taskModal.getByPlaceholder(/Work on project report/).fill("Deep work")
+  await taskModal.getByRole("button", { name: "Professional", exact: true }).click()
+  await taskModal.getByRole("button", { name: "Complete quarterly project milestone" }).click()
+  await taskModal.getByRole("button", { name: "Add Task", exact: true }).click()
+  await expect(page.getByText("Deep work")).toBeVisible()
+  await page.getByRole("button", { name: "Next", exact: true }).click()
+  await page.waitForURL(/\/onboarding\/complete$/)
+
+  await page.getByRole("button", { name: "Next", exact: true }).click()
+  await page.waitForURL(/\/dashboard$/)
+}

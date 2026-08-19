@@ -8,3 +8,9 @@ export function fmtTime(mins: number): string {
 export function fmtShortDate(date: Date): string {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
 }
+
+/** Parses an "HH:MM" clock time into minutes past midnight. */
+export function strToMins(hhmm: string): number {
+  const [h, m] = hhmm.split(":").map(Number)
+  return h * 60 + m
+}

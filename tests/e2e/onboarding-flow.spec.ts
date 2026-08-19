@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test"
-import { suppressEndOfDayModal, authenticateAsNewUser, fillEveryDimension } from "./helpers"
+import { suppressEndOfDayModal, authenticateAsNewUser, fillEveryDimension, clickSlot } from "./helpers"
 
 test.beforeEach(async ({ page }) => {
   await suppressEndOfDayModal(page)
@@ -20,13 +20,6 @@ const nextButton = (page: Page) => page.getByRole("button", { name: "Next", exac
 /** The card row that renders a given goal/activity, used to scope hover actions. */
 const rowFor = (page: Page, text: string) =>
   page.locator("div.group").filter({ hasText: text }).first()
-
-/** Clicks a calendar column at roughly the given hour offset to open the add modal. */
-async function clickSlot(page: Page, dayIndex: number, hoursFromStart: number) {
-  const column = page.locator(`[data-day-column="${dayIndex}"]`)
-  const box = (await column.boundingBox())!
-  await page.mouse.click(box.x + box.width / 2, box.y + hoursFromStart * 64 + 10)
-}
 
 test.describe("onboarding", () => {
   test("step 1 gates Next on having a role and a goal", async ({ page }) => {

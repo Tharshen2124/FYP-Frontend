@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test"
-import { suppressEndOfDayModal, authenticateAsNewUser } from "./helpers"
+import { suppressEndOfDayModal, authenticateAsNewUser, seedWeeklyPlan } from "./helpers"
 
 test.beforeEach(async ({ page }) => {
   await suppressEndOfDayModal(page)
@@ -60,6 +60,8 @@ test.describe("app navigation", () => {
 
   test("dashboard links out to the weekly plan editor", async ({ page }) => {
     await authenticateAsNewUser(page)
+    // The edit link only renders once a plan exists for the current week.
+    await seedWeeklyPlan(page)
     await page.goto("/dashboard")
     await page.getByRole("link", { name: /Edit Weekly Plan/ }).click()
     await expect(page).toHaveURL(/\/weekly-plan\/schedule$/)

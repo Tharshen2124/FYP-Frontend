@@ -11,15 +11,14 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog"
-import { MOCK_EVENTS } from "../_constants/mock-data"
+import { useCurrentWeek } from "@/hooks/use-current-week"
+import type { CalEvent } from "../_types"
 
 interface Props {
   open: boolean
   onClose: () => void
-}
-
-function getTodayIndex() {
-  return (new Date().getDay() + 6) % 7 // 0=Mon … 6=Sun
+  /** This week's scheduled items; the modal shows only today's. */
+  events: CalEvent[]
 }
 
 function formatDate(date: Date) {
@@ -31,9 +30,9 @@ function formatDate(date: Date) {
   })
 }
 
-export function EndOfDayModal({ open, onClose }: Props) {
-  const todayIndex = getTodayIndex()
-  const todayEvents = MOCK_EVENTS.filter(e => e.dayIndex === todayIndex)
+export function EndOfDayModal({ open, onClose, events }: Props) {
+  const week = useCurrentWeek()
+  const todayEvents = week ? events.filter(e => e.dayIndex === week.todayIdx) : []
 
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set())
   const [reflection, setReflection] = useState("")
