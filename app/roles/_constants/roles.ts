@@ -20,17 +20,10 @@ export const ROLE_ICONS = [
   { id: "landmark", icon: Landmark, label: "Community" },
 ]
 
-export const ROLE_COLORS = [
-  { id: "primary", value: "#B13BFF", label: "Magenta" },
-  { id: "accent", value: "#FFCC00", label: "Yellow" },
-  { id: "secondary", value: "#471396", label: "Purple" },
-  { id: "teal", value: "#14b8a6", label: "Teal" },
-  { id: "rose", value: "#f43f5e", label: "Rose" },
-  { id: "orange", value: "#f97316", label: "Orange" },
-]
+// Shared with /weekly-plan/goals, so the palette itself lives in lib/.
+export { ROLE_COLORS, DEFAULT_COLOR_ID } from "@/lib/role-colors"
 
 export const DEFAULT_ICON_ID = "users"
-export const DEFAULT_COLOR_ID = "primary"
 
 /** Past this many goals the page warns before accepting another one. */
 export const MAX_RECOMMENDED_GOALS = 10

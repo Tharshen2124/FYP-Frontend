@@ -6,8 +6,22 @@ import {
   countGoals,
 } from "@/app/roles/_utils/roles"
 import { ROLE_COLORS, ROLE_ICONS, MAX_RECOMMENDED_GOALS } from "@/app/roles/_constants/roles"
-import { INITIAL_ROLES } from "@/app/roles/_constants/mock-data"
 import type { Role } from "@/app/roles/_types"
+
+// The page loads its roles from the API, so these are fixtures rather than page seed data.
+const ROLES: Role[] = [
+  {
+    id: "1",
+    name: "Professional",
+    iconId: "briefcase",
+    colorId: "primary",
+    goals: [
+      { id: "g1", text: "Complete quarterly project milestone" },
+      { id: "g2", text: "Mentor junior team member" },
+    ],
+  },
+  { id: "2", name: "Parent", iconId: "users", colorId: "accent", goals: [{ id: "g3", text: "Plan weekend family activity" }] },
+]
 
 describe("role icon lookup", () => {
   it("exposes every catalogue icon by id", () => {
@@ -33,7 +47,7 @@ describe("getColor", () => {
 
 describe("countGoals", () => {
   it("sums goals across all roles", () => {
-    expect(countGoals(INITIAL_ROLES)).toBe(3)
+    expect(countGoals(ROLES)).toBe(3)
   })
 
   it("is 0 for no roles and for roles without goals", () => {
@@ -43,6 +57,6 @@ describe("countGoals", () => {
   })
 
   it("starts below the warning threshold", () => {
-    expect(countGoals(INITIAL_ROLES)).toBeLessThan(MAX_RECOMMENDED_GOALS)
+    expect(countGoals(ROLES)).toBeLessThan(MAX_RECOMMENDED_GOALS)
   })
 })

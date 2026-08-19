@@ -38,6 +38,45 @@ function weekScoped(path: string) {
   return `${path}?week_start=${localWeekStartParam()}`
 }
 
+/**
+ * Roles are standing; goals belong to exactly one week. A role carried into a new week comes back
+ * with an empty `goals` array, so these shapes are always read against a particular `week_start`.
+ */
+export interface ApiRoleGoal {
+  goal_id: number
+  text: string
+  is_weekly_priority: boolean
+  is_completed: boolean
+}
+
+export interface ApiRole {
+  role_id: number
+  name: string
+  icon_id: string | null
+  color_id: string | null
+  goals: ApiRoleGoal[]
+}
+
+export interface ApiArchivedRole {
+  role_id: number
+  name: string
+  icon_id: string | null
+  color_id: string | null
+  deleted_at: string
+}
+
+/** What archiving would cost, so the confirmation dialog can state real numbers. */
+export interface ApiArchivePreview {
+  goals: number
+  incomplete_tasks: number
+  completed_tasks: number
+}
+
+export interface ApiCarryForwardCandidate extends ApiRoleGoal {
+  role_id: number
+  role_name: string
+}
+
 export const api = {
   signup: (data: { email: string; username: string; password: string }) =>
     request<{ user: { email: string; username: string } }>("/signup", {
@@ -128,6 +167,48 @@ export const api = {
         is_daily_priority: boolean
       }[]
     }>(weekScoped("/onboarding/schedule-tasks")),
+  // --- standing roles & goals ---------------------------------------------------------------
+  fetchStandingRoles: () =>
+    request<{ roles: ApiRole[]; archived_roles: ApiArchivedRole[] }>(weekScoped("/roles")),
+  createRole: (data: { role_name: string; icon_id: string; color_id: string }) =>
+    request<{ role: ApiRole }>("/roles", {
+      method: "POST",
+      body: JSON.stringify(withWeekStart(data)),
+    }),
+  updateRole: (id: number, data: { role_name?: string; icon_id?: string; color_id?: string }) =>
+    request<{ role: ApiRole }>(`/roles/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(withWeekStart(data)),
+    }),
+  fetchRoleArchivePreview: (id: number) =>
+    request<{ preview: ApiArchivePreview }>(weekScoped(`/roles/${id}/archive-preview`)),
+  /** Archives the role and this week's goals under it. Earlier weeks are left untouched. */
+  archiveRole: (id: number) =>
+    request<{ archived: ApiArchivePreview }>(weekScoped(`/roles/${id}`), { method: "DELETE" }),
+  restoreRole: (id: number) =>
+    request<{ role: ApiRole }>(weekScoped(`/roles/${id}/restore`), { method: "POST" }),
+  createGoal: (data: { role_id: number; description: string; is_weekly_priority?: boolean }) =>
+    request<{ goal: ApiRoleGoal }>("/goals", {
+      method: "POST",
+      body: JSON.stringify(withWeekStart(data)),
+    }),
+  updateGoal: (id: number, data: { description?: string; is_weekly_priority?: boolean; is_completed?: boolean }) =>
+    request<{ goal: ApiRoleGoal }>(`/goals/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(withWeekStart(data)),
+    }),
+  archiveGoal: (id: number) =>
+    request<{ archived: ApiArchivePreview }>(weekScoped(`/goals/${id}`), { method: "DELETE" }),
+  /** Backs the Undo action on the remove-goal toast. Only valid within the goal's own week. */
+  restoreGoal: (id: number) =>
+    request<{ goal: ApiRoleGoal }>(weekScoped(`/goals/${id}/restore`), { method: "POST" }),
+  fetchCarryForwardCandidates: () =>
+    request<{ candidates: ApiCarryForwardCandidate[] }>(weekScoped("/goals/carry-forward-candidates")),
+  carryForwardGoals: (goalIds: number[]) =>
+    request<{ goals: ApiRoleGoal[] }>("/goals/carry-forward", {
+      method: "POST",
+      body: JSON.stringify(withWeekStart({ goal_ids: goalIds })),
+    }),
   /**
    * Read-only view of one week for the dashboard. `weekly_plan` is `null` when the user has not
    * planned this week — that is a normal answer, not an error, and looking does not create a plan.

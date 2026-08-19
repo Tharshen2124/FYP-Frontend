@@ -39,6 +39,12 @@ export interface WeeklyCompletion {
   id: string
   label: string
   completed: number
+  /**
+   * The achieved-vs-total denominator. Goals dropped mid-week are NOT counted here — they are
+   * reported separately, so pruning a goal neither reads as a failure nor quietly inflates the
+   * percentage.
+   */
   total: number
+  dropped: number
   trend: Trend
 }

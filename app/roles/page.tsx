@@ -4,19 +4,24 @@ import { useState } from "react"
 import { AlertTriangle } from "lucide-react"
 import { Sidebar } from "@/components/sidebar"
 import { DEFAULT_COLOR_ID, DEFAULT_ICON_ID, MAX_RECOMMENDED_GOALS } from "./_constants/roles"
-import { INITIAL_ROLES } from "./_constants/mock-data"
 import { countGoals } from "./_utils/roles"
+import { useRoles } from "./_utils/use-roles"
 import { RoleCard } from "./_components/role-card"
 import { RoleFormDialog } from "./_components/role-form-dialog"
-import { DeleteGoalDialog } from "./_components/delete-goal-dialog"
-import { DeleteRoleDialog } from "./_components/delete-role-dialog"
+import { ArchiveGoalDialog } from "./_components/archive-goal-dialog"
+import { ArchiveRoleDialog } from "./_components/archive-role-dialog"
+import { ArchivedRolesSection } from "./_components/archived-roles-section"
 import { GoalLimitDialog } from "./_components/goal-limit-dialog"
 import { GoalCountBadge } from "./_components/goal-count-badge"
 import { AddRoleTile } from "./_components/add-role-tile"
-import type { EditingGoal, Goal, PendingGoal, Role } from "./_types"
+import type { EditingGoal, Goal, PendingGoal, PendingRoleArchive, Role } from "./_types"
 
 export default function RolesPage() {
-  const [roles, setRoles] = useState<Role[]>(INITIAL_ROLES)
+  const {
+    roles, archivedRoles, isLoading,
+    addRole, editRole, previewArchive, archiveRole, restoreRole,
+    addGoal, saveGoalText, toggleGoalPriority, archiveGoal,
+  } = useRoles()
 
   const [roleDialogMode, setRoleDialogMode] = useState<"add" | "edit" | null>(null)
   const [editingRole, setEditingRole] = useState<Role | null>(null)
@@ -26,8 +31,8 @@ export default function RolesPage() {
   const [goalInputs, setGoalInputs] = useState<Record<string, string>>({})
   const [showGoalWarning, setShowGoalWarning] = useState(false)
   const [pendingGoal, setPendingGoal] = useState<PendingGoal | null>(null)
-  const [roleToDelete, setRoleToDelete] = useState<Role | null>(null)
-  const [goalToDelete, setGoalToDelete] = useState<{ roleId: string; goal: Goal } | null>(null)
+  const [roleToArchive, setRoleToArchive] = useState<PendingRoleArchive | null>(null)
+  const [goalToArchive, setGoalToArchive] = useState<{ roleId: string; goal: Goal } | null>(null)
   const [editingGoal, setEditingGoal] = useState<EditingGoal | null>(null)
 
   const totalGoals = countGoals(roles)
@@ -40,30 +45,12 @@ export default function RolesPage() {
     setRoleDialogMode(null)
   }
 
-  const handleAddRole = () => {
-    if (!newRoleName.trim()) return
-    setRoles([...roles, {
-      id: Date.now().toString(),
-      name: newRoleName.trim(),
-      iconId: selectedIcon,
-      colorId: selectedColor,
-      goals: [],
-    }])
+  const handleSubmitRoleForm = () => {
+    const name = newRoleName.trim()
+    if (!name) return
+    if (editingRole) void editRole(editingRole.id, name, selectedIcon, selectedColor)
+    else void addRole(name, selectedIcon, selectedColor)
     resetRoleForm()
-  }
-
-  /** Roles with goals need confirmation; empty roles are removed straight away. */
-  const handleDeleteRole = (roleId: string) => {
-    const role = roles.find(r => r.id === roleId)
-    if (!role) return
-    if (role.goals.length > 0) setRoleToDelete(role)
-    else setRoles(roles.filter(r => r.id !== roleId))
-  }
-
-  const handleConfirmDeleteRole = () => {
-    if (!roleToDelete) return
-    setRoles(roles.filter(r => r.id !== roleToDelete.id))
-    setRoleToDelete(null)
   }
 
   const handleEditRole = (role: Role) => {
@@ -74,14 +61,23 @@ export default function RolesPage() {
     setRoleDialogMode("edit")
   }
 
-  const handleUpdateRole = () => {
-    if (!editingRole || !newRoleName.trim()) return
-    setRoles(roles.map(r =>
-      r.id === editingRole.id
-        ? { ...r, name: newRoleName.trim(), iconId: selectedIcon, colorId: selectedColor }
-        : r
-    ))
-    resetRoleForm()
+  /**
+   * Archiving always confirms, even for a role with nothing in it this week: the counts shown are
+   * this week's, and the role may still carry goals in weeks already behind you.
+   */
+  const handleArchiveRole = async (roleId: string) => {
+    const role = roles.find(r => r.id === roleId)
+    if (!role) return
+
+    setRoleToArchive({ role, preview: null })
+    const preview = await previewArchive(roleId)
+    setRoleToArchive(current => (current?.role.id === roleId ? { role, preview } : current))
+  }
+
+  const handleConfirmArchiveRole = () => {
+    if (!roleToArchive) return
+    void archiveRole(roleToArchive.role)
+    setRoleToArchive(null)
   }
 
   const attemptAddGoal = (roleId: string) => {
@@ -92,57 +88,42 @@ export default function RolesPage() {
       setShowGoalWarning(true)
       return
     }
-    addGoalToRole(roleId, goalText)
+    submitGoal(roleId, goalText)
   }
 
-  const addGoalToRole = (roleId: string, goalText: string) => {
-    const newGoal: Goal = { id: Date.now().toString(), text: goalText }
-    setRoles(roles.map(r => (r.id === roleId ? { ...r, goals: [...r.goals, newGoal] } : r)))
+  const submitGoal = (roleId: string, goalText: string) => {
     setGoalInputs(prev => ({ ...prev, [roleId]: "" }))
+    void addGoal(roleId, goalText)
   }
 
   const handleConfirmAddGoal = () => {
     if (pendingGoal) {
-      addGoalToRole(pendingGoal.roleId, pendingGoal.text)
+      submitGoal(pendingGoal.roleId, pendingGoal.text)
       setPendingGoal(null)
     }
     setShowGoalWarning(false)
   }
 
-  const handleDeleteGoal = (roleId: string, goalId: string) => {
+  const handleArchiveGoal = (roleId: string, goalId: string) => {
     const goal = roles.find(r => r.id === roleId)?.goals.find(g => g.id === goalId)
-    if (goal) setGoalToDelete({ roleId, goal })
+    if (goal) setGoalToArchive({ roleId, goal })
   }
 
-  const handleConfirmDeleteGoal = () => {
-    if (!goalToDelete) return
-    setRoles(roles.map(r =>
-      r.id === goalToDelete.roleId
-        ? { ...r, goals: r.goals.filter(g => g.id !== goalToDelete.goal.id) }
-        : r
-    ))
-    setGoalToDelete(null)
+  const handleConfirmArchiveGoal = () => {
+    if (!goalToArchive) return
+    void archiveGoal(goalToArchive.roleId, goalToArchive.goal)
+    setGoalToArchive(null)
   }
 
   const handleSaveGoalEdit = () => {
-    if (!editingGoal || !editingGoal.text.trim()) {
-      setEditingGoal(null)
-      return
-    }
-    setRoles(roles.map(r =>
-      r.id === editingGoal.roleId
-        ? { ...r, goals: r.goals.map(g => (g.id === editingGoal.goalId ? { ...g, text: editingGoal.text.trim() } : g)) }
-        : r
-    ))
+    const trimmed = editingGoal?.text.trim()
+    if (editingGoal && trimmed) void saveGoalText(editingGoal.roleId, editingGoal.goalId, trimmed)
     setEditingGoal(null)
   }
 
   const handleTogglePriority = (roleId: string, goalId: string) => {
-    setRoles(roles.map(r =>
-      r.id === roleId
-        ? { ...r, goals: r.goals.map(g => (g.id === goalId ? { ...g, isWeeklyPriority: !g.isWeeklyPriority } : g)) }
-        : r
-    ))
+    const goal = roles.find(r => r.id === roleId)?.goals.find(g => g.id === goalId)
+    if (goal) void toggleGoalPriority(roleId, goal)
   }
 
   return (
@@ -162,7 +143,7 @@ export default function RolesPage() {
               Roles &amp; <span className="text-primary">Goals</span>
             </h1>
             <p className="text-muted-foreground font-serif">
-              Manage your life roles and set meaningful goals for each one.
+              Manage your life roles and set this week&apos;s goals for each one.
             </p>
           </div>
           <GoalCountBadge totalGoals={totalGoals} className="shrink-0" />
@@ -180,28 +161,36 @@ export default function RolesPage() {
           </div>
         )}
 
-        <div className="grid gap-6">
-          {roles.map(role => (
-            <RoleCard
-              key={role.id}
-              role={role}
-              goalInput={goalInputs[role.id] || ""}
-              editingGoal={editingGoal}
-              onGoalInputChange={value => setGoalInputs(prev => ({ ...prev, [role.id]: value }))}
-              onAddGoal={() => attemptAddGoal(role.id)}
-              onEditRole={handleEditRole}
-              onDeleteRole={handleDeleteRole}
-              onDeleteGoal={handleDeleteGoal}
-              onTogglePriority={handleTogglePriority}
-              onStartEditGoal={setEditingGoal}
-              onChangeEditGoal={setEditingGoal}
-              onSaveEditGoal={handleSaveGoalEdit}
-              onCancelEditGoal={() => setEditingGoal(null)}
-            />
-          ))}
+        {isLoading ? (
+          <p className="text-muted-foreground font-serif">Loading your roles&hellip;</p>
+        ) : (
+          <>
+            <div className="grid gap-6">
+              {roles.map(role => (
+                <RoleCard
+                  key={role.id}
+                  role={role}
+                  goalInput={goalInputs[role.id] || ""}
+                  editingGoal={editingGoal}
+                  onGoalInputChange={value => setGoalInputs(prev => ({ ...prev, [role.id]: value }))}
+                  onAddGoal={() => attemptAddGoal(role.id)}
+                  onEditRole={handleEditRole}
+                  onDeleteRole={roleId => { void handleArchiveRole(roleId) }}
+                  onDeleteGoal={handleArchiveGoal}
+                  onTogglePriority={handleTogglePriority}
+                  onStartEditGoal={setEditingGoal}
+                  onChangeEditGoal={setEditingGoal}
+                  onSaveEditGoal={handleSaveGoalEdit}
+                  onCancelEditGoal={() => setEditingGoal(null)}
+                />
+              ))}
 
-          <AddRoleTile onClick={() => setRoleDialogMode("add")} />
-        </div>
+              <AddRoleTile onClick={() => setRoleDialogMode("add")} />
+            </div>
+
+            <ArchivedRolesSection roles={archivedRoles} onRestore={roleId => { void restoreRole(roleId) }} />
+          </>
+        )}
       </main>
 
       <RoleFormDialog
@@ -215,22 +204,22 @@ export default function RolesPage() {
         onIconChange={setSelectedIcon}
         onColorChange={setSelectedColor}
         onCancel={resetRoleForm}
-        onSubmit={roleDialogMode === "edit" ? handleUpdateRole : handleAddRole}
+        onSubmit={handleSubmitRoleForm}
       />
 
-      <DeleteGoalDialog
-        open={!!goalToDelete}
-        goalText={goalToDelete?.goal.text}
-        onOpenChange={open => { if (!open) setGoalToDelete(null) }}
-        onCancel={() => setGoalToDelete(null)}
-        onConfirm={handleConfirmDeleteGoal}
+      <ArchiveGoalDialog
+        open={!!goalToArchive}
+        goalText={goalToArchive?.goal.text}
+        onOpenChange={open => { if (!open) setGoalToArchive(null) }}
+        onCancel={() => setGoalToArchive(null)}
+        onConfirm={handleConfirmArchiveGoal}
       />
 
-      <DeleteRoleDialog
-        role={roleToDelete}
-        onOpenChange={open => { if (!open) setRoleToDelete(null) }}
-        onCancel={() => setRoleToDelete(null)}
-        onConfirm={handleConfirmDeleteRole}
+      <ArchiveRoleDialog
+        pending={roleToArchive}
+        onOpenChange={open => { if (!open) setRoleToArchive(null) }}
+        onCancel={() => setRoleToArchive(null)}
+        onConfirm={handleConfirmArchiveRole}
       />
 
       <GoalLimitDialog

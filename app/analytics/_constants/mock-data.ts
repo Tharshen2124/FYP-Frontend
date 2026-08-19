@@ -142,9 +142,9 @@ export const DAILY_RAW: Record<WeekId, DailyPriorityDay[]> = {
 // ---------------------------------------------------------------------------
 
 export const WEEKLY_COMPLETIONS: WeeklyCompletion[] = [
-  { id: "w1", label: "26 May – 1 Jun",  completed: 23, total: 28, trend: "up"   },
-  { id: "w2", label: "19 May – 25 May", completed: 20, total: 27, trend: "down" },
-  { id: "w3", label: "12 May – 18 May", completed: 22, total: 26, trend: "up"   },
-  { id: "w4", label: "5 May – 11 May",  completed: 17, total: 25, trend: "down" },
-  { id: "w5", label: "28 Apr – 4 May",  completed: 19, total: 24, trend: "flat" },
+  { id: "w1", label: "26 May – 1 Jun",  completed: 23, total: 28, dropped: 0, trend: "up"   },
+  { id: "w2", label: "19 May – 25 May", completed: 20, total: 27, dropped: 2, trend: "down" },
+  { id: "w3", label: "12 May – 18 May", completed: 22, total: 26, dropped: 0, trend: "up"   },
+  { id: "w4", label: "5 May – 11 May",  completed: 17, total: 25, dropped: 1, trend: "down" },
+  { id: "w5", label: "28 Apr – 4 May",  completed: 19, total: 24, dropped: 0, trend: "flat" },
 ]

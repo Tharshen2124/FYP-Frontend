@@ -14,7 +14,6 @@ test.beforeEach(async ({ page }) => {
  * server overlay also matches a loose "Next" name.
  */
 
-const nextLink = (page: Page) => page.getByRole("link", { name: "Next", exact: true })
 const nextButton = (page: Page) => page.getByRole("button", { name: "Next", exact: true })
 
 /** The card row that renders a given goal/activity, used to scope hover actions. */
@@ -94,7 +93,7 @@ test.describe("onboarding", () => {
 
     await fillEveryDimension(page)
 
-    await expect(nextLink(page)).toHaveAttribute("href", "/onboarding/fixed-appointments")
+    await expect(nextButton(page)).toBeEnabled()
   })
 
   test("step 3 gates Next until an appointment exists, then adds one", async ({ page }) => {
@@ -109,7 +108,7 @@ test.describe("onboarding", () => {
     await page.getByRole("button", { name: "Add Appointment" }).click()
 
     await expect(page.getByText("Team standup")).toBeVisible()
-    await expect(nextLink(page)).toHaveAttribute("href", "/onboarding/schedule-tasks")
+    await expect(nextButton(page)).toBeEnabled()
   })
 
   test("step 3 rejects an end time that is not after the start", async ({ page }) => {

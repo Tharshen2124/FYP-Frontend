@@ -1,40 +1,50 @@
 import { test, expect, type Page } from "@playwright/test"
-import { authenticateAsNewUser, fillEveryDimension } from "./helpers"
+import { authenticateAsNewUser, fillEveryDimension, seedWeeklyPlan } from "./helpers"
 
 const nextLink = (page: Page) => page.getByRole("link", { name: "Next", exact: true })
 const nextButton = (page: Page) => page.getByRole("button", { name: "Next", exact: true })
 
-test.describe("weekly plan", () => {
-  test("goals step gates Next until a goal is selected", async ({ page }) => {
+test.describe("weekly plan goals step (API-backed)", () => {
+  test("points a user with no roles at the roles page", async ({ page }) => {
+    await authenticateAsNewUser(page)
     await page.goto("/weekly-plan/goals")
 
+    await expect(page.getByText("You have no active roles yet.")).toBeVisible()
     await expect(nextButton(page)).toBeDisabled()
-    await expect(page.getByText("Select at least one goal")).toBeVisible()
-
-    await page.getByText("Complete quarterly project milestone").click()
-
-    await expect(nextLink(page)).toHaveAttribute("href", "/weekly-plan/sharpen-the-saw")
   })
 
-  test("goals step accepts a one-off weekly goal", async ({ page }) => {
+  test("lists this week's roles with the goals already added", async ({ page }) => {
+    await authenticateAsNewUser(page)
+    await seedWeeklyPlan(page)
     await page.goto("/weekly-plan/goals")
 
-    await page.getByPlaceholder("Add a one-off goal just for this week...").first().fill("Ship the FYP demo")
-    await page.keyboard.press("Enter")
-
-    await expect(page.getByText("Ship the FYP demo")).toBeVisible()
-    await expect(page.getByText("This week").first()).toBeVisible()
-    await expect(nextLink(page)).toBeVisible()
-  })
-
-  test("goals step reads roles from the flow-level mock data", async ({ page }) => {
-    await page.goto("/weekly-plan/goals")
-
-    for (const role of ["Professional", "Parent", "Health"]) {
+    for (const role of ["Professional", "Parent"]) {
       await expect(page.getByRole("heading", { name: role })).toBeVisible()
     }
+    // Onboarding planned the current week, so its goals show as committed rather than as
+    // carry-forward candidates — those come from the week before.
+    await expect(page.getByText("Complete quarterly project milestone")).toBeVisible()
+    await expect(page.getByText("Added").first()).toBeVisible()
   })
 
+  test("stages a new goal and saves it on Next", async ({ page }) => {
+    await authenticateAsNewUser(page)
+    await seedWeeklyPlan(page)
+    await page.goto("/weekly-plan/goals")
+
+    await page.getByPlaceholder("Add a new goal for this week...").first().fill("Draft the report")
+    await page.getByRole("button", { name: "Add goal to Professional" }).click()
+    await expect(page.getByText("Draft the report")).toBeVisible()
+
+    await nextButton(page).click()
+    await page.waitForURL(/\/weekly-plan\/sharpen-the-saw$/)
+
+    await page.goto("/roles")
+    await expect(page.getByText("Draft the report")).toBeVisible()
+  })
+})
+
+test.describe("weekly plan", () => {
   test("schedule step offers both tabs and gates Next on a task", async ({ page }) => {
     await page.goto("/weekly-plan/schedule")
 

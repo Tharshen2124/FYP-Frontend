@@ -1,38 +1,73 @@
 import { test, expect } from "@playwright/test"
-import { suppressEndOfDayModal, authenticateAsNewUser, completeOnboarding } from "./helpers"
+import { suppressEndOfDayModal, authenticateAsNewUser, completeOnboarding, seedWeeklyPlan } from "./helpers"
 
 test.beforeEach(async ({ page }) => {
   await suppressEndOfDayModal(page)
 })
 
 test.describe("roles management", () => {
-  test("confirms before deleting a role that still has goals", async ({ page }) => {
+  // /roles reads and writes the live backend now, so every test needs a session and a week that
+  // already has roles and goals in it.
+  test.beforeEach(async ({ page }) => {
+    await authenticateAsNewUser(page)
+    await seedWeeklyPlan(page)
     await page.goto("/roles")
+  })
 
+  test("confirms before archiving a role, stating what it affects this week", async ({ page }) => {
     await page.getByRole("button", { name: "Delete Professional" }).click()
-    await expect(page.getByText("Delete Role?")).toBeVisible()
-    await expect(page.getByRole("alertdialog").getByText("2 goals")).toBeVisible()
+
+    const dialog = page.getByRole("alertdialog")
+    await expect(dialog.getByText("Archive Role?")).toBeVisible()
+    await expect(dialog.getByText("2 goals")).toBeVisible()
+    await expect(dialog.getByText("You can restore this role at any time.")).toBeVisible()
 
     await page.getByRole("button", { name: "Cancel" }).click()
     await expect(page.getByRole("heading", { name: "Professional" })).toBeVisible()
   })
 
-  test("deletes an empty role without confirmation", async ({ page }) => {
-    await page.goto("/roles")
+  test("archives a role into the archived list and restores it", async ({ page }) => {
+    await page.getByRole("button", { name: "Delete Professional" }).click()
+    await page.getByRole("button", { name: "Archive Role", exact: true }).click()
 
+    await expect(page.getByRole("heading", { name: "Professional" })).toHaveCount(0)
+    await expect(page.getByRole("heading", { name: "Archived" })).toBeVisible()
+
+    await page.getByRole("button", { name: "Restore Professional" }).click()
+    await expect(page.getByRole("heading", { name: "Professional" })).toBeVisible()
+  })
+
+  // Removing a goal is always reversible, which is why there is no hard delete anywhere.
+  test("removes a goal and puts it back with Undo", async ({ page }) => {
+    const goal = "Mentor junior team member"
+    const row = page.locator("div.group").filter({ hasText: goal }).first()
+    await row.hover()
+    await row.getByTitle("Delete goal").click()
+
+    await expect(page.getByRole("alertdialog").getByText("Remove Goal?")).toBeVisible()
+    await page.getByRole("button", { name: "Remove Goal", exact: true }).click()
+    await expect(page.getByText(goal)).toHaveCount(0)
+
+    await page.getByRole("button", { name: "Undo" }).click()
+    await expect(page.getByText(goal)).toBeVisible()
+  })
+
+  test("adds a role and a goal, and they survive a reload", async ({ page }) => {
     await page.getByRole("button", { name: "Add New Role" }).click()
-    await page.getByLabel("Role Name").fill("Temp")
+    await page.getByLabel("Role Name").fill("Athlete")
     await page.getByRole("button", { name: "Add Role" }).click()
-    await expect(page.getByRole("heading", { name: "Temp" })).toBeVisible()
+    await expect(page.getByRole("heading", { name: "Athlete" })).toBeVisible()
 
-    await page.getByRole("button", { name: "Delete Temp" }).click()
-    await expect(page.getByRole("heading", { name: "Temp" })).toHaveCount(0)
-    await expect(page.getByText("Delete Role?")).toHaveCount(0)
+    await page.getByPlaceholder("Add a goal for this role...").last().fill("Run a 10k")
+    await page.getByRole("button", { name: "Add goal to Athlete" }).click()
+    await expect(page.getByText("Run a 10k")).toBeVisible()
+
+    await page.reload()
+    await expect(page.getByRole("heading", { name: "Athlete" })).toBeVisible()
+    await expect(page.getByText("Run a 10k")).toBeVisible()
   })
 
   test("edits a role name through the dialog", async ({ page }) => {
-    await page.goto("/roles")
-
     await page.getByRole("button", { name: "Edit" }).first().click()
     await expect(page.getByText("Edit Role")).toBeVisible()
     await page.getByLabel("Role Name").fill("Consultant")

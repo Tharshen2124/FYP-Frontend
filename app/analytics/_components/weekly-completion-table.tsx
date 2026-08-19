@@ -86,6 +86,7 @@ export function WeeklyCompletionTable() {
             <th className="text-left text-xs uppercase tracking-wider text-muted-foreground pb-2 font-medium">Week</th>
             <th className="text-left text-xs uppercase tracking-wider text-muted-foreground pb-2 font-medium">Progress</th>
             <th className="text-right text-xs uppercase tracking-wider text-muted-foreground pb-2 font-medium">Done</th>
+            <th className="text-right text-xs uppercase tracking-wider text-muted-foreground pb-2 font-medium pl-3">Dropped</th>
             <th className="text-right text-xs uppercase tracking-wider text-muted-foreground pb-2 font-medium pl-3">%</th>
           </tr>
         </thead>
@@ -107,6 +108,10 @@ export function WeeklyCompletionTable() {
                 </td>
                 <td className="py-2 text-right text-muted-foreground whitespace-nowrap text-xs">
                   {week.completed}/{week.total}
+                </td>
+                {/* Dropped goals sit outside the ratio rather than counting as misses. */}
+                <td className="py-2 text-right pl-3 text-muted-foreground whitespace-nowrap text-xs">
+                  {week.dropped > 0 ? week.dropped : "—"}
                 </td>
                 <td className="py-2 text-right pl-3 font-bold text-foreground whitespace-nowrap text-xs">
                   {pct}%

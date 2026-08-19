@@ -1,6 +1,6 @@
 "use client"
 
-import { Trash2 } from "lucide-react"
+import { Archive } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   AlertDialog,
@@ -19,25 +19,31 @@ interface Props {
   onConfirm: () => void
 }
 
-export function DeleteGoalDialog({ goalText, open, onOpenChange, onCancel, onConfirm }: Props) {
+export function ArchiveGoalDialog({ goalText, open, onOpenChange, onCancel, onConfirm }: Props) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent className="bg-card border-border text-foreground">
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2 text-xl font-bold">
-            <Trash2 className="w-6 h-6 text-destructive" />
-            Delete Goal?
+            <Archive className="w-6 h-6 text-accent" />
+            Remove Goal?
           </AlertDialogTitle>
-          <AlertDialogDescription className="text-muted-foreground font-serif">
-            Are you sure you want to delete{" "}
-            <span className="font-bold text-foreground">&ldquo;{goalText}&rdquo;</span>?
-            <br /><br />
-            This goal may be linked to scheduled tasks. Deleting it will not remove those tasks, but they will lose their goal association.
+          <AlertDialogDescription asChild>
+            <div className="text-muted-foreground font-serif space-y-3">
+              <p>
+                <span className="font-bold text-foreground">&ldquo;{goalText}&rdquo;</span> will be
+                dropped from this week.
+              </p>
+              <p>
+                Any unfinished tasks for it come off your calendar. Tasks you already completed stay
+                where they are and keep counting towards your history and analytics.
+              </p>
+            </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <Button variant="outline" onClick={onCancel} className="border-border text-foreground hover:bg-secondary/20">Cancel</Button>
-          <Button onClick={onConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete Goal</Button>
+          <Button onClick={onConfirm} className="bg-accent text-accent-foreground hover:bg-accent/90">Remove Goal</Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

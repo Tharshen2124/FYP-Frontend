@@ -90,10 +90,13 @@ and it merges fixed appointments and tasks into one tabbed calendar page.
 - `/dashboard` — Read-only weekly timetable with today's column highlighted, a "now" indicator line, and
   a legend. "Edit Weekly Plan" links to `/weekly-plan/schedule`. Shows the end-of-day check-in modal once
   per day after the time saved in `localStorage["eod_time"]`.
-- `/roles` — Standing role & goal management (sidebar layout). Same card as onboarding step 1, plus a
-  confirmation dialog when deleting a role that still has goals.
+- `/roles` — Standing role & goal management (sidebar layout), API-backed. Roles are long-lived;
+  the goals shown are **this week's**. Deleting is archiving: a confirmation dialog states how many
+  of this week's goals go, how many unfinished tasks come off the calendar, and how many completed
+  tasks are kept. Archived roles list below with a Restore button, and removing a goal offers Undo.
 - `/sharpen-the-saw` — Standing renewal-activity management (sidebar layout), with a delete confirmation.
-- `/weekly-plan/goals` — Pick which standing goals to carry into this week; add one-off weekly goals.
+- `/weekly-plan/goals` — API-backed. Carry last week's unfinished goals forward (each pick creates a
+  fresh goal plus a `goal_carryovers` link) and stage brand-new ones. Everything commits on Next.
 - `/weekly-plan/sharpen-the-saw` — Pick which renewal activities to commit to this week.
 - `/weekly-plan/schedule` — Tabbed calendar: "Fixed Appointments" and "Scheduled Tasks" share one
   `appts` state so clash detection spans both tabs.
@@ -147,11 +150,13 @@ Rules:
    import from another route is a convention violation — hoist the shared thing instead (rule 3).
 3. **Flow-level private folders** hold what several routes in the same flow share. They sit at the
    shared segment and follow the same naming: `app/weekly-plan/_types/`, `app/weekly-plan/_constants/`.
-   `/weekly-plan/goals`, `/weekly-plan/sharpen-the-saw` and `/weekly-plan/schedule` all read
-   `MOCK_ROLES` / `MOCK_DIMENSIONS` from `app/weekly-plan/_constants/mock-data.ts`.
+   `/weekly-plan/schedule` reads `MOCK_ROLES` / `MOCK_DIMENSIONS` from
+   `app/weekly-plan/_constants/mock-data.ts` (`/weekly-plan/goals` is API-backed and no longer does).
    The same private-import rule applies one level up: nothing outside `/weekly-plan` may import them.
 4. **Genuinely app-wide UI lives in `components/`**, not in a route folder — `AppNav`, `Sidebar`,
-   `OnboardingStepper`, the clash modals, and the shadcn primitives in `components/ui/`.
+   `OnboardingStepper`, the clash modals, and the shadcn primitives in `components/ui/`. Shared
+   non-UI domain constants go in `lib/` — `lib/sharpen-the-saw-dimensions.ts` and
+   `lib/role-colors.ts` (the role palette, needed by both `/roles` and `/weekly-plan/goals`).
 5. **Derived/filtered data belongs in `_utils`, raw data in `_constants`.** `/analytics` is the model:
    `_constants/mock-data.ts` holds the week registry and raw numbers, `_utils/analytics.ts` holds
    `getSharpenData`, `getRoleStats`, `getDailyPriority`.
@@ -162,10 +167,26 @@ Rules:
 
 ## State management
 
-All state is local React `useState` — no global store, no backend, no auth integration. Each route
-seeds itself from its own `_constants/mock-data.ts`, so edits made in one route are not visible in
-another. The only persistence is `localStorage` for the end-of-day check-in
-(`eod_time`, `eod_shown_date`), written by `/settings` and read by `/dashboard`.
+There is no global data store: state is local `useState` per route, and routes that persist talk to
+the Rails API through `lib/api.ts`. Auth is the one exception — a JWT in a cookie-backed zustand
+store (`stores/auth-store.ts` + `lib/cookie-storage.ts`).
+
+API-backed routes: `/login`, all four data-writing onboarding steps, `/dashboard`,
+`/sharpen-the-saw`, `/roles`, `/weekly-plan/goals`. Still seeded from their own
+`_constants/mock-data.ts`: `/weekly-plan/schedule`, `/history`, `/analytics`,
+`/evening-reflections`.
+
+Routes with API state follow `/sharpen-the-saw` and `/roles`: a `let cancelled = false` effect for
+the initial load, an `isLoading` guard, and each write sent before local state is patched from the
+response, with `toast.error("Couldn't … — please try again.")` on failure. `/roles` keeps that
+lifecycle in `_utils/use-roles.ts` so `page.tsx` stays under the 250-line cap.
+
+Beyond auth, the only `localStorage` is the end-of-day check-in (`eod_time`, `eod_shown_date`),
+written by `/settings` and read by `/dashboard`.
+
+**Goals are week-scoped.** Roles persist week to week; goals belong to exactly one weekly plan, so
+every roles/goals request carries a `week_start`. Nothing is hard-deleted — see the root
+`CLAUDE.md` and `ERD_businnes_rules.md`.
 
 ## Shared components
 
