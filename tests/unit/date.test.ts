@@ -1,5 +1,5 @@
 import { describe, it, expect, afterAll } from "vitest"
-import { localDateParam, localWeekStartParam } from "@/lib/date"
+import { getDayIndex, getWeekDays, localDateParam, localWeekStartParam } from "@/lib/date"
 
 /**
  * These tests pin the two cases where `toISOString().slice(0, 10)` disagrees with the
@@ -121,5 +121,51 @@ describe("localWeekStartParam", () => {
       seen.add(localWeekStartParam(d))
     }
     expect([...seen]).toEqual(["2026-08-10"])
+  })
+})
+
+/**
+ * `getWeekDays` and `getDayIndex` label the calendar columns. Both are Monday-first so the index
+ * lines up with `tasks.day_of_week` on the backend (0 = Monday .. 6 = Sunday) — an off-by-one here
+ * would put a task's date one column away from where it is drawn.
+ */
+describe("getWeekDays", () => {
+  it("returns Monday through Sunday of the week containing the date", () => {
+    process.env.TZ = "Asia/Singapore"
+    const days = getWeekDays(new Date(2026, 7, 19)) // Wed 19 Aug 2026
+
+    expect(days).toHaveLength(7)
+    expect(days.map(d => d.getDate())).toEqual([17, 18, 19, 20, 21, 22, 23])
+    expect(days[0].getDay()).toBe(1) // Monday
+    expect(days[6].getDay()).toBe(0) // Sunday
+  })
+
+  it("gives the same seven dates for every day of that week, Sunday included", () => {
+    process.env.TZ = "Asia/Singapore"
+    const weeks = [17, 18, 19, 20, 21, 22, 23].map(day =>
+      getWeekDays(new Date(2026, 7, day)).map(d => d.getDate()).join(",")
+    )
+    expect(new Set(weeks).size).toBe(1)
+  })
+
+  it("agrees with localWeekStartParam on the first day", () => {
+    process.env.TZ = "America/New_York"
+    const d = new Date(2026, 7, 22) // Sat 22 Aug 2026
+    expect(localDateParam(getWeekDays(d)[0])).toBe(localWeekStartParam(d))
+  })
+})
+
+describe("getDayIndex", () => {
+  it("is Monday-indexed, matching the backend's day_of_week", () => {
+    process.env.TZ = "Asia/Singapore"
+    const indices = [17, 18, 19, 20, 21, 22, 23].map(day => getDayIndex(new Date(2026, 7, day)))
+    expect(indices).toEqual([0, 1, 2, 3, 4, 5, 6])
+  })
+
+  it("maps Sunday to 6, not 0", () => {
+    process.env.TZ = "Asia/Singapore"
+    const sunday = new Date(2026, 7, 23)
+    expect(sunday.getDay()).toBe(0) // JS native
+    expect(getDayIndex(sunday)).toBe(6) // ours
   })
 })

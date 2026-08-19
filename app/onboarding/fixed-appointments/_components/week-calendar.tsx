@@ -1,6 +1,7 @@
 "use client"
 
 import { CAL_START, DAYS_FULL, DAYS_SHORT, HR_PX, TOTAL_HRS } from "../_constants/calendar"
+import { useCurrentWeek } from "@/hooks/use-current-week"
 import { AppointmentCard } from "./appointment-card"
 import type { Appt } from "../_types"
 
@@ -25,6 +26,7 @@ export function WeekCalendar({
   onDeleteAppt,
   onDragStart,
 }: Props) {
+  const week = useCurrentWeek()
   const calH = TOTAL_HRS * HR_PX
 
   return (
@@ -32,11 +34,22 @@ export function WeekCalendar({
       {/* day header row */}
       <div className="grid border-b border-border" style={{ gridTemplateColumns: "56px repeat(7, 1fr)" }}>
         <div />
-        {DAYS_SHORT.map(d => (
-          <div key={d} className="py-3 text-center border-l border-border">
-            <span className="text-sm font-bold text-foreground">{d}</span>
-          </div>
-        ))}
+        {DAYS_SHORT.map((d, i) => {
+          const isToday = week?.todayIdx === i
+          const isPast  = week != null && i < week.todayIdx
+          return (
+            <div key={d} className={["py-3 text-center border-l border-border", isPast ? "opacity-40" : ""].join(" ")}>
+              {/* Kept to one line: the calendar body is positioned from the top of this row, and a
+                  taller header shifts every slot down. The date appears once the week resolves. */}
+              <span className={[
+                "inline-block text-sm font-bold px-2 rounded-full",
+                isToday ? "bg-primary text-primary-foreground" : "text-foreground",
+              ].join(" ")}>
+                {week ? `${d} ${week.dayDates[i].getDate()}` : d}
+              </span>
+            </div>
+          )
+        })}
       </div>
 
       {/* scrollable body */}
@@ -67,7 +80,10 @@ export function WeekCalendar({
               ref={el => { colRefs.current[di] = el }}
               data-day-column={di}
               aria-label={day}
-              className="relative border-l border-border cursor-pointer select-none"
+              className={[
+                "relative border-l border-border cursor-pointer select-none",
+                week != null && di < week.todayIdx ? "bg-foreground/[0.06]" : "",
+              ].join(" ")}
               style={{ height: calH }}
               onClick={e => onSlotClick(e, di)}
               onDragOver={onDragOver}

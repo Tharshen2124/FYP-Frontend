@@ -54,3 +54,23 @@ export function getWeekStart(date: Date = new Date()): Date {
 export function localWeekStartParam(d: Date = new Date()): string {
   return localDateParam(getWeekStart(d))
 }
+
+/**
+ * The seven dates of the week containing `date`, Monday first.
+ *
+ * Pairs with `day_of_week` on the backend, which is also Monday-indexed — `getWeekDays()[2]` is
+ * the date a task with `day_of_week: 2` falls on.
+ */
+export function getWeekDays(date: Date = new Date()): Date[] {
+  const start = getWeekStart(date)
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(start)
+    d.setDate(d.getDate() + i)
+    return d
+  })
+}
+
+/** Weekday of `date` as 0 = Monday … 6 = Sunday, the same indexing the calendars use. */
+export function getDayIndex(date: Date = new Date()): number {
+  return (date.getDay() + 6) % 7
+}

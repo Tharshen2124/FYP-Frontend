@@ -1,3 +1,4 @@
+import { localWeekStartParam } from "@/lib/date"
 import { useAuthStore } from "@/stores/auth-store"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL
@@ -21,6 +22,22 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return res.status === 204 ? (undefined as T) : res.json()
 }
 
+/**
+ * Every onboarding endpoint is scoped to a weekly plan, which the client identifies by the local
+ * Monday of the week it is planning. The server validates that the date is a Monday and creates
+ * the plan on first use, so the four steps all land in the same one.
+ *
+ * Threaded in here rather than at the call sites: no onboarding step has a reason to plan a week
+ * other than the current one.
+ */
+function withWeekStart<T extends object>(data: T) {
+  return { ...data, week_start: localWeekStartParam() }
+}
+
+function weekScoped(path: string) {
+  return `${path}?week_start=${localWeekStartParam()}`
+}
+
 export const api = {
   signup: (data: { email: string; username: string; password: string }) =>
     request<{ user: { email: string; username: string } }>("/signup", {
@@ -41,20 +58,20 @@ export const api = {
   }) =>
     request<{ roles: unknown[] }>("/onboarding/roles", {
       method: "POST",
-      body: JSON.stringify(data),
+      body: JSON.stringify(withWeekStart(data)),
     }),
   fetchRoles: () =>
     request<{
       roles: { role_id: number; name: string; icon_id: string; goals: { goal_id: number; text: string; is_weekly_priority: boolean }[] }[]
-    }>("/onboarding/roles"),
+    }>(weekScoped("/onboarding/roles")),
   submitSharpenTheSaw: (data: { activities: { dimension: string; activity_description: string }[] }) =>
     request<{ activities: unknown[] }>("/onboarding/sharpen-the-saw", {
       method: "POST",
-      body: JSON.stringify(data),
+      body: JSON.stringify(withWeekStart(data)),
     }),
   fetchSharpenTheSaw: () =>
     request<{ activities: { sharpen_the_saw_activity_id: number; dimension: string; activity_description: string }[] }>(
-      "/onboarding/sharpen-the-saw"
+      weekScoped("/onboarding/sharpen-the-saw")
     ),
   fetchSharpenTheSawActivities: () =>
     request<{ activities: { sharpen_the_saw_activity_id: number; dimension: string; activity_description: string }[] }>(
@@ -77,12 +94,12 @@ export const api = {
   }) =>
     request<{ appointments: unknown[] }>("/onboarding/fixed-appointments", {
       method: "POST",
-      body: JSON.stringify(data),
+      body: JSON.stringify(withWeekStart(data)),
     }),
   fetchFixedAppointments: () =>
     request<{
       appointments: { task_id: number; title: string; description: string; day_of_week: number; start_time: string; end_time: string }[]
-    }>("/onboarding/fixed-appointments"),
+    }>(weekScoped("/onboarding/fixed-appointments")),
   submitScheduleTasks: (data: {
     tasks: {
       title: string
@@ -96,7 +113,7 @@ export const api = {
   }) =>
     request<{ tasks: unknown[] }>("/onboarding/schedule-tasks", {
       method: "POST",
-      body: JSON.stringify(data),
+      body: JSON.stringify(withWeekStart(data)),
     }),
   fetchScheduleTasks: () =>
     request<{
@@ -110,6 +127,6 @@ export const api = {
         sharpen_the_saw_activity_id: number | null
         is_daily_priority: boolean
       }[]
-    }>("/onboarding/schedule-tasks"),
+    }>(weekScoped("/onboarding/schedule-tasks")),
   googleLoginHref: () => `${API_URL}/login`,
 }

@@ -9,6 +9,7 @@ import { TaskModal } from "./task-modal"
 import { CalendarLegend } from "./calendar-legend"
 import type { Task, Appt, CalItem, ModalState, PendingTaskAction, LinkType } from "../_types"
 import { DAYS_FULL, DAYS_SHORT, CAL_START, CAL_END, TOTAL_HRS, HR_PX, FIXED_COLOR, EMPTY_TASK_MODAL } from "../_constants/calendar"
+import { useCurrentWeek } from "@/hooks/use-current-week"
 import { getOverlaps, getPositionStyle } from "../_utils/calendar"
 import { minsToStr, strToMins, snapMins, fmtTime } from "../_utils/time"
 import { getLinkMeta } from "../_utils/tasks"
@@ -185,6 +186,7 @@ export function TasksTab({ appts, tasks, setTasks }: Props) {
     setClashWarning({ open: false, conflictingTitle: "" })
   }
 
+  const week = useCurrentWeek()
   const calH = TOTAL_HRS * HR_PX
 
   return (
@@ -194,11 +196,22 @@ export function TasksTab({ appts, tasks, setTasks }: Props) {
       <div className="bg-card border-2 border-border rounded-md overflow-hidden">
         <div className="grid border-b border-border" style={{ gridTemplateColumns: "56px repeat(7, 1fr)" }}>
           <div />
-          {DAYS_SHORT.map(d => (
-            <div key={d} className="py-3 text-center border-l border-border">
-              <span className="text-sm font-bold text-foreground">{d}</span>
-            </div>
-          ))}
+          {DAYS_SHORT.map((d, i) => {
+            const isToday = week?.todayIdx === i
+            const isPast  = week != null && i < week.todayIdx
+            return (
+              <div key={d} className={["py-3 text-center border-l border-border", isPast ? "opacity-40" : ""].join(" ")}>
+                {/* Kept to one line: the calendar body is positioned from the top of this row, and a
+                    taller header shifts every slot down. The date appears once the week resolves. */}
+                <span className={[
+                  "inline-block text-sm font-bold px-2 rounded-full",
+                  isToday ? "bg-primary text-primary-foreground" : "text-foreground",
+                ].join(" ")}>
+                  {week ? `${d} ${week.dayDates[i].getDate()}` : d}
+                </span>
+              </div>
+            )
+          })}
         </div>
 
         <div className="overflow-y-auto" style={{ maxHeight: 560 }}>
@@ -219,7 +232,10 @@ export function TasksTab({ appts, tasks, setTasks }: Props) {
               <div
                 key={day}
                 ref={el => { colRefs.current[di] = el }}
-                className="relative border-l border-border cursor-pointer select-none"
+                className={[
+                  "relative border-l border-border cursor-pointer select-none",
+                  week != null && di < week.todayIdx ? "bg-foreground/[0.06]" : "",
+                ].join(" ")}
                 style={{ height: calH }}
                 onClick={e => handleColClick(e, di)}
                 onDragOver={onDragOver}
