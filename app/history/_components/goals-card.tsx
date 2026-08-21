@@ -1,9 +1,9 @@
 "use client"
 
 import { useMemo } from "react"
-import { Check, Minus, Star, Target, X } from "lucide-react"
+import { ArrowRight, Check, Minus, Star, Target, X } from "lucide-react"
 import { groupBy } from "../_utils/group"
-import { outcomeLegend } from "../_utils/history"
+import { ordinal, outcomeLegend } from "../_utils/history"
 import type { GoalOutcome, HistoryGoal } from "../_types"
 
 interface Props {
@@ -20,9 +20,14 @@ interface Props {
  * It is deliberately neither a tick nor a cross. A goal the user removed is not a failure — and
  * counting it as one would also mean pruning could move the percentage on the tile above, which is
  * why the stats row leaves it out of both halves of the ratio.
+ *
+ * `carried` is the other thing a cross used to overstate: the goal was unfinished when the week
+ * closed, but it went on into the next week rather than stopping. An arrow, because that is what
+ * happened to it.
  */
 const OUTCOME = {
   achieved: { icon: Check, label: "Achieved", className: "text-primary" },
+  carried: { icon: ArrowRight, label: "Carried on", className: "text-muted-foreground/60" },
   missed: { icon: X, label: "Missed", className: "text-muted-foreground/60" },
   dropped: { icon: Minus, label: "Removed", className: "text-muted-foreground/60" },
   open: { icon: Minus, label: "Still open", className: "text-muted-foreground/60" },
@@ -94,6 +99,16 @@ export function GoalsCard({ goals }: Props) {
                             style={{ color: roleColor }}
                             aria-label="Weekly priority"
                           />
+                        )}
+                        {/* How long this one has been running. A goal on its fifth week is the
+                            page's most useful signal and nothing else on it says so. */}
+                        {goal.weekIndex > 1 && (
+                          <span
+                            className="text-[10px] mt-0.5 shrink-0 px-1.5 py-0.5 rounded bg-muted text-muted-foreground/80 tabular-nums"
+                            title={`Carried forward — this is week ${goal.weekIndex} of this goal`}
+                          >
+                            {ordinal(goal.weekIndex)} week
+                          </span>
                         )}
                         {goal.outcome === "dropped" && (
                           <span className="text-[10px] text-muted-foreground/70 mt-0.5 shrink-0">removed</span>

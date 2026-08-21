@@ -25,18 +25,36 @@ import type {
 /**
  * How a goal resolved.
  *
- * Dropped wins over completed: a goal the user pruned is reported as pruned even if it had been
- * ticked off first, because the interesting fact about it is that it left the week. Missed needs
- * the week to have ended, which is why `weekHasEnded` is passed in rather than read from the clock
- * here — the caller knows the user's local date, and /history only ever asks about past weeks.
+ * The order of the tests is the order of precedence, and each step is deliberate:
+ *
+ * - **Dropped wins over everything.** A goal the user removed is reported as removed even if it had
+ *   been ticked off first, because the interesting fact about it is that it left the week.
+ * - **Achieved beats carried.** Carrying a finished goal forward is allowed — the picker filters on
+ *   `.active` and `carried_to`, not on completion — and for *this* week it was still achieved.
+ * - **Carried beats missed.** A goal unfinished when the week closed but continued into the next
+ *   one has not been given up on, and a bare cross says it has.
+ *
+ * `weekHasEnded` is passed in rather than read from the clock here: the caller knows the user's
+ * local date, and /history only ever asks about past weeks.
  */
 export function goalOutcome(
-  { isDropped, isCompleted, weekHasEnded }:
-  { isDropped: boolean; isCompleted: boolean; weekHasEnded: boolean }
+  { isDropped, isCompleted, isCarriedForward = false, weekHasEnded }:
+  { isDropped: boolean; isCompleted: boolean; isCarriedForward?: boolean; weekHasEnded: boolean }
 ): GoalOutcome {
   if (isDropped) return "dropped"
   if (isCompleted) return "achieved"
-  return weekHasEnded ? "missed" : "open"
+  if (!weekHasEnded) return "open"
+  return isCarriedForward ? "carried" : "missed"
+}
+
+/** `1 → "1st"`, `3 → "3rd"`, `11 → "11th"`. Only ever used on a small count of weeks, but the
+ *  teens are the case a naive last-digit rule gets wrong. */
+export function ordinal(n: number): string {
+  const lastTwo = n % 100
+  if (lastTwo >= 11 && lastTwo <= 13) return `${n}th`
+
+  const suffix = { 1: "st", 2: "nd", 3: "rd" }[n % 10] ?? "th"
+  return `${n}${suffix}`
 }
 
 export function toHistoryGoal(goal: ApiHistoryGoal, weekHasEnded: boolean): HistoryGoal {
@@ -47,8 +65,11 @@ export function toHistoryGoal(goal: ApiHistoryGoal, weekHasEnded: boolean): Hist
     outcome: goalOutcome({
       isDropped: goal.is_dropped,
       isCompleted: goal.is_completed,
+      isCarriedForward: goal.is_carried_forward,
       weekHasEnded,
     }),
+    weekIndex: goal.week_index,
+    isCarriedForward: goal.is_carried_forward,
     roleId: goal.role.role_id,
     roleName: goal.role.name,
     // The backend stores only the colour id; the palette lives on the client.
@@ -178,8 +199,8 @@ export function weekLegend(events: HistoryEvent[]): LegendGroup[] {
 }
 
 /** The order the goals card explains its glyphs in — how a week reads best, not how the union is
- *  declared: what it met, then what it did not, then what left it. */
-const OUTCOME_ORDER: GoalOutcome[] = [ "achieved", "missed", "dropped", "open" ]
+ *  declared: what it met, what it is still on, what it did not, then what left it. */
+const OUTCOME_ORDER: GoalOutcome[] = [ "achieved", "carried", "missed", "dropped", "open" ]
 
 /**
  * Which outcome markers this week actually used, for the goals card's footer legend.
@@ -197,7 +218,9 @@ export function outcomeLegend(goals: HistoryGoal[]): GoalOutcome[] {
  * The four tiles.
  *
  * Dropped goals are out of both halves of the goal ratio: a goal the user pruned is neither an
- * achievement nor a miss, and counting it either way would make pruning change the score.
+ * achievement nor a miss, and counting it either way would make pruning change the score. A
+ * *carried* goal stays in, deliberately — it was not achieved in this week, and this tile is about
+ * this week. That it continued is the goals card's business, not the ratio's.
  * Fixed appointments are out of the task ratio, since they have a tile of their own.
  */
 export function weekStats(week: HistoryWeek): HistoryStats {

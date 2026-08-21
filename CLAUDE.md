@@ -145,7 +145,10 @@ pill and past-day dimming only appear when that week is the current one.
   week used, and the schedule's is split into rows — role goals, Sharpen the Saw, other — because a
   role name and a dimension label are indistinguishable listed flat. The `dropped` outcome is shown
   as **"Removed"**: "dropped" is the model's word (`Goal#dropped?`) and reads to a user as giving
-  up rather than as an edit, so the wording stops at the type boundary. It is the one surface that
+  up rather than as an edit, so the wording stops at the type boundary. A goal left unfinished in a
+  week it was *carried out of* reads **"Carried on"** rather than "Missed", and one continuing an
+  earlier week carries an `n-th week` badge — the page's sharpest signal, since a goal on its fifth
+  week is asking to be broken down or dropped. It is the one surface that
   reads a week **as it was recorded**: goals under a since-archived role, goals since dropped and
   activities since deleted all still appear, flagged — which is why it has its own endpoints rather
   than composing `/roles` and `/sharpen-the-saw-activities`, both of which filter to `.active`.

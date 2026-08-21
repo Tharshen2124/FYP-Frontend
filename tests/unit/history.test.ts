@@ -3,6 +3,7 @@ import type { ApiHistoryActivity, ApiHistoryGoal, ApiHistoryTask } from "@/lib/a
 import {
   completionPercent,
   goalOutcome,
+  ordinal,
   toHistoryActivity,
   toHistoryEvent,
   toHistoryGoal,
@@ -37,6 +38,8 @@ const goal = (over: Partial<ApiHistoryGoal> = {}): ApiHistoryGoal => ({
   is_weekly_priority: false,
   is_completed: false,
   is_dropped: false,
+  week_index: 1,
+  is_carried_forward: false,
   role: { role_id: 1, name: "Programmer", color_id: "primary", icon_id: "code", is_archived: false },
   ...over,
 })
@@ -51,6 +54,28 @@ describe("strToMins", () => {
 })
 
 describe("goalOutcome", () => {
+  it("reports a goal carried into a later week as carried, not missed", () => {
+    // The distinction the bare cross was getting wrong: it did not finish, but it did not stop.
+    expect(goalOutcome({ isDropped: false, isCompleted: false, isCarriedForward: true, weekHasEnded: true }))
+      .toBe("carried")
+  })
+
+  it("still reports a carried goal that was finished as achieved", () => {
+    // Carrying a completed goal forward is allowed, and for this week it was still achieved.
+    expect(goalOutcome({ isDropped: false, isCompleted: true, isCarriedForward: true, weekHasEnded: true }))
+      .toBe("achieved")
+  })
+
+  it("reports a removed goal as removed even when it had been carried on", () => {
+    expect(goalOutcome({ isDropped: true, isCompleted: false, isCarriedForward: true, weekHasEnded: true }))
+      .toBe("dropped")
+  })
+
+  it("leaves a carried goal open while its week is still running", () => {
+    expect(goalOutcome({ isDropped: false, isCompleted: false, isCarriedForward: true, weekHasEnded: false }))
+      .toBe("open")
+  })
+
   it("reports a dropped goal as dropped, even when it had been completed first", () => {
     // Reported apart from a miss so pruning neither reads as a failure nor raises the percentage.
     expect(goalOutcome({ isDropped: true, isCompleted: true, weekHasEnded: true })).toBe("dropped")
@@ -153,6 +178,31 @@ describe("toHistoryEvent", () => {
   })
 })
 
+describe("ordinal", () => {
+  it("suffixes the ordinary cases", () => {
+    expect([1, 2, 3, 4, 21, 22, 23].map(ordinal)).toEqual(["1st", "2nd", "3rd", "4th", "21st", "22nd", "23rd"])
+  })
+
+  it("gets the teens right, which a last-digit rule does not", () => {
+    expect([11, 12, 13, 111, 112, 113].map(ordinal)).toEqual(["11th", "12th", "13th", "111th", "112th", "113th"])
+  })
+})
+
+describe("toHistoryGoal lineage", () => {
+  it("carries how many weeks the goal has run, and whether it went on", () => {
+    const carried = toHistoryGoal(goal({ week_index: 3, is_carried_forward: true }), true)
+    expect(carried.weekIndex).toBe(3)
+    expect(carried.isCarriedForward).toBe(true)
+    expect(carried.outcome).toBe("carried")
+  })
+
+  it("treats a goal begun in the week as its first, pointing nowhere", () => {
+    const fresh = toHistoryGoal(goal(), true)
+    expect(fresh.weekIndex).toBe(1)
+    expect(fresh.outcome).toBe("missed")
+  })
+})
+
 describe("weekLegend", () => {
   const labelsIn = (groups: LegendGroup[], key: string) =>
     groups.find(g => g.key === key)?.entries.map(e => e.label) ?? []
@@ -218,10 +268,10 @@ describe("outcomeLegend", () => {
     expect(outcomeLegend(goals({ is_completed: true }))).toEqual(["achieved"])
   })
 
-  it("orders them as the card reads: met, missed, then what left the week", () => {
+  it("orders them as the card reads: met, still on, missed, then what left the week", () => {
     // Independent of the order the goals arrive in, so two weeks' legends are directly comparable.
-    const week = goals({ is_dropped: true }, {}, { is_completed: true })
-    expect(outcomeLegend(week)).toEqual(["achieved", "missed", "dropped"])
+    const week = goals({ is_dropped: true }, {}, { is_carried_forward: true }, { is_completed: true })
+    expect(outcomeLegend(week)).toEqual(["achieved", "carried", "missed", "dropped"])
   })
 
   it("is empty for a week with no goals, so no rule is drawn under nothing", () => {
@@ -255,6 +305,15 @@ describe("weekStats", () => {
     const stats = weekStats(week())
     expect(stats.goalCount).toBe(2)
     expect(stats.goalsAchieved).toBe(1)
+  })
+
+  it("keeps a carried goal in the denominator, since it was not achieved this week", () => {
+    const carried = { ...week(), goals: [
+      toHistoryGoal(goal({ goal_id: 1, is_completed: true }), true),
+      toHistoryGoal(goal({ goal_id: 2, is_carried_forward: true }), true),
+    ] }
+    expect(weekStats(carried).goalCount).toBe(2)
+    expect(weekStats(carried).goalsAchieved).toBe(1)
   })
 
   it("counts scheduled tasks apart from fixed appointments", () => {

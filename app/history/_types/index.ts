@@ -1,12 +1,16 @@
 import type { ElementType } from "react"
 
 /**
- * How a goal resolved. All four are derived rather than stored — from `is_dropped`, `is_completed`
- * and whether the week has ended — because the server keeps no timezone and so cannot decide the
- * last of those. A dropped goal is reported apart from a missed one, so pruning a goal neither
- * reads as a failure nor quietly raises the completion percentage.
+ * How a goal resolved. All five are derived rather than stored — from `is_dropped`, `is_completed`,
+ * `is_carried_forward` and whether the week has ended — because the server keeps no timezone and so
+ * cannot decide the last of those.
+ *
+ * Two of them exist to stop the cross overstating its case. A `dropped` goal is reported apart from
+ * a missed one, so pruning a goal neither reads as a failure nor quietly raises the completion
+ * percentage. A `carried` goal was unfinished when the week closed but continued into the next one,
+ * which is a different fact from having stopped.
  */
-export type GoalOutcome = "achieved" | "dropped" | "missed" | "open"
+export type GoalOutcome = "achieved" | "dropped" | "missed" | "carried" | "open"
 
 /** What a schedule chip was for. `none` is the schema-permitted, UI-unreachable unlinked task. */
 export type CategoryKind = "fixed" | "goal" | "activity" | "none"
@@ -33,6 +37,9 @@ export interface HistoryGoal {
   text: string
   isWeeklyPriority: boolean
   outcome: GoalOutcome
+  /** How many weeks this goal has been running, this one included. 1 means it started here. */
+  weekIndex: number
+  isCarriedForward: boolean
   roleId: number
   roleName: string
   roleColor: string
