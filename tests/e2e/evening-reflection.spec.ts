@@ -91,6 +91,24 @@ test.describe("evening reflections", () => {
     await expect(page.getByRole("button", { name: /^Create .* reflection$/ })).toHaveCount(0)
   })
 
+  // Planning a week that has already gone would change nothing that happened in it, and there
+  // would still be nothing to reflect against afterwards — so the offer is not made.
+  test("does not offer to plan a week that has already passed", async ({ page }) => {
+    await authenticateAsNewUser(page)
+    await seedWeeklyPlan(page)
+
+    const lastWeek = new Date(`${currentMonday()}T00:00:00`)
+    lastWeek.setDate(lastWeek.getDate() - 7)
+    const lastMonday = `${lastWeek.getFullYear()}-${String(lastWeek.getMonth() + 1).padStart(2, "0")}-${String(lastWeek.getDate()).padStart(2, "0")}`
+
+    await page.goto(`/evening-reflections?week_start=${lastMonday}`)
+
+    await expect(page.getByText("You didn't plan this week", { exact: false })).toBeVisible()
+    await expect(page.getByRole("link", { name: /Plan this week/ })).toHaveCount(0)
+    // Nothing was written, so there is nothing to say is locked either.
+    await expect(page.getByText("This week has ended", { exact: false })).toHaveCount(0)
+  })
+
   /**
    * "Past weeks are read-only" is a client-side rule, because the client is the only party that
    * knows the user's local date — the server stores no timezone and keeps only a loose backstop.

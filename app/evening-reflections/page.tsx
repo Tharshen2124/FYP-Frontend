@@ -76,7 +76,7 @@ export default function EveningReflectionsPage() {
               </p>
             </div>
 
-            {!week.isEditable && (
+            {!week.isLoading && !week.isEditable && week.planned && (
               <div className="flex items-center gap-2 mb-6 px-4 py-3 rounded-xl bg-muted border border-border">
                 <Lock className="w-4 h-4 text-muted-foreground shrink-0" />
                 <p className="text-sm text-muted-foreground font-serif">
@@ -92,17 +92,29 @@ export default function EveningReflectionsPage() {
               </p>
             ) : !week.planned ? (
               /* A reflection belongs to a weekly plan, so there is nowhere to put one until the
-                 week has been planned. Saying so beats a write that fails at the server. */
+                 week has been planned. Saying so beats a write that fails at the server.
+
+                 The offer to plan it is only made while the week can still be lived: planning a
+                 week that has already gone would change nothing that happened in it, and there
+                 would still be nothing to reflect against afterwards. */
               <div className="p-6 rounded-2xl bg-card border-2 border-border">
-                <p className="text-muted-foreground font-serif mb-4">
-                  You haven&apos;t planned this week yet, so there&apos;s nothing to reflect against.
-                </p>
-                <Link
-                  href={`/weekly-plan/goals?week_start=${week.weekStart}`}
-                  className="text-primary font-bold hover:underline"
-                >
-                  Plan this week →
-                </Link>
+                {week.isEditable ? (
+                  <>
+                    <p className="text-muted-foreground font-serif mb-4">
+                      You haven&apos;t planned this week yet, so there&apos;s nothing to reflect against.
+                    </p>
+                    <Link
+                      href={`/weekly-plan/goals?week_start=${week.weekStart}`}
+                      className="text-primary font-bold hover:underline"
+                    >
+                      Plan this week →
+                    </Link>
+                  </>
+                ) : (
+                  <p className="text-muted-foreground font-serif">
+                    You didn&apos;t plan this week, so there are no reflections to read.
+                  </p>
+                )}
               </div>
             ) : (
               <>
