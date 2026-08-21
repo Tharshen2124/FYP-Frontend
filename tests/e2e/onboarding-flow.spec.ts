@@ -1,5 +1,11 @@
 import { test, expect, type Page } from "@playwright/test"
-import { suppressEndOfDayModal, authenticateAsNewUser, fillEveryDimension, clickSlot } from "./helpers"
+import {
+  suppressEndOfDayModal,
+  authenticateAsNewUser,
+  completeOnboarding,
+  fillEveryDimension,
+  clickSlot,
+} from "./helpers"
 
 test.beforeEach(async ({ page }) => {
   await suppressEndOfDayModal(page)
@@ -164,5 +170,49 @@ test.describe("onboarding", () => {
       await page.goto(url)
       await expect(page.getByText(label, { exact: true }).first()).toBeVisible()
     }
+  })
+})
+
+/**
+ * Onboarding is walked once. Once it is done the flow is not somewhere the user can wander back
+ * into by typing a URL — there is nothing there for them, and re-submitting step 1 would reconcile
+ * their roles against a page seeded with the defaults.
+ */
+test.describe("onboarding is closed once it is finished", () => {
+  const STEPS = [
+    "/onboarding/roles",
+    "/onboarding/sharpen-the-saw",
+    "/onboarding/fixed-appointments",
+    "/onboarding/schedule-tasks",
+    "/onboarding/complete",
+  ]
+
+  test("sends an onboarded user typing a step URL back to the dashboard, and says why", async ({ page }) => {
+    await completeOnboarding(page)
+
+    await page.goto("/onboarding/roles")
+
+    await expect(page).toHaveURL(/\/dashboard$/)
+    await expect(page.getByText("You've already completed onboarding", { exact: false })).toBeVisible()
+    // None of the flow itself should have rendered on the way past.
+    await expect(page.getByText("Roles & Goals", { exact: true })).toHaveCount(0)
+  })
+
+  test("closes every step, not just the first", async ({ page }) => {
+    await completeOnboarding(page)
+
+    for (const step of STEPS) {
+      await page.goto(step)
+      await expect(page).toHaveURL(/\/dashboard$/)
+    }
+  })
+
+  // The guard reads whether the user was onboarded when they *arrived*, so finishing the flow does
+  // not make its own last step accuse the user of sneaking in.
+  test("does not interrupt the user who is finishing the flow", async ({ page }) => {
+    await completeOnboarding(page)
+
+    await expect(page).toHaveURL(/\/dashboard$/)
+    await expect(page.getByText("You've already completed onboarding", { exact: false })).toHaveCount(0)
   })
 })

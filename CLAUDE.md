@@ -50,7 +50,13 @@ There are three distinct groups of routes.
 **1. Marketing** — `/` (landing) → `/login`. Every landing CTA links to `/login`; submitting
 either login form sends the user to `/onboarding/roles` (there is no auth backend yet).
 
-**2. Onboarding** (`/onboarding/*`) — the five-step first-run flow, each step gated by an
+**2. Onboarding** (`/onboarding/*`) — the five-step first-run flow, walked once. `app/onboarding/
+layout.tsx` gates the whole flow on auth and closes it afterwards: an onboarded user who types a
+step URL is sent to `/dashboard` with a toast saying why. The guard reads whether they were
+onboarded when they *arrived*, not the live flag, because step 5 calls `markOnboarded()` just
+before navigating — reading the live flag would fire on the person who has this second finished.
+It redirects rather than going back, since every step sits behind the same guard and backing out of
+one would land on another. Each step is gated by an
 `<AppNav action="next">` button and tracked by `<OnboardingStepper>`:
 
 | Step | Route | Next unlocks when |
