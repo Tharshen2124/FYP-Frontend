@@ -1,15 +1,11 @@
-import { generateWeeks } from "../_utils/weeks"
-
+/** Index is the `dayIndex` of a reflection, so this is the label lookup, not the identity. */
 export const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
-/** Fixed reference date so the mock week list is stable between renders. */
-const REFERENCE_DATE = new Date(2026, 4, 24) // May 24, 2026
+/** Every day of the week has to be written before the summary unlocks. */
+export const REQUIRED_DAYS = 7
 
-export const INITIAL_WEEKS = generateWeeks(REFERENCE_DATE)
+/** How many weeks the sidebar shows at a time, and how many more "Load older weeks" adds. */
+export const WEEKS_PER_PAGE = 8
 
-/** Stand-in for the AI-generated weekly summary. */
-export const SUMMARY_PLACEHOLDER =
-  "This week showed meaningful progress across your daily reflections. You maintained consistency through mid-week, with particular depth on Wednesday and Thursday. Your reflections reveal a recurring theme of gratitude and focus on personal growth. Consider carrying forward your Wednesday insights into next week's planning."
-
-/** Simulated latency of the summary generation call. */
-export const SUMMARY_DELAY_MS = 1800
+/** Mirrors the server's length validation on evening_reflections.content, shown as a counter. */
+export const MAX_REFLECTION_LENGTH = 2000

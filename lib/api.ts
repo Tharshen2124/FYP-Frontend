@@ -44,6 +44,35 @@ function weekScoped(path: string, weekStart: string = localWeekStartParam()) {
  * Roles are standing; goals belong to exactly one week. A role carried into a new week comes back
  * with an empty `goals` array, so these shapes are always read against a particular `week_start`.
  */
+/**
+ * One evening's entry. `day_of_week` is 0 = Monday … 6 = Sunday, the same indexing as
+ * `tasks.day_of_week` and `getWeekDays()` in lib/date.ts, so `getWeekDays(week)[day_of_week]` is
+ * the date it was written for. There is no id: a week has exactly one slot per day, so a
+ * reflection is addressed by (week, day) rather than held by reference.
+ */
+export interface ApiEveningReflection {
+  day_of_week: number
+  content: string
+  updated_at: string
+}
+
+/** Written once per week and never regenerated, which is why it records the model that wrote it. */
+export interface ApiWeeklySummary {
+  content: string
+  model: string
+  generated_at: string
+}
+
+/**
+ * One row of the week strip: counts, never text. The detail panel fetches a week at a time, so
+ * shipping every week's prose just to label a list of dates would be the whole journal on load.
+ */
+export interface ApiReflectionWeek {
+  week_start: string
+  reflection_count: number
+  has_summary: boolean
+}
+
 export interface ApiRoleGoal {
   goal_id: number
   text: string
@@ -321,5 +350,43 @@ export const api = {
         }[]
       } | null
     }>(weekScoped("/weekly-plans", weekStart)),
+  /**
+   * One week's reflections and its summary in a single round trip. `planned` is false when the
+   * user never planned that week — a normal answer, and looking does not create the plan.
+   */
+  fetchEveningReflections: (weekStart?: string) =>
+    request<{
+      planned: boolean
+      reflections: ApiEveningReflection[]
+      summary: ApiWeeklySummary | null
+    }>(weekScoped("/weekly-plans/evening-reflections", weekStart)),
+  /**
+   * Writes one evening. Create and edit are the same call: there is exactly one slot per day, so
+   * the client never has to know whether it already holds a row.
+   *
+   * Rejected with 422 for a week that was never planned — a reflection hangs off a weekly plan,
+   * and writing one must not be what brings that plan into existence.
+   */
+  saveEveningReflection: (dayOfWeek: number, content: string, weekStart?: string) =>
+    request<{ reflection: ApiEveningReflection }>("/weekly-plans/evening-reflections", {
+      method: "PUT",
+      body: JSON.stringify(withWeekStart({ day_of_week: dayOfWeek, content }, weekStart)),
+    }),
+  /**
+   * The week strip, over a range of Mondays. Weeks the user never planned are simply absent, so
+   * the caller fills the gaps itself rather than the server inventing rows.
+   */
+  fetchReflectionWeeks: (from: string, to: string) =>
+    request<{ weeks: ApiReflectionWeek[] }>(`/evening-reflections/weeks?from=${from}&to=${to}`),
+  /**
+   * Generates the week's summary — once, and only ever once. 422 when the week is not fully
+   * written or already has one, 429 when the upstream quota is spent, 502 when it is unreachable.
+   * `request` surfaces the server's own sentence as the Error message, which is worth showing.
+   */
+  generateWeeklySummary: (weekStart?: string) =>
+    request<{ summary: ApiWeeklySummary }>("/weekly-plans/weekly-summary", {
+      method: "POST",
+      body: JSON.stringify(withWeekStart({}, weekStart)),
+    }),
   googleLoginHref: () => `${API_URL}/login`,
 }

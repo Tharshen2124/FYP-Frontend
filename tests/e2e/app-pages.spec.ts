@@ -137,30 +137,6 @@ test.describe("settings", () => {
   })
 })
 
-test.describe("evening reflections", () => {
-  test("writes a reflection and then unlocks the summary", async ({ page }) => {
-    await page.goto("/evening-reflections")
-
-    await expect(page.getByRole("button", { name: /Generate Summary/ })).toBeDisabled()
-
-    await page.getByRole("button", { name: "Create" }).first().click()
-    await page.getByPlaceholder("Today I reflected on…").fill("A good day of deep work.")
-    await page.getByRole("button", { name: "Save Reflection" }).click()
-
-    await expect(page.getByText("A good day of deep work.")).toBeVisible()
-    await expect(page.getByRole("button", { name: /Generate Summary/ })).toBeEnabled()
-  })
-
-  test("switches between weeks", async ({ page }) => {
-    await page.goto("/evening-reflections")
-
-    const secondWeek = page.locator("aside button").nth(1)
-    const label = (await secondWeek.textContent())!.trim()
-    await secondWeek.click()
-
-    await expect(page.locator("main").getByText(label)).toBeVisible()
-  })
-})
 
 test.describe("history and analytics", () => {
   test("history switches between past weeks", async ({ page }) => {

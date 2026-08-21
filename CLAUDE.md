@@ -123,8 +123,12 @@ pill and past-day dimming only appear when that week is the current one.
 - `/settings` — End-of-Day check-in time (persisted to `localStorage`) and Google Calendar settings
   (connect/disconnect, sync toggle, export category tree with indeterminate parents, sticky
   Discard/Save bar shown only while dirty).
-- `/evening-reflections` — Week list sidebar, AI-simulated weekly summary, and a 7-day reflection grid
-  with an edit dialog.
+- `/evening-reflections` — API-backed. Week list sidebar (a `n/7` badge per week, a date jump, and
+  "Load older weeks"), the AI weekly summary, and a 7-day reflection grid. Every day of the week you
+  are standing in is writable in any order — filling in Monday on Thursday, or Sunday early, are both
+  normal. Once a week has passed its entries can be viewed but not changed. The summary is generated
+  **once per week and never regenerated**, and unlocks only when all 7 reflections are written; a
+  past week can still be summarised, since read-only applies to the reflections, not to this.
 - `/history` — Past-week snapshots: stats row, role goals, renewal activities, and a compact schedule grid.
 - `/analytics` — 2×2 grid: sharpen-the-saw radar, role task table, daily priority bar chart, weekly
   completion trend. Date/range selectors filter against a fixed week registry.
@@ -193,8 +197,12 @@ the Rails API through `lib/api.ts`. Auth is the one exception — a JWT in a coo
 store (`stores/auth-store.ts` + `lib/cookie-storage.ts`).
 
 API-backed routes: `/login`, all four data-writing onboarding steps, `/dashboard`,
-`/sharpen-the-saw`, `/roles`, and all three `/weekly-plan/*` steps. Still seeded from their own
-`_constants/mock-data.ts`: `/history`, `/analytics`, `/evening-reflections`.
+`/sharpen-the-saw`, `/roles`, `/evening-reflections`, and all three `/weekly-plan/*` steps. Still
+seeded from their own `_constants/mock-data.ts`: `/history`, `/analytics`.
+
+**"Has this week passed?" is a client decision**, like every other date in this app — the server
+stores no timezone and keeps only a loose backstop that can never fire for a real user. It lives in
+`app/evening-reflections/_utils/weeks.ts`, which compares `YYYY-MM-DD` Mondays as strings.
 
 Routes with API state follow `/sharpen-the-saw` and `/roles`: a `let cancelled = false` effect for
 the initial load, an `isLoading` guard, and each write sent before local state is patched from the
