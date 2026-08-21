@@ -1,0 +1,160 @@
+"use client"
+
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { toast } from "sonner"
+import { api } from "@/lib/api"
+import {
+  getWeekStart,
+  isWeekStart,
+  localDateParam,
+  localWeekStartParam,
+  shiftWeekStart,
+  weekStartsBack,
+} from "@/lib/date"
+import { WEEKS_PER_PAGE } from "../_constants/history"
+import { toHistoryWeek } from "./history"
+import type { HistoryWeek, HistoryWeekMeta } from "../_types"
+
+/** The most recent week /history will show: the one before the one the user is standing in.
+ *
+ *  The live week belongs to /dashboard, which draws it as it stands rather than as it turned out,
+ *  and a goal in an unfinished week has no outcome yet — every one of them would read "open". */
+function latestPastWeek(): string {
+  return shiftWeekStart(localWeekStartParam(), -1)
+}
+
+/**
+ * Everything this route reads. It lives in a hook rather than in page.tsx for the reason /roles and
+ * /evening-reflections do: the page is a slim orchestrator, and the 250-line cap is enforced by
+ * tests/unit/file-structure.test.ts.
+ *
+ * The week being viewed lives in the URL as `?week_start=`, matching /weekly-plan and
+ * /evening-reflections — a reload, a Back, or a shared link all land on the same week.
+ */
+export function useHistory() {
+  const router = useRouter()
+  const pathname = usePathname()
+  const param = useSearchParams().get("week_start")
+
+  const newest = latestPastWeek()
+  // A hand-edited URL naming the current week — or a future one — is clamped rather than refused:
+  // there is nothing to look back on there, and the nearest week that does exist is the answer.
+  const weekStart = isWeekStart(param) && param <= newest ? param : newest
+
+  const [weekCount, setWeekCount] = useState(WEEKS_PER_PAGE)
+  const [weekMeta, setWeekMeta] = useState<Record<string, HistoryWeekMeta>>({})
+  /* The week held *and which week it is*, rather than the week plus a separate loading flag.
+     Keeping the two together is what lets "still loading" be derived below: a flag set inside the
+     effect only flips after the first paint, so for one frame the previous week's goals and
+     schedule would sit under the new week's heading. */
+  const [loaded, setLoaded] = useState<{ weekStart: string; week: HistoryWeek | null } | null>(null)
+
+  // Stamp the resolved week into the URL so the sidebar, a reload and a Back all agree on it.
+  useEffect(() => {
+    if (isWeekStart(param) && param <= newest) return
+    router.replace(`${pathname}?week_start=${newest}`)
+  }, [param, pathname, newest, router])
+
+  // The strip is the Mondays back from the newest past week, whether or not each has a plan; the
+  // server fills in counts for the ones that do. Widening it refetches the whole (small) range
+  // rather than tracking which slice is already held.
+  useEffect(() => {
+    let cancelled = false
+    const oldest = shiftWeekStart(newest, -(weekCount - 1))
+
+    api
+      .fetchHistoryWeeks(oldest, newest)
+      .then(({ weeks }) => {
+        if (cancelled) return
+        setWeekMeta(
+          Object.fromEntries(
+            weeks.map(w => [
+              w.week_start,
+              {
+                weekStart: w.week_start,
+                planned: true,
+                taskCount: w.task_count,
+                tasksCompleted: w.tasks_completed,
+              },
+            ])
+          )
+        )
+      })
+      .catch(() => {
+        if (!cancelled) toast.error("Couldn't load your weeks — please refresh.")
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [newest, weekCount])
+
+  useEffect(() => {
+    let cancelled = false
+
+    api
+      .fetchHistoryWeek(weekStart)
+      .then(({ week }) => {
+        if (cancelled) return
+        // Every week this route offers has ended, so the goal outcomes it derives can only be
+        // achieved, missed or dropped. Passing the fact rather than assuming it keeps the mapper
+        // honest if the route is ever pointed at a live week.
+        setLoaded({ weekStart, week: week && toHistoryWeek(week, true) })
+      })
+      .catch(() => {
+        if (cancelled) return
+        // Recorded as loaded-with-nothing rather than left pending, or a failed request would
+        // spin forever instead of saying so.
+        setLoaded({ weekStart, week: null })
+        toast.error("Couldn't load that week — please refresh.")
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [weekStart])
+
+  // Loading is "what I hold is not what was asked for", which covers the first load and every
+  // switch between weeks without a flag to keep in step.
+  const isLoading = loaded?.weekStart !== weekStart
+  const week = isLoading ? null : loaded.week
+
+  const weeks: HistoryWeekMeta[] = useMemo(
+    () =>
+      weekStartsBack(newest, weekCount).map(
+        ws => weekMeta[ws] ?? { weekStart: ws, planned: false, taskCount: 0, tasksCompleted: 0 }
+      ),
+    [newest, weekCount, weekMeta]
+  )
+
+  const selectWeek = useCallback(
+    (next: string) => router.replace(`${pathname}?week_start=${next}`),
+    [pathname, router]
+  )
+
+  /**
+   * Any date jumps to the week containing it. "Which week does this date fall in" is `getWeekStart`
+   * — the same function every other week-scoped route uses — so no search endpoint is needed.
+   * Clamped to the newest past week, which is also the date input's `max`.
+   */
+  const jumpToDate = useCallback(
+    (value: string) => {
+      if (!value) return
+      const monday = localDateParam(getWeekStart(new Date(`${value}T00:00:00`)))
+      selectWeek(monday > newest ? newest : monday)
+    },
+    [selectWeek, newest]
+  )
+
+  return {
+    weekStart,
+    weeks,
+    newest,
+    week,
+    isLoading,
+    selectWeek,
+    jumpToDate,
+    loadOlderWeeks: () => setWeekCount(n => n + WEEKS_PER_PAGE),
+  }
+}

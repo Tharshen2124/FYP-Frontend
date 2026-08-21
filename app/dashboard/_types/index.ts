@@ -7,6 +7,7 @@ export interface CalEvent {
   color: string
   isFixed?: boolean
   isDailyPriority?: boolean
+  isCompleted: boolean
   linkLabel?: string
 }
 

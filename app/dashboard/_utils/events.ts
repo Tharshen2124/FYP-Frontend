@@ -39,6 +39,7 @@ export function toCalEvents(tasks: ApiTask[]): CalEvent[] {
     color: colorFor(task),
     isFixed: task.is_fixed_appointment,
     isDailyPriority: task.is_daily_priority,
+    isCompleted: task.is_completed,
     linkLabel: linkLabel(task),
   }))
 }

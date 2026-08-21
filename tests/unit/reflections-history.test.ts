@@ -2,14 +2,11 @@ import { describe, it, expect } from "vitest"
 import {
   canGenerateSummary,
   countWritten,
-  isEditableWeek,
-  isPastWeek,
   toDaySlots,
-  weekStartsBack,
 } from "@/app/evening-reflections/_utils/weeks"
 import { groupBy } from "@/app/history/_utils/group"
 import { fmtTime } from "@/app/history/_utils/time"
-import { getWeekStart } from "@/lib/date"
+import { getWeekStart, isEditableWeek, isPastWeek, weekStartsBack } from "@/lib/date"
 
 describe("weekStartsBack", () => {
   it("walks back a Monday at a time, most recent first", () => {

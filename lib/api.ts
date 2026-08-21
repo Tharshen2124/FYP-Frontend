@@ -132,6 +132,75 @@ export interface ApiPlanTask {
   is_completed: boolean
 }
 
+/**
+ * One row of the history week strip: counts, never content. The detail panel fetches a week at a
+ * time, so shipping every week's goals just to label a list of dates would be the whole history on
+ * load — the same reasoning as `ApiReflectionWeek`.
+ */
+export interface ApiHistoryWeekMeta {
+  week_start: string
+  goal_count: number
+  goals_achieved: number
+  task_count: number
+  tasks_completed: number
+  activity_count: number
+}
+
+/** The role a past week's goal belonged to. `is_archived` is why /roles could not have served this:
+ *  that endpoint returns only active roles, and archived ones come back with no goals at all. */
+export interface ApiHistoryRole {
+  role_id: number
+  name: string
+  color_id: string | null
+  icon_id: string | null
+  is_archived: boolean
+}
+
+/** `is_completed` and `is_dropped` rather than a finished `outcome`: whether the week has ended is
+ *  a client fact, so the server sends the parts and the client composes the four-way split. */
+export interface ApiHistoryGoal {
+  goal_id: number
+  text: string
+  is_weekly_priority: boolean
+  is_completed: boolean
+  is_dropped: boolean
+  role: ApiHistoryRole
+}
+
+export interface ApiHistoryActivity {
+  sharpen_the_saw_activity_id: number
+  dimension: string
+  activity_description: string
+  is_deleted: boolean
+}
+
+/** `ApiTask` as /weekly-plans returns it, plus `role_color_id` so the schedule can tint a chip in
+ *  its role's colour without a second request. */
+export interface ApiHistoryTask {
+  task_id: number
+  title: string
+  description: string | null
+  day_of_week: number
+  start_time: string
+  end_time: string
+  is_fixed_appointment: boolean
+  is_daily_priority: boolean
+  is_completed: boolean
+  link_kind: "goal" | "activity" | null
+  link_text: string | null
+  role_name: string | null
+  role_color_id: string | null
+  dimension: string | null
+}
+
+export interface ApiHistoryWeek {
+  week_start: string
+  end_date: string
+  goals: ApiHistoryGoal[]
+  activities: ApiHistoryActivity[]
+  tasks: ApiHistoryTask[]
+}
+
 export const api = {
   signup: (data: { email: string; username: string; password: string }) =>
     request<{ user: { email: string; username: string } }>("/signup", {
@@ -388,5 +457,28 @@ export const api = {
       method: "POST",
       body: JSON.stringify(withWeekStart({}, weekStart)),
     }),
+  /**
+   * Ticking one task off. Not week-scoped: the row names its own week, so asking the caller to
+   * restate it would only create something to be wrong about.
+   */
+  setTaskCompletion: (taskId: number, isCompleted: boolean) =>
+    request<{ task: { task_id: number; is_completed: boolean } }>(`/tasks/${taskId}/completion`, {
+      method: "PATCH",
+      body: JSON.stringify({ is_completed: isCompleted }),
+    }),
+  /**
+   * One past week as it was recorded — including goals under a role since archived, goals since
+   * dropped and activities since deleted. Every other read filters those out, because every other
+   * read is a planning surface. `week` is `null` for a week the user never planned, and looking
+   * creates nothing.
+   */
+  fetchHistoryWeek: (weekStart: string) =>
+    request<{ week: ApiHistoryWeek | null }>(weekScoped("/history", weekStart)),
+  /**
+   * The history week strip, over a range of Mondays. Weeks the user never planned are simply
+   * absent, so the caller fills the gaps itself rather than the server inventing rows.
+   */
+  fetchHistoryWeeks: (from: string, to: string) =>
+    request<{ weeks: ApiHistoryWeekMeta[] }>(`/history/weeks?from=${from}&to=${to}`),
   googleLoginHref: () => `${API_URL}/login`,
 }

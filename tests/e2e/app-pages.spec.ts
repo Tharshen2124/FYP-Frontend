@@ -139,18 +139,58 @@ test.describe("settings", () => {
 
 
 test.describe("history and analytics", () => {
-  test("history switches between past weeks", async ({ page }) => {
-    await page.goto("/history")
+  // /history reads the live backend now, so it needs a session. A fresh user has no past weeks at
+  // all, which is itself the case worth pinning: the strip still lists them, and each one says so.
+  test.describe("history", () => {
+    test.beforeEach(async ({ page }) => {
+      await authenticateAsNewUser(page)
+      await page.goto("/history")
+    })
 
-    await expect(page.getByRole("heading", { name: /Week of/ })).toBeVisible()
-    await expect(page.getByRole("heading", { name: "Role Goals" })).toBeVisible()
-    await expect(page.getByRole("heading", { name: "Weekly Schedule" })).toBeVisible()
+    test("opens on the most recent past week, stamped into the URL", async ({ page }) => {
+      await expect(page.getByRole("heading", { name: /Week of/ })).toBeVisible()
+      // The week lives in the URL so a reload, a Back and a shared link all land on the same one.
+      await expect(page).toHaveURL(/\/history\?week_start=\d{4}-\d{2}-\d{2}/)
 
-    const secondWeek = page.locator("aside li button").nth(1)
-    const label = (await secondWeek.textContent())!.trim()
-    await secondWeek.click()
+      const opened = new URL(page.url()).searchParams.get("week_start")!
+      await page.reload()
+      await expect(page).toHaveURL(new RegExp(`week_start=${opened}`))
+    })
 
-    await expect(page.getByRole("heading", { name: `Week of ${label}` })).toBeVisible()
+    test("says so for a week that was never planned, rather than showing an empty grid", async ({ page }) => {
+      await expect(page.getByText(/didn't plan this week/)).toBeVisible()
+    })
+
+    test("switches between past weeks", async ({ page }) => {
+      const secondWeek = page.locator("aside li button").nth(1)
+      const label = (await secondWeek.locator("span").first().textContent())!.trim()
+      await secondWeek.click()
+
+      await expect(page.getByRole("heading", { name: `Week of ${label}` })).toBeVisible()
+    })
+
+    test("never offers the current week, which has not finished happening", async ({ page }) => {
+      const thisMonday = await page.evaluate(() => {
+        const d = new Date()
+        d.setDate(d.getDate() + (d.getDay() === 0 ? -6 : 1 - d.getDay()))
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+      })
+
+      await expect(page.locator("#jump-to-week")).toHaveAttribute("max", /\d{4}-\d{2}-\d{2}/)
+      expect(await page.locator("#jump-to-week").getAttribute("max")).not.toBe(thisMonday)
+
+      // A hand-edited URL naming the live week is clamped rather than refused.
+      await page.goto(`/history?week_start=${thisMonday}`)
+      await expect(page).not.toHaveURL(new RegExp(`week_start=${thisMonday}`))
+    })
+
+    test("load older weeks widens the strip", async ({ page }) => {
+      const rows = page.locator("aside li button")
+      await expect(rows).toHaveCount(8)
+
+      await page.getByRole("button", { name: "Load older weeks" }).click()
+      await expect(rows).toHaveCount(16)
+    })
   })
 
   test("analytics renders all four cards", async ({ page }) => {

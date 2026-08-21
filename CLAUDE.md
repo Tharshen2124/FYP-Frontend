@@ -109,7 +109,8 @@ pill and past-day dimming only appear when that week is the current one.
   spans fixed appointments *and* tasks.
 - `/onboarding/complete` — Explains Evening Reflections and the End-of-Day check-in; links to `/dashboard`.
 - `/dashboard` — Read-only weekly timetable with today's column highlighted, a "now" indicator line, and
-  a legend. "Edit Weekly Plan" is deliberately disabled — editing a week in place needs its own page
+  a legend. A completed task is struck through with a check, the same mark `/history` uses.
+  "Edit Weekly Plan" is deliberately disabled — editing a week in place needs its own page
   that loads the current week and saves directly, and pointing it back at the planning flow's last
   step would mean "finish planning", not "save my change". Shows the end-of-day check-in modal once
   per day after the time saved in `localStorage["eod_time"]`.
@@ -135,7 +136,15 @@ pill and past-day dimming only appear when that week is the current one.
   normal. Once a week has passed its entries can be viewed but not changed. The summary is generated
   **once per week and never regenerated**, and unlocks only when all 7 reflections are written; a
   past week can still be summarised, since read-only applies to the reflections, not to this.
-- `/history` — Past-week snapshots: stats row, role goals, renewal activities, and a compact schedule grid.
+- `/history` — API-backed. Past weeks only: the strip starts at *last* Monday, since the live week
+  belongs to `/dashboard` and a goal in an unfinished week has no outcome yet. Week list sidebar
+  (a tasks-done badge per week, a date jump, and "Load older weeks"), a stats row of ratios
+  (goals achieved, tasks done, renewal activities, fixed appointments), role goals marked with how
+  each resolved, renewal activities, and a schedule grid whose every chip names the role or
+  dimension it served and whether it was done. It is the one surface that reads a week **as it was
+  recorded**: goals under a since-archived role, goals since dropped and activities since deleted
+  all still appear, flagged — which is why it has its own endpoints rather than composing `/roles`
+  and `/sharpen-the-saw-activities`, both of which filter to `.active`.
 - `/analytics` — 2×2 grid: sharpen-the-saw radar, role task table, daily priority bar chart, weekly
   completion trend. Date/range selectors filter against a fixed week registry.
 
@@ -203,12 +212,20 @@ the Rails API through `lib/api.ts`. Auth is the one exception — a JWT in a coo
 store (`stores/auth-store.ts` + `lib/cookie-storage.ts`).
 
 API-backed routes: `/login`, all four data-writing onboarding steps, `/dashboard`,
-`/sharpen-the-saw`, `/roles`, `/evening-reflections`, and all three `/weekly-plan/*` steps. Still
-seeded from their own `_constants/mock-data.ts`: `/history`, `/analytics`.
+`/sharpen-the-saw`, `/roles`, `/evening-reflections`, `/history`, and all three `/weekly-plan/*`
+steps. `/analytics` is the last one still seeded from its own `_constants/mock-data.ts`.
 
 **"Has this week passed?" is a client decision**, like every other date in this app — the server
 stores no timezone and keeps only a loose backstop that can never fire for a real user. It lives in
-`app/evening-reflections/_utils/weeks.ts`, which compares `YYYY-MM-DD` Mondays as strings.
+`lib/date.ts` (`isPastWeek`/`isFutureWeek`/`isEditableWeek`, alongside `weekStartsBack`, which
+generates a week strip), which compares `YYYY-MM-DD` Mondays as strings. These four were hoisted out
+of `app/evening-reflections/_utils/weeks.ts` when `/history` grew a strip of its own: a route may
+not import another route's private folder, and a second copy of "has this week passed" is exactly
+what `lib/date.ts` exists to prevent.
+
+**A task is ticked off in the End-of-Day check-in**, which is the only thing that writes
+`tasks.is_completed` (`PATCH /tasks/:id/completion`). The modal seeds itself from what is already
+stored and sends only what changed, so saving twice does not untick the first save.
 
 Routes with API state follow `/sharpen-the-saw` and `/roles`: a `let cancelled = false` effect for
 the initial load, an `isLoading` guard, and each write sent before local state is patched from the

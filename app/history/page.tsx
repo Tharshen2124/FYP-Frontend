@@ -1,14 +1,12 @@
 "use client"
 
-import { useState } from "react"
 import { Sidebar } from "@/components/sidebar"
-import { HISTORY_WEEKS } from "./_constants/mock-data"
+import { useHistory } from "./_utils/use-history"
 import { WeekList } from "./_components/week-list"
 import { WeekDetail } from "./_components/week-detail"
 
 export default function HistoryPage() {
-  const [selectedId, setSelectedId] = useState(HISTORY_WEEKS[0].id)
-  const selectedWeek = HISTORY_WEEKS.find(w => w.id === selectedId)!
+  const history = useHistory()
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -21,10 +19,21 @@ export default function HistoryPage() {
 
       {/* Inner two-panel layout */}
       <div className="relative z-10 flex flex-1 overflow-hidden">
-        <WeekList weeks={HISTORY_WEEKS} selectedId={selectedId} onSelect={setSelectedId} />
+        <WeekList
+          weeks={history.weeks}
+          selectedWeekStart={history.weekStart}
+          onSelectWeek={history.selectWeek}
+          onJumpToDate={history.jumpToDate}
+          onLoadOlder={history.loadOlderWeeks}
+          maxDate={history.newest}
+        />
 
         <main className="flex-1 overflow-y-auto px-8 py-8">
-          <WeekDetail key={selectedId} week={selectedWeek} />
+          <WeekDetail
+            weekStart={history.weekStart}
+            week={history.week}
+            isLoading={history.isLoading}
+          />
         </main>
       </div>
     </div>

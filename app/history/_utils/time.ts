@@ -6,3 +6,9 @@ export function fmtTime(mins: number): string {
   const hh = h % 12 === 0 ? 12 : h % 12
   return m === 0 ? `${hh}${ampm}` : `${hh}:${m.toString().padStart(2, "0")}${ampm}`
 }
+
+/** `"14:00"` → `840`. The API sends times as `HH:MM`; the schedule reasons in minutes. */
+export function strToMins(time: string): number {
+  const [h, m] = time.split(":").map(Number)
+  return h * 60 + m
+}

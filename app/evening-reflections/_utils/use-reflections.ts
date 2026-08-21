@@ -4,9 +4,17 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import { api, type ApiEveningReflection, type ApiWeeklySummary } from "@/lib/api"
-import { getWeekStart, isWeekStart, localDateParam, localWeekStartParam, shiftWeekStart } from "@/lib/date"
+import {
+  getWeekStart,
+  isEditableWeek,
+  isWeekStart,
+  localDateParam,
+  localWeekStartParam,
+  shiftWeekStart,
+  weekStartsBack,
+} from "@/lib/date"
 import { WEEKS_PER_PAGE } from "../_constants/reflections"
-import { canGenerateSummary, countWritten, isEditableWeek, toDaySlots, weekStartsBack } from "./weeks"
+import { canGenerateSummary, countWritten, toDaySlots } from "./weeks"
 import type { DayReflection, WeekMeta, WeekSummary } from "../_types"
 
 const fromApiReflection = (r: ApiEveningReflection): DayReflection => ({

@@ -1,4 +1,4 @@
-import { Lock, Star } from "lucide-react"
+import { Check, Lock, Star } from "lucide-react"
 import { fmtTime } from "../_utils/time"
 import { getPositionStyle } from "../_utils/calendar"
 import type { CalEvent, CalItem } from "../_types"
@@ -33,9 +33,16 @@ export function EventCard({ event, allItems }: Props) {
         {event.isDailyPriority && !event.isFixed && (
           <Star className="w-3 h-3 mt-0.5 shrink-0 fill-current" style={{ color: event.color }} />
         )}
+        {/* Ticked off in the End-of-Day check-in. The same mark /history uses, so the live week and
+            the recorded one read the same way. */}
+        {event.isCompleted && (
+          <Check className="w-3 h-3 mt-0.5 shrink-0" style={{ color: event.color }} aria-label="Completed" />
+        )}
         <div className="min-w-0 flex-1 overflow-hidden">
           <p
-            className="text-[11px] font-semibold leading-tight truncate"
+            className={`text-[11px] font-semibold leading-tight truncate ${
+              event.isCompleted ? "line-through opacity-60" : ""
+            }`}
             style={{ color: event.color }}
           >
             {event.title}

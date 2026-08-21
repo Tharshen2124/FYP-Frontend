@@ -64,6 +64,24 @@ export default function DashboardPage() {
     setShowEodModal(false)
   }
 
+  /* The modal has already written these; patching the held plan is what makes the timetable behind
+     it agree without a second round trip — the house rule for every API-backed route here. */
+  const handleCompletionChange = (changed: { id: string; isCompleted: boolean }[]) => {
+    const byId = new Map(changed.map(c => [c.id, c.isCompleted]))
+    setPlan(prev =>
+      prev === null
+        ? prev
+        : {
+            ...prev,
+            tasks: prev.tasks.map(task =>
+              byId.has(String(task.task_id))
+                ? { ...task, is_completed: byId.get(String(task.task_id))! }
+                : task
+            ),
+          }
+    )
+  }
+
   if (!isReady) return null
 
   const dateRange = plan
@@ -140,7 +158,12 @@ export default function DashboardPage() {
         {loadState === "ready" && !plan && <NoPlanCard />}
       </main>
 
-      <EndOfDayModal open={showEodModal} onClose={handleEodClose} events={events} />
+      <EndOfDayModal
+        open={showEodModal}
+        onClose={handleEodClose}
+        events={events}
+        onCompletionChange={handleCompletionChange}
+      />
     </div>
   )
 }
