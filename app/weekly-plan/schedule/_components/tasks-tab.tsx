@@ -7,20 +7,26 @@ import { ClashBlockModal } from "@/components/clash-block-modal"
 import { TaskCard } from "./task-card"
 import { TaskModal } from "./task-modal"
 import { CalendarLegend } from "./calendar-legend"
-import type { Task, Appt, CalItem, ModalState, PendingTaskAction, LinkType } from "../_types"
-import { DAYS_FULL, DAYS_SHORT, CAL_START, CAL_END, TOTAL_HRS, HR_PX, FIXED_COLOR, EMPTY_TASK_MODAL } from "../_constants/calendar"
-import { useCurrentWeek } from "@/hooks/use-current-week"
+import type { Task, Appt, CalItem, ModalState, PendingTaskAction } from "../_types"
+import type { PlanDimension, PlanRole } from "../../_types"
+import { DAYS_FULL, CAL_START, CAL_END, TOTAL_HRS, HR_PX, FIXED_COLOR, EMPTY_TASK_MODAL } from "../_constants/calendar"
+import { CalendarDayHeader } from "./calendar-day-header"
+import { usePlanWeekDays } from "../_utils/use-plan-week"
 import { getOverlaps, getPositionStyle } from "../_utils/calendar"
 import { minsToStr, strToMins, snapMins, fmtTime } from "../_utils/time"
-import { getLinkMeta } from "../_utils/tasks"
+import { findLinkSelection, getLinkMeta } from "../_utils/tasks"
 
 interface Props {
   appts: Appt[]
   tasks: Task[]
   setTasks: React.Dispatch<React.SetStateAction<Task[]>>
+  roles: PlanRole[]
+  dimensions: PlanDimension[]
+  /** The Monday being planned, so the calendar prints that week's dates and not this week's. */
+  weekStart: string
 }
 
-export function TasksTab({ appts, tasks, setTasks }: Props) {
+export function TasksTab({ appts, tasks, setTasks, roles, dimensions, weekStart }: Props) {
   const [modal, setModal]                = useState<ModalState>(EMPTY_TASK_MODAL)
   const [pendingAction, setPendingAction] = useState<PendingTaskAction | null>(null)
   const [clashWarning, setClashWarning]  = useState<{ open: boolean; conflictingTitle: string }>({ open: false, conflictingTitle: "" })
@@ -41,37 +47,25 @@ export function TasksTab({ appts, tasks, setTasks }: Props) {
     const raw   = CAL_START * 60 + (clickY / HR_PX) * 60
     const start = Math.max(CAL_START * 60, Math.min((CAL_END - 1) * 60, snapMins(raw)))
     const end   = Math.min(CAL_END * 60, start + 60)
-    setModal({ ...EMPTY_TASK_MODAL, open: true, mode: "add", dayIndex, startTime: minsToStr(start), endTime: minsToStr(end) })
+    setModal({
+      ...EMPTY_TASK_MODAL,
+      open: true, mode: "add", dayIndex,
+      startTime: minsToStr(start), endTime: minsToStr(end),
+      selectedRoleId: roles[0]?.id ?? "",
+      selectedDimensionId: dimensions.find(d => d.activities.length > 0)?.id ?? "",
+    })
   }
 
   const openEdit = (task: Task) => {
-    let selectedRoleId      = ""
-    let selectedGoalId      = ""
-    let selectedDimensionId = ""
-    let selectedActivityId  = ""
-
-    if (task.linkType === "role-goal") {
-      const parts = task.linkLabel.split(" — ")
-      selectedRoleId = parts[0] ?? ""
-      selectedGoalId = parts[1] ?? ""
-    } else {
-      const parts = task.linkLabel.split(" — ")
-      selectedDimensionId = parts[0] ?? ""
-      selectedActivityId  = parts[1] ?? ""
-    }
-
     setModal({
       open: true, mode: "edit", editId: task.id,
-      dayIndex:           task.dayIndex,
-      startTime:          minsToStr(task.startMins),
-      endTime:            minsToStr(task.endMins),
-      title:              task.title,
-      linkType:           task.linkType,
-      selectedRoleId:     selectedRoleId,
-      selectedGoalId:     selectedGoalId,
-      selectedDimensionId,
-      selectedActivityId,
-      isDailyPriority:    task.isDailyPriority,
+      dayIndex:        task.dayIndex,
+      startTime:       minsToStr(task.startMins),
+      endTime:         minsToStr(task.endMins),
+      title:           task.title,
+      linkType:        task.linkType,
+      ...findLinkSelection(task, roles, dimensions),
+      isDailyPriority: task.isDailyPriority,
     })
   }
 
@@ -81,10 +75,8 @@ export function TasksTab({ appts, tasks, setTasks }: Props) {
     openAdd(dayIndex, e.clientY - e.currentTarget.getBoundingClientRect().top)
   }
 
-  const applyTaskSave = (editId: string, title: string, dayIndex: number, startMins: number, endMins: number, color: string, linkType: LinkType, linkLabel: string, isDailyPriority: boolean) => {
-    setTasks(prev => prev.map(t =>
-      t.id === editId ? { ...t, title, dayIndex, startMins, endMins, color, linkType, linkLabel, isDailyPriority } : t
-    ))
+  const applyTaskSave = (task: Task) => {
+    setTasks(prev => (prev.some(t => t.id === task.id) ? prev.map(t => (t.id === task.id ? task : t)) : [...prev, task]))
   }
 
   const applyDrop = (draggedId: string, dayIndex: number, newStart: number) => {
@@ -98,30 +90,33 @@ export function TasksTab({ appts, tasks, setTasks }: Props) {
   const handleSave = () => {
     const s    = strToMins(modal.startTime)
     const e    = strToMins(modal.endTime)
-    const meta = getLinkMeta(modal)
+    const meta = getLinkMeta(modal, roles, dimensions)
     if (!modal.title.trim() || e <= s || !meta) return
 
-    if (modal.mode === "add") {
-      setTasks(prev => [...prev, {
-        id: Date.now().toString(),
-        title: modal.title.trim(),
-        dayIndex: modal.dayIndex,
-        startMins: s, endMins: e,
-        color: meta.color,
-        linkType: modal.linkType,
-        linkLabel: meta.label,
-        isDailyPriority: modal.isDailyPriority,
-      }])
-      setModal(EMPTY_TASK_MODAL)
-      return
+    const id = modal.mode === "edit" ? modal.editId! : crypto.randomUUID()
+    const existing = tasks.find(t => t.id === id)
+    const task: Task = {
+      id,
+      // Carried through so an edit stays an edit: without it the server would see a new task and
+      // the completion the user had already recorded would go with the old row.
+      taskId: existing?.taskId,
+      title: modal.title.trim(),
+      dayIndex: modal.dayIndex,
+      startMins: s, endMins: e,
+      color: meta.color,
+      linkType: modal.linkType,
+      linkId: meta.id,
+      linkLabel: meta.label,
+      isDailyPriority: modal.isDailyPriority,
+      isCompleted: existing?.isCompleted ?? false,
     }
 
-    const overlapping = getOverlaps(allCalItems, modal.dayIndex, s, e, modal.editId!)
+    const overlapping = getOverlaps(allCalItems, modal.dayIndex, s, e, id)
     if (overlapping.length === 0) {
-      applyTaskSave(modal.editId!, modal.title.trim(), modal.dayIndex, s, e, meta.color, modal.linkType, meta.label, modal.isDailyPriority)
+      applyTaskSave(task)
       setModal(EMPTY_TASK_MODAL)
     } else if (overlapping.length === 1) {
-      setPendingAction({ type: "save", editId: modal.editId!, title: modal.title.trim(), dayIndex: modal.dayIndex, startMins: s, endMins: e, color: meta.color, linkType: modal.linkType, linkLabel: meta.label, isDailyPriority: modal.isDailyPriority })
+      setPendingAction({ type: "save", task })
       setClashWarning({ open: true, conflictingTitle: findTitle(overlapping[0].id) })
     } else {
       setClashBlock(true)
@@ -174,7 +169,7 @@ export function TasksTab({ appts, tasks, setTasks }: Props) {
     if (pendingAction?.type === "drop") {
       applyDrop(pendingAction.draggedId, pendingAction.dayIndex, pendingAction.newStart)
     } else if (pendingAction?.type === "save") {
-      applyTaskSave(pendingAction.editId, pendingAction.title, pendingAction.dayIndex, pendingAction.startMins, pendingAction.endMins, pendingAction.color, pendingAction.linkType, pendingAction.linkLabel, pendingAction.isDailyPriority)
+      applyTaskSave(pendingAction.task)
       setModal(EMPTY_TASK_MODAL)
     }
     setPendingAction(null)
@@ -186,7 +181,7 @@ export function TasksTab({ appts, tasks, setTasks }: Props) {
     setClashWarning({ open: false, conflictingTitle: "" })
   }
 
-  const week = useCurrentWeek()
+  const week = usePlanWeekDays(weekStart)
   const calH = TOTAL_HRS * HR_PX
 
   return (
@@ -194,25 +189,7 @@ export function TasksTab({ appts, tasks, setTasks }: Props) {
       <CalendarLegend />
 
       <div className="bg-card border-2 border-border rounded-md overflow-hidden">
-        <div className="grid border-b border-border" style={{ gridTemplateColumns: "56px repeat(7, 1fr)" }}>
-          <div />
-          {DAYS_SHORT.map((d, i) => {
-            const isToday = week?.todayIdx === i
-            const isPast  = week != null && i < week.todayIdx
-            return (
-              <div key={d} className={["py-3 text-center border-l border-border", isPast ? "opacity-40" : ""].join(" ")}>
-                {/* Kept to one line: the calendar body is positioned from the top of this row, and a
-                    taller header shifts every slot down. The date appears once the week resolves. */}
-                <span className={[
-                  "inline-block text-sm font-bold px-2 rounded-full",
-                  isToday ? "bg-primary text-primary-foreground" : "text-foreground",
-                ].join(" ")}>
-                  {week ? `${d} ${week.dayDates[i].getDate()}` : d}
-                </span>
-              </div>
-            )
-          })}
-        </div>
+        <CalendarDayHeader week={week} />
 
         <div className="overflow-y-auto" style={{ maxHeight: 560 }}>
           <div className="grid" style={{ gridTemplateColumns: "56px repeat(7, 1fr)", height: calH }}>
@@ -231,10 +208,11 @@ export function TasksTab({ appts, tasks, setTasks }: Props) {
             {DAYS_FULL.map((day, di) => (
               <div
                 key={day}
+                data-day-column={di}
                 ref={el => { colRefs.current[di] = el }}
                 className={[
                   "relative border-l border-border cursor-pointer select-none",
-                  week != null && di < week.todayIdx ? "bg-foreground/[0.06]" : "",
+                  week != null && week.todayIdx !== -1 && di < week.todayIdx ? "bg-foreground/[0.06]" : "",
                 ].join(" ")}
                 style={{ height: calH }}
                 onClick={e => handleColClick(e, di)}
@@ -299,9 +277,16 @@ export function TasksTab({ appts, tasks, setTasks }: Props) {
 
       <p className="text-sm text-muted-foreground font-serif mt-3">
         Drag tasks to move them. Fixed appointments are shown for reference and cannot be moved here.
+        A task you have already completed can be moved or renamed, but not removed.
       </p>
 
-      <TaskModal modal={modal} setModal={setModal} onSave={handleSave} />
+      <TaskModal
+        modal={modal}
+        setModal={setModal}
+        onSave={handleSave}
+        roles={roles}
+        dimensions={dimensions}
+      />
 
       <ClashWarningModal
         open={clashWarning.open}

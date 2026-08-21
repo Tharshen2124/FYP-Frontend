@@ -1,17 +1,34 @@
 "use client"
 
-import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 import { AppNav } from "@/components/app-nav"
+import { Button } from "@/components/ui/button"
+import { Spinner } from "@/components/ui/spinner"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { FixedTab } from "./_components/fixed-tab"
 import { TasksTab } from "./_components/tasks-tab"
-import type { Appt, Task } from "./_types"
+import { useWeekSchedule } from "./_utils/use-week-schedule"
+import { useTargetWeek } from "../_utils/use-target-week"
 
 export default function WeeklyPlanSchedulePage() {
-  const [appts, setAppts] = useState<Appt[]>([])
-  const [tasks, setTasks] = useState<Task[]>([])
+  const router = useRouter()
+  const week = useTargetWeek()
+  const schedule = useWeekSchedule(week.weekStart)
 
-  const canProceed = tasks.length > 0
+  const handleNext = async () => {
+    if (!(await schedule.save())) return
+
+    // The dashboard only ever shows the current week, so finishing a plan for next week would
+    // otherwise land on a screen that looks exactly as it did before — three steps of work with
+    // nothing to show for them.
+    if (!week.isCurrentWeek) {
+      toast.success(`Your plan for ${week.label} is ready — it'll show here on Monday.`)
+    }
+    router.push("/dashboard")
+  }
+
+  const canProceed = schedule.tasks.length > 0 && !schedule.isLoading && !schedule.isSaving
 
   return (
     <div className="min-h-screen bg-background">
@@ -20,7 +37,7 @@ export default function WeeklyPlanSchedulePage() {
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-secondary/20 rounded-full blur-3xl" />
       </div>
 
-      <AppNav action="next" nextHref="/dashboard" nextEnabled={canProceed} />
+      <AppNav action="next" onNext={handleNext} nextEnabled={canProceed} />
 
       <main className="relative z-10 px-6 py-8">
         <div className="max-w-7xl mx-auto">
@@ -29,34 +46,64 @@ export default function WeeklyPlanSchedulePage() {
               Weekly <span className="text-primary">Schedule</span>
             </h1>
             <p className="text-muted-foreground font-serif text-lg">
-              Block out your fixed commitments, then schedule tasks linked to your goals and renewal activities.
+              Block out your fixed commitments, then schedule tasks linked to your goals and renewal
+              activities. The dates across the top are the week you&apos;re planning.
             </p>
           </div>
 
-          <Tabs defaultValue="fixed" className="w-full">
-            <TabsList className="mb-6 bg-card border border-border h-auto p-1">
-              <TabsTrigger
-                value="fixed"
-                className="font-bold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          {schedule.isLoading ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-24">
+              <Spinner className="size-8 text-primary" />
+              <p className="text-sm text-muted-foreground font-serif">
+                Loading this week&apos;s goals, activities and calendar…
+              </p>
+            </div>
+          ) : schedule.loadError ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-24">
+              <p className="text-sm text-muted-foreground font-serif">
+                Something went wrong loading this week.
+              </p>
+              <Button
+                onClick={schedule.reload}
+                variant="outline"
+                className="border-border text-foreground hover:bg-secondary/20"
               >
-                Fixed Appointments
-              </TabsTrigger>
-              <TabsTrigger
-                value="tasks"
-                className="font-bold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-              >
-                Scheduled Tasks
-              </TabsTrigger>
-            </TabsList>
+                Try Again
+              </Button>
+            </div>
+          ) : (
+            <Tabs defaultValue="fixed" className="w-full">
+              <TabsList className="mb-6 bg-card border border-border h-auto p-1">
+                <TabsTrigger
+                  value="fixed"
+                  className="font-bold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                >
+                  Fixed Appointments
+                </TabsTrigger>
+                <TabsTrigger
+                  value="tasks"
+                  className="font-bold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                >
+                  Scheduled Tasks
+                </TabsTrigger>
+              </TabsList>
 
-            <TabsContent value="fixed">
-              <FixedTab appts={appts} setAppts={setAppts} />
-            </TabsContent>
+              <TabsContent value="fixed">
+                <FixedTab appts={schedule.appts} setAppts={schedule.setAppts} weekStart={week.weekStart} />
+              </TabsContent>
 
-            <TabsContent value="tasks">
-              <TasksTab appts={appts} tasks={tasks} setTasks={setTasks} />
-            </TabsContent>
-          </Tabs>
+              <TabsContent value="tasks">
+                <TasksTab
+                  appts={schedule.appts}
+                  tasks={schedule.tasks}
+                  setTasks={schedule.setTasks}
+                  roles={schedule.roles}
+                  dimensions={schedule.dimensions}
+                  weekStart={week.weekStart}
+                />
+              </TabsContent>
+            </Tabs>
+          )}
         </div>
       </main>
     </div>

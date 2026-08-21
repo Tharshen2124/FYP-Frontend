@@ -197,7 +197,7 @@ test.describe("dashboard", () => {
     await expect(page.getByRole("link", { name: /Create Weekly Plan/ })).toBeVisible()
 
     // Nothing to edit or read a legend for while there is no plan.
-    await expect(page.getByRole("link", { name: /Edit Weekly Plan/ })).toHaveCount(0)
+    await expect(page.getByRole("button", { name: /Edit Weekly Plan/ })).toHaveCount(0)
     await expect(page.getByText("Daily Priority", { exact: true })).toHaveCount(0)
   })
 
@@ -206,7 +206,7 @@ test.describe("dashboard", () => {
     await page.goto("/dashboard")
 
     await page.getByRole("link", { name: /Create Weekly Plan/ }).click()
-    await expect(page).toHaveURL(/\/weekly-plan\/goals$/)
+    await expect(page).toHaveURL(/\/weekly-plan\/goals/)
   })
 
   test("shows the week the user actually planned during onboarding", async ({ page }) => {

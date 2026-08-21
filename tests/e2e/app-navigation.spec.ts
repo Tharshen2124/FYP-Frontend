@@ -23,7 +23,9 @@ test.describe("app navigation", () => {
 
     for (const [label, href] of SIDEBAR_ROUTES) {
       await page.getByRole("link", { name: label, exact: true }).click()
-      await expect(page).toHaveURL(new RegExp(`${href}$`))
+      // The weekly-plan flow stamps its target week into the URL as it resolves, so the query is
+      // part of a correct landing rather than a stray.
+      await expect(page).toHaveURL(new RegExp(`${href}(\\?|$)`))
       await page.goto("/dashboard")
     }
   })
@@ -58,13 +60,17 @@ test.describe("app navigation", () => {
     await expect(page).toHaveURL(/\/onboarding\/roles$/)
   })
 
-  test("dashboard links out to the weekly plan editor", async ({ page }) => {
+  // Editing a week in place needs its own page — one that loads the current week and saves edits
+  // directly. Until it exists the button has no destination: pointing it at the planning flow's
+  // last step would mean "finish planning", not "save my change".
+  test("dashboard shows Edit Weekly Plan as not yet available", async ({ page }) => {
     await authenticateAsNewUser(page)
-    // The edit link only renders once a plan exists for the current week.
+    // The button only renders once a plan exists for the current week.
     await seedWeeklyPlan(page)
     await page.goto("/dashboard")
-    await page.getByRole("link", { name: /Edit Weekly Plan/ }).click()
-    await expect(page).toHaveURL(/\/weekly-plan\/schedule$/)
+
+    await expect(page.getByRole("link", { name: /Edit Weekly Plan/ })).toHaveCount(0)
+    await expect(page.getByRole("button", { name: /Edit Weekly Plan/ })).toBeDisabled()
   })
 
   test("sign out returns to the login page", async ({ page }) => {

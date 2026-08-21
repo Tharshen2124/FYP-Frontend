@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import Link from "next/link"
 import { CalendarDays, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sidebar } from "@/components/sidebar"
@@ -94,13 +93,20 @@ export default function DashboardPage() {
                 : "Your full week at a glance — fixed appointments and scheduled tasks."}
             </p>
           </div>
-          {/* Nothing to edit until a plan exists for this week. */}
+          {/* Nothing to edit until a plan exists for this week.
+
+              TODO: this needs its own page — one that loads the *current* week and lets the user
+              adjust its tasks and fixed appointments directly, rather than re-entering the
+              three-step planning flow. Deliberately left without a destination until that page
+              exists, so nobody wires it back to /weekly-plan/schedule by accident: that route is
+              step 3 of a wizard whose Next means "finish planning", not "save my edit". */}
           {plan && (
-            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground shrink-0" asChild>
-              <Link href="/weekly-plan/schedule">
-                <CalendarDays className="w-4 h-4 mr-2" />
-                Edit Weekly Plan
-              </Link>
+            <Button
+              disabled
+              className="bg-primary hover:bg-primary/90 text-primary-foreground shrink-0"
+            >
+              <CalendarDays className="w-4 h-4 mr-2" />
+              Edit Weekly Plan
             </Button>
           )}
         </div>

@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useRef } from "react"
-import { Pencil, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -19,16 +18,19 @@ import { ClashBlockModal } from "@/components/clash-block-modal"
 import { FixedAppointmentCard } from "./fixed-appointment-card"
 import type { Appt, CalItem, ApptModalState, PendingApptAction } from "../_types"
 import { DAYS_FULL, DAYS_SHORT, CAL_START, CAL_END, TOTAL_HRS, HR_PX, COLORS, EMPTY_APPT_MODAL } from "../_constants/calendar"
-import { useCurrentWeek } from "@/hooks/use-current-week"
+import { CalendarDayHeader } from "./calendar-day-header"
+import { usePlanWeekDays } from "../_utils/use-plan-week"
 import { getOverlaps } from "../_utils/calendar"
 import { minsToStr, strToMins, snapMins } from "../_utils/time"
 
 interface Props {
   appts: Appt[]
   setAppts: React.Dispatch<React.SetStateAction<Appt[]>>
+  /** The Monday being planned, so the calendar prints that week's dates and not this week's. */
+  weekStart: string
 }
 
-export function FixedTab({ appts, setAppts }: Props) {
+export function FixedTab({ appts, setAppts, weekStart }: Props) {
   const [modal, setModal]               = useState<ApptModalState>(EMPTY_APPT_MODAL)
   const [pendingAction, setPendingAction] = useState<PendingApptAction | null>(null)
   const [clashWarning, setClashWarning] = useState<{ open: boolean; conflictingTitle: string }>({ open: false, conflictingTitle: "" })
@@ -57,8 +59,8 @@ export function FixedTab({ appts, setAppts }: Props) {
     openAdd(dayIndex, e.clientY - e.currentTarget.getBoundingClientRect().top)
   }
 
-  const applySave = (editId: string, title: string, description: string, dayIndex: number, startMins: number, endMins: number) => {
-    setAppts(prev => prev.map(a => a.id === editId ? { ...a, title, description, dayIndex, startMins, endMins } : a))
+  const applySave = (appt: Appt) => {
+    setAppts(prev => (prev.some(a => a.id === appt.id) ? prev.map(a => (a.id === appt.id ? appt : a)) : [...prev, appt]))
   }
 
   const applyDrop = (draggedId: string, dayIndex: number, newStart: number) => {
@@ -69,33 +71,39 @@ export function FixedTab({ appts, setAppts }: Props) {
     }))
   }
 
+  // Adding used to skip the clash check that editing and dragging both ran, so the one way to
+  // create an overlap was to create it in the first place. Both paths now build the whole
+  // appointment and go through the same check.
   const handleSave = () => {
     const s = strToMins(modal.startTime)
     const e = strToMins(modal.endTime)
     if (!modal.title.trim() || e <= s) return
 
-    if (modal.mode === "add") {
-      setAppts(prev => [...prev, {
-        id: Date.now().toString(),
-        title: modal.title.trim(),
-        description: modal.description.trim(),
-        dayIndex: modal.dayIndex,
-        startMins: s, endMins: e,
-        color: nextColor(),
-      }])
+    const id = modal.mode === "edit" ? modal.editId! : crypto.randomUUID()
+    const existing = appts.find(a => a.id === id)
+    const appt: Appt = {
+      id,
+      // Kept so an edit updates the server's row instead of replacing it, which would reset the
+      // completion already recorded against it.
+      taskId: existing?.taskId,
+      title: modal.title.trim(),
+      description: modal.description.trim(),
+      dayIndex: modal.dayIndex,
+      startMins: s, endMins: e,
+      color: existing?.color ?? nextColor(),
+      isCompleted: existing?.isCompleted ?? false,
+    }
+
+    const overlapping = getOverlaps(allCalItems, modal.dayIndex, s, e, id)
+    if (overlapping.length === 0) {
+      applySave(appt)
       setModal(EMPTY_APPT_MODAL)
+    } else if (overlapping.length === 1) {
+      const conflict = appts.find(a => a.id === overlapping[0].id)
+      setPendingAction({ type: "save", appt })
+      setClashWarning({ open: true, conflictingTitle: conflict?.title ?? "Unknown" })
     } else {
-      const overlapping = getOverlaps(allCalItems, modal.dayIndex, s, e, modal.editId!)
-      if (overlapping.length === 0) {
-        applySave(modal.editId!, modal.title.trim(), modal.description.trim(), modal.dayIndex, s, e)
-        setModal(EMPTY_APPT_MODAL)
-      } else if (overlapping.length === 1) {
-        const conflict = appts.find(a => a.id === overlapping[0].id)
-        setPendingAction({ type: "save", editId: modal.editId!, title: modal.title.trim(), description: modal.description.trim(), dayIndex: modal.dayIndex, startMins: s, endMins: e })
-        setClashWarning({ open: true, conflictingTitle: conflict?.title ?? "Unknown" })
-      } else {
-        setClashBlock(true)
-      }
+      setClashBlock(true)
     }
   }
 
@@ -146,7 +154,7 @@ export function FixedTab({ appts, setAppts }: Props) {
     if (pendingAction?.type === "drop") {
       applyDrop(pendingAction.draggedId, pendingAction.dayIndex, pendingAction.newStart)
     } else if (pendingAction?.type === "save") {
-      applySave(pendingAction.editId, pendingAction.title, pendingAction.description, pendingAction.dayIndex, pendingAction.startMins, pendingAction.endMins)
+      applySave(pendingAction.appt)
       setModal(EMPTY_APPT_MODAL)
     }
     setPendingAction(null)
@@ -158,7 +166,7 @@ export function FixedTab({ appts, setAppts }: Props) {
     setClashWarning({ open: false, conflictingTitle: "" })
   }
 
-  const week = useCurrentWeek()
+  const week = usePlanWeekDays(weekStart)
   const calH           = TOTAL_HRS * HR_PX
   const endTimeInvalid = strToMins(modal.endTime) <= strToMins(modal.startTime)
 
@@ -171,25 +179,7 @@ export function FixedTab({ appts, setAppts }: Props) {
       </div>
 
       <div className="bg-card border-2 border-border rounded-md overflow-hidden">
-        <div className="grid border-b border-border" style={{ gridTemplateColumns: "56px repeat(7, 1fr)" }}>
-          <div />
-          {DAYS_SHORT.map((d, i) => {
-            const isToday = week?.todayIdx === i
-            const isPast  = week != null && i < week.todayIdx
-            return (
-              <div key={d} className={["py-3 text-center border-l border-border", isPast ? "opacity-40" : ""].join(" ")}>
-                {/* Kept to one line: the calendar body is positioned from the top of this row, and a
-                    taller header shifts every slot down. The date appears once the week resolves. */}
-                <span className={[
-                  "inline-block text-sm font-bold px-2 rounded-full",
-                  isToday ? "bg-primary text-primary-foreground" : "text-foreground",
-                ].join(" ")}>
-                  {week ? `${d} ${week.dayDates[i].getDate()}` : d}
-                </span>
-              </div>
-            )
-          })}
-        </div>
+        <CalendarDayHeader week={week} />
 
         <div className="overflow-y-auto" style={{ maxHeight: 560 }}>
           <div className="grid" style={{ gridTemplateColumns: "56px repeat(7, 1fr)", height: calH }}>
@@ -208,10 +198,11 @@ export function FixedTab({ appts, setAppts }: Props) {
             {DAYS_FULL.map((day, di) => (
               <div
                 key={day}
+                data-day-column={di}
                 ref={el => { colRefs.current[di] = el }}
                 className={[
                   "relative border-l border-border cursor-pointer select-none",
-                  week != null && di < week.todayIdx ? "bg-foreground/[0.06]" : "",
+                  week != null && week.todayIdx !== -1 && di < week.todayIdx ? "bg-foreground/[0.06]" : "",
                 ].join(" ")}
                 style={{ height: calH }}
                 onClick={e => handleColClick(e, di)}
@@ -242,7 +233,8 @@ export function FixedTab({ appts, setAppts }: Props) {
       </div>
 
       <p className="text-sm text-muted-foreground font-serif mt-3">
-        Drag appointments to move them. Hover an appointment to edit or delete.
+        Drag appointments to move them. Hover an appointment to edit or delete. One you have already
+        completed can be moved or renamed, but not removed.
       </p>
 
       <Dialog open={modal.open} onOpenChange={open => { if (!open) setModal(EMPTY_APPT_MODAL) }}>
@@ -260,8 +252,9 @@ export function FixedTab({ appts, setAppts }: Props) {
 
           <div className="space-y-4 py-1">
             <div className="space-y-1.5">
-              <Label className="text-foreground font-bold">Appointment</Label>
+              <Label htmlFor="appt-title" className="text-foreground font-bold">Appointment</Label>
               <Input
+                id="appt-title"
                 autoFocus
                 placeholder="e.g., Morning workout, Team standup…"
                 value={modal.title}
@@ -293,8 +286,9 @@ export function FixedTab({ appts, setAppts }: Props) {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-foreground font-bold">From</Label>
+                <Label htmlFor="appt-from" className="text-foreground font-bold">From</Label>
                 <Input
+                  id="appt-from"
                   type="time"
                   value={modal.startTime}
                   onChange={e => setModal(m => ({ ...m, startTime: e.target.value }))}
@@ -302,8 +296,9 @@ export function FixedTab({ appts, setAppts }: Props) {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-foreground font-bold">To</Label>
+                <Label htmlFor="appt-to" className="text-foreground font-bold">To</Label>
                 <Input
+                  id="appt-to"
                   type="time"
                   value={modal.endTime}
                   onChange={e => setModal(m => ({ ...m, endTime: e.target.value }))}
@@ -316,8 +311,9 @@ export function FixedTab({ appts, setAppts }: Props) {
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-foreground font-bold">Description</Label>
+              <Label htmlFor="appt-description" className="text-foreground font-bold">Description</Label>
               <Textarea
+                id="appt-description"
                 placeholder="Optional notes about this appointment…"
                 value={modal.description}
                 onChange={e => setModal(m => ({ ...m, description: e.target.value }))}

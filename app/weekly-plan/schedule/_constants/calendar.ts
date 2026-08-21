@@ -1,5 +1,4 @@
 import type { ModalState, ApptModalState } from "../_types"
-import { MOCK_ROLES, MOCK_DIMENSIONS } from "../../_constants/mock-data"
 
 export const DAYS_FULL  = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 export const DAYS_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
@@ -20,9 +19,11 @@ export const EMPTY_TASK_MODAL: ModalState = {
   endTime: "10:00",
   title: "",
   linkType: "role-goal",
-  selectedRoleId: MOCK_ROLES[0]?.id ?? "",
+  // Seeded at runtime from the week's own roles and committed activities, which are not known
+  // until they are fetched.
+  selectedRoleId: "",
   selectedGoalId: "",
-  selectedDimensionId: MOCK_DIMENSIONS[0]?.id ?? "",
+  selectedDimensionId: "",
   selectedActivityId: "",
   isDailyPriority: false,
 }

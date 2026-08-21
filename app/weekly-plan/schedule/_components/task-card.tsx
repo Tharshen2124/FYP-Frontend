@@ -1,4 +1,4 @@
-import { Pencil, X, Star } from "lucide-react"
+import { Check, Pencil, X, Star } from "lucide-react"
 import type { Task, CalItem } from "../_types"
 import { HR_PX, CAL_START } from "../_constants/calendar"
 import { getPositionStyle } from "../_utils/calendar"
@@ -32,6 +32,9 @@ export function TaskCard({ task, allCalItems, onEdit, onDelete, onDragStart }: P
       }}
     >
       <div className="flex items-center gap-1 overflow-hidden">
+        {task.isCompleted && (
+          <Check className="w-2.5 h-2.5 flex-shrink-0" style={{ color: task.color }} />
+        )}
         {task.isDailyPriority && (
           <Star className="w-2.5 h-2.5 flex-shrink-0 fill-accent text-accent" />
         )}
@@ -56,12 +59,18 @@ export function TaskCard({ task, allCalItems, onEdit, onDelete, onDragStart }: P
         >
           <Pencil className="w-2.5 h-2.5" style={{ color: task.color }} />
         </button>
-        <button
-          onClick={e => { e.stopPropagation(); onDelete(task.id) }}
-          className="p-1 rounded bg-card/90 hover:bg-card transition-colors"
-        >
-          <X className="w-2.5 h-2.5 text-destructive" />
-        </button>
+        {/* A completed task is a fact about this week: /history and /analytics resolve it back to
+            a role, and removing it would let the user raise their own completion rate. The server
+            refuses it too, so this only spares them a delete that silently does nothing. */}
+        {!task.isCompleted && (
+          <button
+            onClick={e => { e.stopPropagation(); onDelete(task.id) }}
+            aria-label={`Delete ${task.title}`}
+            className="p-1 rounded bg-card/90 hover:bg-card transition-colors"
+          >
+            <X className="w-2.5 h-2.5 text-destructive" />
+          </button>
+        )}
       </div>
     </div>
   )

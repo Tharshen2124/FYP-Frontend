@@ -74,3 +74,49 @@ export function getWeekDays(date: Date = new Date()): Date[] {
 export function getDayIndex(date: Date = new Date()): number {
   return (date.getDay() + 6) % 7
 }
+
+/**
+ * Parses a `YYYY-MM-DD` local date param back into a local-midnight `Date`.
+ *
+ * The `T00:00:00` suffix is what keeps it local: `new Date("2026-08-24")` is parsed as UTC
+ * midnight and reads as the 23rd anywhere west of Greenwich.
+ */
+export function parseLocalDate(value: string): Date {
+  return new Date(`${value}T00:00:00`)
+}
+
+/** True when `value` is a `YYYY-MM-DD` date that falls on a Monday — the client-side mirror of the
+ *  server's `parse_week_start`, so a hand-edited URL is caught before it becomes a 422. */
+export function isWeekStart(value: string | null | undefined): value is string {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  const d = parseLocalDate(value)
+  return !Number.isNaN(d.getTime()) && d.getDay() === 1
+}
+
+/** The Monday `weeks` weeks after `weekStart`; pass a negative number to go back. */
+export function shiftWeekStart(weekStart: string, weeks: number): string {
+  const d = parseLocalDate(weekStart)
+  d.setDate(d.getDate() + weeks * 7)
+  return localDateParam(d)
+}
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+/**
+ * A week named the way the planning flow shows it: `"Mon 24 – Sun 30 Aug"`, or
+ * `"Mon 29 Sep – Sun 5 Oct"` when it straddles two months.
+ */
+export function formatWeekRange(weekStart: string): string {
+  const start = parseLocalDate(weekStart)
+  const end = parseLocalDate(shiftWeekStart(weekStart, 1))
+  end.setDate(end.getDate() - 1)
+
+  // Spelled out rather than taken from Intl: `toLocaleDateString` abbreviates September as "Sept"
+  // in en-GB and "Sep" elsewhere, so the label would shift with the runtime's locale data.
+  const month = (d: Date) => MONTHS[d.getMonth()]
+  const sameMonth = start.getMonth() === end.getMonth()
+
+  return sameMonth
+    ? `Mon ${start.getDate()} – Sun ${end.getDate()} ${month(end)}`
+    : `Mon ${start.getDate()} ${month(start)} – Sun ${end.getDate()} ${month(end)}`
+}

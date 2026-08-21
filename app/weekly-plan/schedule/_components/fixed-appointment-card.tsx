@@ -52,12 +52,16 @@ export function FixedAppointmentCard({ appt, allCalItems, onEdit, onDelete, onDr
         >
           <Pencil className="w-2.5 h-2.5" style={{ color }} />
         </button>
-        <button
-          onClick={e => { e.stopPropagation(); onDelete(appt.id) }}
-          className="p-1 rounded bg-card/90 hover:bg-card transition-colors"
-        >
-          <X className="w-2.5 h-2.5 text-destructive" />
-        </button>
+        {/* Same rule as a completed task: what actually happened this week stays on the calendar. */}
+        {!appt.isCompleted && (
+          <button
+            onClick={e => { e.stopPropagation(); onDelete(appt.id) }}
+            aria-label={`Delete ${appt.title}`}
+            className="p-1 rounded bg-card/90 hover:bg-card transition-colors"
+          >
+            <X className="w-2.5 h-2.5 text-destructive" />
+          </button>
+        )}
       </div>
     </div>
   )

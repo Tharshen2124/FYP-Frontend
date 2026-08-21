@@ -1,16 +1,19 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { AppNav } from "@/components/app-nav"
 import { api } from "@/lib/api"
 import { countCommitted, countStaged, groupCandidatesByRole, toWeekRole } from "./_utils/goals"
 import { RoleGoalsCard } from "./_components/role-goals-card"
+import { WeekTargetBanner } from "../_components/week-target-banner"
+import { useTargetWeek } from "../_utils/use-target-week"
 import type { Candidate, StagedGoal, WeekRole } from "./_types"
 
 export default function WeeklyPlanGoalsPage() {
   const router = useRouter()
+  const week = useTargetWeek()
   const [roles, setRoles] = useState<WeekRole[]>([])
   const [candidates, setCandidates] = useState<Record<string, Candidate[]>>({})
   const [isLoading, setIsLoading] = useState(true)
@@ -23,22 +26,31 @@ export default function WeeklyPlanGoalsPage() {
   // out of render — Date.now() would be an impure call.
   const nextStagedId = useRef(0)
 
-  useEffect(() => {
-    let cancelled = false
-    Promise.all([api.fetchStandingRoles(), api.fetchCarryForwardCandidates()])
-      .then(([{ roles }, { candidates }]) => {
-        if (cancelled) return
-        setRoles(roles.map(toWeekRole))
-        setCandidates(groupCandidatesByRole(candidates))
-      })
-      .catch(() => {
-        if (!cancelled) toast.error("Couldn't load your roles — please refresh.")
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false)
-      })
-    return () => { cancelled = true }
+  // Reruns when the week changes: toggling to the other week has to re-ask, because the committed
+  // goals belong to that week and the carry-forward candidates are read relative to it. Anything
+  // staged for the old week is dropped with it — it was never for this one.
+  const loadWeek = useCallback(async (weekStart: string) => {
+    setIsLoading(true)
+    setSelectedIds(new Set())
+    setStaged({})
+
+    try {
+      const [{ roles }, { candidates }] = await Promise.all([
+        api.fetchStandingRoles(weekStart),
+        api.fetchCarryForwardCandidates(weekStart),
+      ])
+      setRoles(roles.map(toWeekRole))
+      setCandidates(groupCandidatesByRole(candidates))
+    } catch {
+      toast.error("Couldn't load your roles — please refresh.")
+    } finally {
+      setIsLoading(false)
+    }
   }, [])
+
+  useEffect(() => {
+    if (week.weekStart) loadWeek(week.weekStart)
+  }, [week.weekStart, loadWeek])
 
   const toggleCandidate = (goalId: string) => {
     setSelectedIds(prev => {
@@ -77,7 +89,7 @@ export default function WeeklyPlanGoalsPage() {
     setIsSaving(true)
     try {
       if (selectedIds.size > 0) {
-        await api.carryForwardGoals([...selectedIds].map(Number))
+        await api.carryForwardGoals([...selectedIds].map(Number), week.weekStart)
       }
       for (const [roleId, goals] of Object.entries(staged)) {
         for (const goal of goals) {
@@ -85,10 +97,10 @@ export default function WeeklyPlanGoalsPage() {
             role_id: Number(roleId),
             description: goal.text,
             is_weekly_priority: goal.isPriority,
-          })
+          }, week.weekStart)
         }
       }
-      router.push("/weekly-plan/sharpen-the-saw")
+      router.push(`/weekly-plan/sharpen-the-saw?week_start=${week.weekStart}`)
     } catch {
       toast.error("Couldn't save this week's goals — please try again.")
       setIsSaving(false)
@@ -104,18 +116,20 @@ export default function WeeklyPlanGoalsPage() {
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-secondary/20 rounded-full blur-3xl" />
       </div>
 
-      <AppNav action="next" nextEnabled={plannedCount > 0 && !isSaving} onNext={handleNext} />
+      <AppNav action="next" nextEnabled={plannedCount > 0 && !isSaving && !isLoading} onNext={handleNext} />
 
       <main className="relative z-10 px-6 py-8">
         <div className="max-w-7xl mx-auto">
           <div className="mb-8">
             <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
-              This Week&apos;s <span className="text-primary">Goals</span>
+              Goals for the <span className="text-primary">Week</span>
             </h1>
             <p className="text-muted-foreground font-serif text-lg">
-              Carry forward what you didn&apos;t finish last week, or set new goals for this one.
+              Carry forward what you didn&apos;t finish last time, or set new goals for this week.
             </p>
           </div>
+
+          <WeekTargetBanner week={week} />
 
           {isLoading ? (
             <p className="text-muted-foreground font-serif">Loading your roles&hellip;</p>

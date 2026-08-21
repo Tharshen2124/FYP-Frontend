@@ -62,10 +62,11 @@ export function RoleGoalsCard({
         </div>
       )}
 
-      {/* Last week's unfinished goals. Picking one creates a fresh goal linked back to it. */}
+      {/* Unfinished goals from the last week the user actually planned, which after a gap may be
+          several weeks back. Picking one creates a fresh goal linked back to it. */}
       {candidates.length > 0 && (
         <div className="mb-4">
-          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2">Carry forward from last week</p>
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2">Carry forward</p>
           <div className="space-y-2">
             {candidates.map(candidate => {
               const isSelected = selectedIds.has(candidate.id)

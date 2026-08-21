@@ -11,8 +11,8 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 import type { ModalState } from "../_types"
+import type { PlanDimension, PlanRole } from "../../_types"
 import { DAYS_SHORT, EMPTY_TASK_MODAL } from "../_constants/calendar"
-import { MOCK_ROLES, MOCK_DIMENSIONS } from "../../_constants/mock-data"
 import { strToMins } from "../_utils/time"
 import { getLinkMeta } from "../_utils/tasks"
 
@@ -20,13 +20,17 @@ interface Props {
   modal: ModalState
   setModal: React.Dispatch<React.SetStateAction<ModalState>>
   onSave: () => void
+  /** This week's roles with the goals they hold in it — not a standing library. */
+  roles: PlanRole[]
+  /** Only the renewal activities committed to this week, as chosen on the previous step. */
+  dimensions: PlanDimension[]
 }
 
-export function TaskModal({ modal, setModal, onSave }: Props) {
+export function TaskModal({ modal, setModal, onSave, roles, dimensions }: Props) {
   const endTimeInvalid = strToMins(modal.endTime) <= strToMins(modal.startTime)
-  const canSave        = modal.title.trim().length > 0 && !endTimeInvalid && getLinkMeta(modal) !== null
-  const selectedRole   = MOCK_ROLES.find(r => r.id === modal.selectedRoleId)
-  const selectedDim    = MOCK_DIMENSIONS.find(d => d.id === modal.selectedDimensionId)
+  const canSave        = modal.title.trim().length > 0 && !endTimeInvalid && getLinkMeta(modal, roles, dimensions) !== null
+  const selectedRole   = roles.find(r => r.id === modal.selectedRoleId)
+  const selectedDim    = dimensions.find(d => d.id === modal.selectedDimensionId)
 
   return (
     <Dialog open={modal.open} onOpenChange={open => { if (!open) setModal(EMPTY_TASK_MODAL) }}>
@@ -129,7 +133,7 @@ export function TaskModal({ modal, setModal, onSave }: Props) {
             {modal.linkType === "role-goal" && (
               <div className="space-y-3">
                 <div className="flex flex-wrap gap-2">
-                  {MOCK_ROLES.map(role => (
+                  {roles.map(role => (
                     <button
                       key={role.id}
                       type="button"
@@ -145,6 +149,11 @@ export function TaskModal({ modal, setModal, onSave }: Props) {
                     </button>
                   ))}
                 </div>
+                {roles.length === 0 && (
+                  <p className="text-xs text-muted-foreground font-serif">
+                    No roles with goals for this week yet — add some on the goals step first.
+                  </p>
+                )}
                 {selectedRole && (
                   <div className="space-y-1.5">
                     <p className="text-xs text-muted-foreground font-serif">
@@ -176,7 +185,7 @@ export function TaskModal({ modal, setModal, onSave }: Props) {
             {modal.linkType === "sharpen-the-saw" && (
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-2">
-                  {MOCK_DIMENSIONS.map(dim => {
+                  {dimensions.map(dim => {
                     const Icon     = dim.icon
                     const selected = modal.selectedDimensionId === dim.id
                     return (
@@ -195,6 +204,12 @@ export function TaskModal({ modal, setModal, onSave }: Props) {
                     )
                   })}
                 </div>
+                {dimensions.every(d => d.activities.length === 0) && (
+                  <p className="text-xs text-muted-foreground font-serif">
+                    You haven&apos;t committed to any renewal activities this week — pick some on the
+                    previous step.
+                  </p>
+                )}
                 {selectedDim && (
                   <div className="space-y-1.5">
                     <p className="text-xs text-muted-foreground font-serif">

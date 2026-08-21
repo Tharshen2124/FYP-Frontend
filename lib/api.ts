@@ -23,19 +23,21 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 /**
- * Every onboarding endpoint is scoped to a weekly plan, which the client identifies by the local
- * Monday of the week it is planning. The server validates that the date is a Monday and creates
- * the plan on first use, so the four steps all land in the same one.
+ * Every week-scoped endpoint identifies its weekly plan by the local Monday of the week in
+ * question. The server validates that the date is a Monday and creates the plan on first write,
+ * so several steps of one flow all land in the same plan.
  *
- * Threaded in here rather than at the call sites: no onboarding step has a reason to plan a week
- * other than the current one.
+ * The default is the current week, which is all onboarding ever needs — it plans the week the user
+ * signed up in and nothing else. `/weekly-plan/*` is the flow that does need a choice: it plans
+ * the week ahead, or the current one for someone coming back after a gap, so it passes its target
+ * week explicitly.
  */
-function withWeekStart<T extends object>(data: T) {
-  return { ...data, week_start: localWeekStartParam() }
+function withWeekStart<T extends object>(data: T, weekStart: string = localWeekStartParam()) {
+  return { ...data, week_start: weekStart }
 }
 
-function weekScoped(path: string) {
-  return `${path}?week_start=${localWeekStartParam()}`
+function weekScoped(path: string, weekStart: string = localWeekStartParam()) {
+  return `${path}?week_start=${weekStart}`
 }
 
 /**
@@ -77,6 +79,30 @@ export interface ApiCarryForwardCandidate extends ApiRoleGoal {
   role_name: string
 }
 
+/** One fixed appointment as the weekly-plan flow reads it back. */
+export interface ApiPlanAppointment {
+  task_id: number
+  title: string
+  description: string | null
+  day_of_week: number
+  start_time: string
+  end_time: string
+  is_completed: boolean
+}
+
+/** One scheduled task as the weekly-plan flow reads it back. */
+export interface ApiPlanTask {
+  task_id: number
+  title: string
+  day_of_week: number
+  start_time: string
+  end_time: string
+  goal_id: number | null
+  sharpen_the_saw_activity_id: number | null
+  is_daily_priority: boolean
+  is_completed: boolean
+}
+
 export const api = {
   signup: (data: { email: string; username: string; password: string }) =>
     request<{ user: { email: string; username: string } }>("/signup", {
@@ -99,18 +125,18 @@ export const api = {
       method: "POST",
       body: JSON.stringify(withWeekStart(data)),
     }),
-  fetchRoles: () =>
+  fetchRoles: (weekStart?: string) =>
     request<{
       roles: { role_id: number; name: string; icon_id: string; goals: { goal_id: number; text: string; is_weekly_priority: boolean }[] }[]
-    }>(weekScoped("/onboarding/roles")),
+    }>(weekScoped("/onboarding/roles", weekStart)),
   submitSharpenTheSaw: (data: { activities: { dimension: string; activity_description: string }[] }) =>
     request<{ activities: unknown[] }>("/onboarding/sharpen-the-saw", {
       method: "POST",
       body: JSON.stringify(withWeekStart(data)),
     }),
-  fetchSharpenTheSaw: () =>
+  fetchSharpenTheSaw: (weekStart?: string) =>
     request<{ activities: { sharpen_the_saw_activity_id: number; dimension: string; activity_description: string }[] }>(
-      weekScoped("/onboarding/sharpen-the-saw")
+      weekScoped("/onboarding/sharpen-the-saw", weekStart)
     ),
   fetchSharpenTheSawActivities: () =>
     request<{ activities: { sharpen_the_saw_activity_id: number; dimension: string; activity_description: string }[] }>(
@@ -168,8 +194,8 @@ export const api = {
       }[]
     }>(weekScoped("/onboarding/schedule-tasks")),
   // --- standing roles & goals ---------------------------------------------------------------
-  fetchStandingRoles: () =>
-    request<{ roles: ApiRole[]; archived_roles: ApiArchivedRole[] }>(weekScoped("/roles")),
+  fetchStandingRoles: (weekStart?: string) =>
+    request<{ roles: ApiRole[]; archived_roles: ApiArchivedRole[] }>(weekScoped("/roles", weekStart)),
   createRole: (data: { role_name: string; icon_id: string; color_id: string }) =>
     request<{ role: ApiRole }>("/roles", {
       method: "POST",
@@ -187,10 +213,10 @@ export const api = {
     request<{ archived: ApiArchivePreview }>(weekScoped(`/roles/${id}`), { method: "DELETE" }),
   restoreRole: (id: number) =>
     request<{ role: ApiRole }>(weekScoped(`/roles/${id}/restore`), { method: "POST" }),
-  createGoal: (data: { role_id: number; description: string; is_weekly_priority?: boolean }) =>
+  createGoal: (data: { role_id: number; description: string; is_weekly_priority?: boolean }, weekStart?: string) =>
     request<{ goal: ApiRoleGoal }>("/goals", {
       method: "POST",
-      body: JSON.stringify(withWeekStart(data)),
+      body: JSON.stringify(withWeekStart(data, weekStart)),
     }),
   updateGoal: (id: number, data: { description?: string; is_weekly_priority?: boolean; is_completed?: boolean }) =>
     request<{ goal: ApiRoleGoal }>(`/goals/${id}`, {
@@ -202,18 +228,77 @@ export const api = {
   /** Backs the Undo action on the remove-goal toast. Only valid within the goal's own week. */
   restoreGoal: (id: number) =>
     request<{ goal: ApiRoleGoal }>(weekScoped(`/goals/${id}/restore`), { method: "POST" }),
-  fetchCarryForwardCandidates: () =>
-    request<{ candidates: ApiCarryForwardCandidate[] }>(weekScoped("/goals/carry-forward-candidates")),
-  carryForwardGoals: (goalIds: number[]) =>
+  fetchCarryForwardCandidates: (weekStart?: string) =>
+    request<{ candidates: ApiCarryForwardCandidate[] }>(weekScoped("/goals/carry-forward-candidates", weekStart)),
+  carryForwardGoals: (goalIds: number[], weekStart?: string) =>
     request<{ goals: ApiRoleGoal[] }>("/goals/carry-forward", {
       method: "POST",
-      body: JSON.stringify(withWeekStart({ goal_ids: goalIds })),
+      body: JSON.stringify(withWeekStart({ goal_ids: goalIds }, weekStart)),
+    }),
+  // --- the repeatable weekly-plan flow ---------------------------------------------------------
+  //
+  // Same controller actions as the `/onboarding/*` pair above, under paths that say what they are
+  // for. Onboarding is walked once and never returned to; this flow runs every week, and it plans
+  // whichever week it was pointed at rather than always the current one.
+  //
+  // `task_id` is what makes an edit an edit. Sending it back means the server updates that row in
+  // place, so a task the user has already ticked off keeps its id and its completion; a task with
+  // no id is new, and one the client stops sending was deleted.
+  fetchPlanAppointments: (weekStart?: string) =>
+    request<{ appointments: ApiPlanAppointment[] }>(
+      weekScoped("/weekly-plans/fixed-appointments", weekStart)
+    ),
+  savePlanAppointments: (
+    appointments: {
+      task_id?: number
+      title: string
+      description: string
+      day_of_week: number
+      start_time: string
+      end_time: string
+    }[],
+    weekStart?: string
+  ) =>
+    request<{ appointments: ApiPlanAppointment[] }>("/weekly-plans/fixed-appointments", {
+      method: "POST",
+      body: JSON.stringify(withWeekStart({ appointments }, weekStart)),
+    }),
+  fetchPlanTasks: (weekStart?: string) =>
+    request<{ tasks: ApiPlanTask[] }>(weekScoped("/weekly-plans/tasks", weekStart)),
+  savePlanTasks: (
+    tasks: {
+      task_id?: number
+      title: string
+      day_of_week: number
+      start_time: string
+      end_time: string
+      goal_id: string | null
+      sharpen_the_saw_activity_id: string | null
+      is_daily_priority: boolean
+    }[],
+    weekStart?: string
+  ) =>
+    request<{ tasks: ApiPlanTask[] }>("/weekly-plans/tasks", {
+      method: "POST",
+      body: JSON.stringify(withWeekStart({ tasks }, weekStart)),
+    }),
+  /** Which renewal activities a week is committed to. An unplanned week is committed to none. */
+  fetchWeekActivities: (weekStart?: string) =>
+    request<{ activity_ids: number[] }>(weekScoped("/weekly-plans/sharpen-the-saw", weekStart)),
+  /**
+   * Replaces the week's committed set. An activity a task is already scheduled against stays
+   * committed whether or not it is sent — the calendar is the stronger statement of the two.
+   */
+  saveWeekActivities: (activityIds: number[], weekStart?: string) =>
+    request<{ activity_ids: number[] }>("/weekly-plans/sharpen-the-saw", {
+      method: "PUT",
+      body: JSON.stringify(withWeekStart({ activity_ids: activityIds }, weekStart)),
     }),
   /**
    * Read-only view of one week for the dashboard. `weekly_plan` is `null` when the user has not
    * planned this week — that is a normal answer, not an error, and looking does not create a plan.
    */
-  fetchWeeklyPlan: () =>
+  fetchWeeklyPlan: (weekStart?: string) =>
     request<{
       weekly_plan: {
         weekly_plan_id: number
@@ -235,6 +320,6 @@ export const api = {
           dimension: string | null
         }[]
       } | null
-    }>(weekScoped("/weekly-plans")),
+    }>(weekScoped("/weekly-plans", weekStart)),
   googleLoginHref: () => `${API_URL}/login`,
 }

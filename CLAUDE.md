@@ -70,6 +70,21 @@ The weekly-plan sub-flow (`/weekly-plan/*`) is the repeatable version of onboard
 Unlike onboarding it *selects* from existing roles/goals and activities rather than creating them,
 and it merges fixed appointments and tasks into one tabbed calendar page.
 
+**Which week it plans** is the thing that distinguishes it from onboarding, which only ever plans
+the week the user signed up in. The target lives in the URL as `?week_start=YYYY-MM-DD`, so a
+refresh, a Back, or a shared link all land on the same week and the three steps inherit it without
+a store. With no param, `app/weekly-plan/_utils/use-target-week.ts` resolves one: **the current week
+if it has no plan, otherwise next week**, then `router.replace`s it in. That second case is why the
+flow takes a week at all — always planning next week would leave someone returning after a gap
+unable to fill in the week they are standing in.
+
+Choosing the week is **one decision at step 1**, so `WeekTargetBanner` and its toggle live on
+`/weekly-plan/goals` only. Steps 2 and 3 inherit the week from the URL and never re-ask — on the
+schedule step a mid-flow switch would swap the calendar out from under unsaved edits. That step says
+which week it is on through the calendar's own date headers, which come from
+`schedule/_utils/use-plan-week.ts`: the dates are those of the week being planned, and the "today"
+pill and past-day dimming only appear when that week is the current one.
+
 ## Current pages
 
 - `/` — Landing page. Sections live in `app/_components/`, copy/data in `app/_constants/landing.ts`.
@@ -88,18 +103,23 @@ and it merges fixed appointments and tasks into one tabbed calendar page.
   spans fixed appointments *and* tasks.
 - `/onboarding/complete` — Explains Evening Reflections and the End-of-Day check-in; links to `/dashboard`.
 - `/dashboard` — Read-only weekly timetable with today's column highlighted, a "now" indicator line, and
-  a legend. "Edit Weekly Plan" links to `/weekly-plan/schedule`. Shows the end-of-day check-in modal once
+  a legend. "Edit Weekly Plan" is deliberately disabled — editing a week in place needs its own page
+  that loads the current week and saves directly, and pointing it back at the planning flow's last
+  step would mean "finish planning", not "save my change". Shows the end-of-day check-in modal once
   per day after the time saved in `localStorage["eod_time"]`.
 - `/roles` — Standing role & goal management (sidebar layout), API-backed. Roles are long-lived;
   the goals shown are **this week's**. Deleting is archiving: a confirmation dialog states how many
   of this week's goals go, how many unfinished tasks come off the calendar, and how many completed
   tasks are kept. Archived roles list below with a Restore button, and removing a goal offers Undo.
 - `/sharpen-the-saw` — Standing renewal-activity management (sidebar layout), with a delete confirmation.
-- `/weekly-plan/goals` — API-backed. Carry last week's unfinished goals forward (each pick creates a
-  fresh goal plus a `goal_carryovers` link) and stage brand-new ones. Everything commits on Next.
-- `/weekly-plan/sharpen-the-saw` — Pick which renewal activities to commit to this week.
-- `/weekly-plan/schedule` — Tabbed calendar: "Fixed Appointments" and "Scheduled Tasks" share one
-  `appts` state so clash detection spans both tabs.
+- `/weekly-plan/goals` — API-backed. Carry forward the unfinished goals of the last week that was
+  actually planned (each pick creates a fresh goal plus a `goal_carryovers` link) and stage
+  brand-new ones. Everything commits on Next.
+- `/weekly-plan/sharpen-the-saw` — API-backed. Pick which renewal activities to commit to the week;
+  `PUT /weekly-plans/sharpen-the-saw` replaces the week's set on Next, and revisiting prefills it.
+- `/weekly-plan/schedule` — API-backed. Tabbed calendar: "Fixed Appointments" and "Scheduled Tasks"
+  share one `appts` state so clash detection spans both tabs. Saves both tabs on Next, sending
+  `task_id` for anything the server already holds so an edit updates in place.
 - `/settings` — End-of-Day check-in time (persisted to `localStorage`) and Google Calendar settings
   (connect/disconnect, sync toggle, export category tree with indeterminate parents, sticky
   Discard/Save bar shown only while dirty).
@@ -149,10 +169,11 @@ Rules:
 2. **Imports inside a route are relative** (`../_utils/time`), not `@/app/...`. An `@/app/<route>/_*`
    import from another route is a convention violation — hoist the shared thing instead (rule 3).
 3. **Flow-level private folders** hold what several routes in the same flow share. They sit at the
-   shared segment and follow the same naming: `app/weekly-plan/_types/`, `app/weekly-plan/_constants/`.
-   `/weekly-plan/schedule` reads `MOCK_ROLES` / `MOCK_DIMENSIONS` from
-   `app/weekly-plan/_constants/mock-data.ts` (`/weekly-plan/goals` is API-backed and no longer does).
-   The same private-import rule applies one level up: nothing outside `/weekly-plan` may import them.
+   shared segment and follow the same naming: `app/weekly-plan/_types/` (`PlanRole`, `PlanDimension`
+   — the week being planned, not a standing library), `_utils/use-target-week.ts`,
+   `_utils/dimensions.ts` and `_components/week-target-banner.tsx`, all three used by more than one
+   step. The same private-import rule applies one level up: nothing outside `/weekly-plan` may
+   import them.
 4. **Genuinely app-wide UI lives in `components/`**, not in a route folder — `AppNav`, `Sidebar`,
    `OnboardingStepper`, the clash modals, and the shadcn primitives in `components/ui/`. Shared
    non-UI domain constants go in `lib/` — `lib/sharpen-the-saw-dimensions.ts` and
@@ -172,9 +193,8 @@ the Rails API through `lib/api.ts`. Auth is the one exception — a JWT in a coo
 store (`stores/auth-store.ts` + `lib/cookie-storage.ts`).
 
 API-backed routes: `/login`, all four data-writing onboarding steps, `/dashboard`,
-`/sharpen-the-saw`, `/roles`, `/weekly-plan/goals`. Still seeded from their own
-`_constants/mock-data.ts`: `/weekly-plan/schedule`, `/history`, `/analytics`,
-`/evening-reflections`.
+`/sharpen-the-saw`, `/roles`, and all three `/weekly-plan/*` steps. Still seeded from their own
+`_constants/mock-data.ts`: `/history`, `/analytics`, `/evening-reflections`.
 
 Routes with API state follow `/sharpen-the-saw` and `/roles`: a `let cancelled = false` effect for
 the initial load, an `isLoading` guard, and each write sent before local state is patched from the

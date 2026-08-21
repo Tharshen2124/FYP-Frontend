@@ -1,5 +1,13 @@
 import { describe, it, expect, afterAll } from "vitest"
-import { getDayIndex, getWeekDays, localDateParam, localWeekStartParam } from "@/lib/date"
+import {
+  formatWeekRange,
+  getDayIndex,
+  getWeekDays,
+  isWeekStart,
+  localDateParam,
+  localWeekStartParam,
+  shiftWeekStart,
+} from "@/lib/date"
 
 /**
  * These tests pin the two cases where `toISOString().slice(0, 10)` disagrees with the
@@ -167,5 +175,54 @@ describe("getDayIndex", () => {
     const sunday = new Date(2026, 7, 23)
     expect(sunday.getDay()).toBe(0) // JS native
     expect(getDayIndex(sunday)).toBe(6) // ours
+  })
+})
+
+/**
+ * The three helpers the weekly-plan flow leans on. It carries its target week in the URL, so a
+ * hand-edited `?week_start=` reaches the client before it reaches the server's Monday check.
+ */
+describe("isWeekStart", () => {
+  it("accepts a Monday", () => {
+    expect(isWeekStart("2026-08-24")).toBe(true)
+  })
+
+  it("rejects any other weekday, which is what the server would 422 on", () => {
+    expect(isWeekStart("2026-08-25")).toBe(false) // Tuesday
+    expect(isWeekStart("2026-08-23")).toBe(false) // Sunday
+  })
+
+  it("rejects anything that is not a plain YYYY-MM-DD date", () => {
+    expect(isWeekStart("")).toBe(false)
+    expect(isWeekStart(null)).toBe(false)
+    expect(isWeekStart("2026-08-24T00:00:00Z")).toBe(false)
+    expect(isWeekStart("not-a-date")).toBe(false)
+  })
+})
+
+describe("shiftWeekStart", () => {
+  it("moves forward and back a whole week at a time", () => {
+    expect(shiftWeekStart("2026-08-24", 1)).toBe("2026-08-31")
+    expect(shiftWeekStart("2026-08-24", -1)).toBe("2026-08-17")
+  })
+
+  it("crosses a month boundary", () => {
+    expect(shiftWeekStart("2026-08-31", 1)).toBe("2026-09-07")
+  })
+
+  // The suffix-free form parses as UTC midnight, which reads as the previous day west of London.
+  it("does not drift a day west of UTC", () => {
+    process.env.TZ = "America/New_York"
+    expect(shiftWeekStart("2026-08-24", 1)).toBe("2026-08-31")
+  })
+})
+
+describe("formatWeekRange", () => {
+  it("names a week that sits inside one month once", () => {
+    expect(formatWeekRange("2026-08-24")).toBe("Mon 24 – Sun 30 Aug")
+  })
+
+  it("names both months when the week straddles them", () => {
+    expect(formatWeekRange("2026-08-31")).toBe("Mon 31 Aug – Sun 6 Sep")
   })
 })

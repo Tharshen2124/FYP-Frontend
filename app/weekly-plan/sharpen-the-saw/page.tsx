@@ -1,25 +1,45 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 import { AppNav } from "@/components/app-nav"
 import { api } from "@/lib/api"
-import { toWeeklyPlanDimensions } from "./_utils/dimensions"
 import { DimensionSelectCard } from "./_components/dimension-select-card"
-import type { MockDimension } from "../_types"
+import { useTargetWeek } from "../_utils/use-target-week"
+import { toPlanDimensions } from "../_utils/dimensions"
+import type { PlanDimension } from "../_types"
 
 export default function WeeklyPlanSharpenTheSawPage() {
-  const [dimensions, setDimensions] = useState<MockDimension[]>([])
+  const router = useRouter()
+  const week = useTargetWeek()
+  const [dimensions, setDimensions] = useState<PlanDimension[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
   const [selectedActivityIds, setSelectedActivityIds] = useState<Set<string>>(new Set())
 
-  useEffect(() => {
-    let cancelled = false
-    api.fetchSharpenTheSawActivities()
-      .then(({ activities }) => { if (!cancelled) setDimensions(toWeeklyPlanDimensions(activities)) })
-      .catch(() => { if (!cancelled) setDimensions(toWeeklyPlanDimensions([])) })
-      .finally(() => { if (!cancelled) setIsLoading(false) })
-    return () => { cancelled = true }
+  // The library is standing and belongs to the user; the committed set belongs to the week, so
+  // coming back to this step shows what was already chosen rather than a blank slate.
+  const loadWeek = useCallback(async (weekStart: string) => {
+    setIsLoading(true)
+    try {
+      const [{ activities }, { activity_ids }] = await Promise.all([
+        api.fetchSharpenTheSawActivities(),
+        api.fetchWeekActivities(weekStart),
+      ])
+      setDimensions(toPlanDimensions(activities))
+      setSelectedActivityIds(new Set(activity_ids.map(String)))
+    } catch {
+      setDimensions(toPlanDimensions([]))
+      toast.error("Couldn't load your renewal activities — please refresh.")
+    } finally {
+      setIsLoading(false)
+    }
   }, [])
+
+  useEffect(() => {
+    if (week.weekStart) loadWeek(week.weekStart)
+  }, [week.weekStart, loadWeek])
 
   const toggleActivity = (actId: string) => {
     setSelectedActivityIds(prev => {
@@ -28,6 +48,17 @@ export default function WeeklyPlanSharpenTheSawPage() {
       else next.add(actId)
       return next
     })
+  }
+
+  const handleNext = async () => {
+    setIsSaving(true)
+    try {
+      await api.saveWeekActivities([...selectedActivityIds].map(Number), week.weekStart)
+      router.push(`/weekly-plan/schedule?week_start=${week.weekStart}`)
+    } catch {
+      toast.error("Couldn't save this week's renewal activities — please try again.")
+      setIsSaving(false)
+    }
   }
 
   const canProceed = selectedActivityIds.size > 0
@@ -39,7 +70,7 @@ export default function WeeklyPlanSharpenTheSawPage() {
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-secondary/20 rounded-full blur-3xl" />
       </div>
 
-      <AppNav action="next" nextHref="/weekly-plan/schedule" nextEnabled={canProceed} />
+      <AppNav action="next" onNext={handleNext} nextEnabled={canProceed && !isSaving && !isLoading} />
 
       <main className="relative z-10 px-6 py-8">
         <div className="max-w-7xl mx-auto">

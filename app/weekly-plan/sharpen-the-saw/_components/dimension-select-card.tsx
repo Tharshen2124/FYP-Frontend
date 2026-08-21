@@ -1,10 +1,10 @@
 "use client"
 
 import { Check } from "lucide-react"
-import type { MockDimension } from "../../_types"
+import type { PlanDimension } from "../../_types"
 
 interface Props {
-  dimension: MockDimension
+  dimension: PlanDimension
   selectedActivityIds: Set<string>
   onToggleActivity: (activityId: string) => void
 }
@@ -34,6 +34,10 @@ export function DimensionSelectCard({ dimension, selectedActivityIds, onToggleAc
           return (
             <button
               key={act.id}
+              type="button"
+              // A toggle, not a link: without aria-pressed nothing in the accessibility tree says
+              // whether this activity is committed to the week.
+              aria-pressed={isSelected}
               onClick={() => onToggleActivity(act.id)}
               className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
                 isSelected
