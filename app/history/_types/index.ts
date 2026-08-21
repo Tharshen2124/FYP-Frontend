@@ -82,3 +82,16 @@ export interface LegendEntry {
   kind: CategoryKind
   icon: ElementType
 }
+
+/**
+ * One row of that legend: a kind of category, and the week's real members of it.
+ *
+ * Split rather than listed flat because a role name and a dimension label look identical once
+ * they are dots on the same line — "Parent" and "Physical" read as the same vocabulary, and the
+ * reader is left to work out that one is a role and the other a renewal dimension.
+ */
+export interface LegendGroup {
+  key: string
+  title: string
+  entries: LegendEntry[]
+}

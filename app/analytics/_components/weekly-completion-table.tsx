@@ -86,7 +86,7 @@ export function WeeklyCompletionTable() {
             <th className="text-left text-xs uppercase tracking-wider text-muted-foreground pb-2 font-medium">Week</th>
             <th className="text-left text-xs uppercase tracking-wider text-muted-foreground pb-2 font-medium">Progress</th>
             <th className="text-right text-xs uppercase tracking-wider text-muted-foreground pb-2 font-medium">Done</th>
-            <th className="text-right text-xs uppercase tracking-wider text-muted-foreground pb-2 font-medium pl-3">Dropped</th>
+            <th className="text-right text-xs uppercase tracking-wider text-muted-foreground pb-2 font-medium pl-3">Removed</th>
             <th className="text-right text-xs uppercase tracking-wider text-muted-foreground pb-2 font-medium pl-3">%</th>
           </tr>
         </thead>

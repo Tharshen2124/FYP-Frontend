@@ -69,6 +69,19 @@ function EventChip({ event }: { event: HistoryEvent }) {
   )
 }
 
+/** A legend row: what kind of thing these entries are, then the entries. The title is a fixed
+ *  column so the rows line up and can be read down as well as across. */
+function LegendRow({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+      <span className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground/70 w-28 shrink-0">
+        {title}
+      </span>
+      {children}
+    </div>
+  )
+}
+
 export function ScheduleCard({ week }: Props) {
   const byDay = useMemo(() => groupBy(week.events, e => String(e.dayIndex)), [week.events])
   const legend = useMemo(() => weekLegend(week.events), [week.events])
@@ -104,28 +117,37 @@ export function ScheduleCard({ week }: Props) {
       </div>
 
       {/* The week's real categories rather than a static "fixed / task" pair — with several roles
-          and dimensions in play, that pair told you nothing the chips did not already say. */}
+          and dimensions in play, that pair told you nothing the chips did not already say. One row
+          per kind, because a role name and a dimension label are indistinguishable on a flat line. */}
       {legend.length > 0 && (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4 pt-3 border-t border-border">
-          {legend.map(entry => {
-            const Icon = entry.icon
-            return (
-              <div key={entry.key} className="flex items-center gap-1.5 text-xs text-muted-foreground font-serif">
-                <Icon className="w-3 h-3 shrink-0" style={{ color: entry.color }} />
-                {entry.label}
-              </div>
-            )
-          })}
-          {/* The two marks, in neutral ink. Tinting them would put them in the same visual
-              vocabulary as the categories above and read as two more of them. */}
-          <span className="w-px h-3.5 bg-border shrink-0" aria-hidden />
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-serif">
-            <Check className="w-3 h-3 shrink-0" />
-            Done
-          </div>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-serif">
-            <Circle className="w-3 h-3 shrink-0" />
-            Not done
+        <div className="mt-4 pt-3 border-t border-border space-y-2">
+          {legend.map(group => (
+            <LegendRow key={group.key} title={group.title}>
+              {group.entries.map(entry => {
+                const Icon = entry.icon
+                return (
+                  <span key={entry.key} className="flex items-center gap-1.5 text-xs text-muted-foreground font-serif">
+                    <Icon className="w-3 h-3 shrink-0" style={{ color: entry.color }} />
+                    {entry.label}
+                  </span>
+                )
+              })}
+            </LegendRow>
+          ))}
+
+          {/* The two marks, in neutral ink and behind their own rule. Tinting them would put them
+              in the same visual vocabulary as the categories above and read as two more of them. */}
+          <div className="pt-2 border-t border-border">
+            <LegendRow title="Task status">
+              <span className="flex items-center gap-1.5 text-xs text-muted-foreground font-serif">
+                <Check className="w-3 h-3 shrink-0" />
+                Done
+              </span>
+              <span className="flex items-center gap-1.5 text-xs text-muted-foreground font-serif">
+                <Circle className="w-3 h-3 shrink-0" />
+                Not done
+              </span>
+            </LegendRow>
           </div>
         </div>
       )}

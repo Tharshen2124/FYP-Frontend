@@ -3,6 +3,7 @@
 import { useMemo } from "react"
 import { Check, Minus, Star, Target, X } from "lucide-react"
 import { groupBy } from "../_utils/group"
+import { outcomeLegend } from "../_utils/history"
 import type { GoalOutcome, HistoryGoal } from "../_types"
 
 interface Props {
@@ -12,18 +13,22 @@ interface Props {
 /**
  * How the goal resolved, in one glyph.
  *
- * Dropped is deliberately neither a tick nor a cross. A goal the user pruned mid-week is not a
- * failure — and counting it as one would also mean pruning could quietly raise the percentage on
- * the tile above, which is why the stats row leaves it out of both halves of the ratio.
+ * The `dropped` outcome is shown as "Removed", which is what actually happened to it: the user
+ * deleted the goal. "Dropped" is the model's word (`Goal#dropped?`, `scope :dropped`) and reads to
+ * a user as giving up rather than as an edit, so the wording stops at the type boundary.
+ *
+ * It is deliberately neither a tick nor a cross. A goal the user removed is not a failure — and
+ * counting it as one would also mean pruning could move the percentage on the tile above, which is
+ * why the stats row leaves it out of both halves of the ratio.
  */
 const OUTCOME = {
   achieved: { icon: Check, label: "Achieved", className: "text-primary" },
   missed: { icon: X, label: "Missed", className: "text-muted-foreground/60" },
-  dropped: { icon: Minus, label: "Dropped", className: "text-muted-foreground/60" },
+  dropped: { icon: Minus, label: "Removed", className: "text-muted-foreground/60" },
   open: { icon: Minus, label: "Still open", className: "text-muted-foreground/60" },
 } as const satisfies Record<GoalOutcome, { icon: React.ElementType; label: string; className: string }>
 
-/** Dropped goals sink to the bottom of their role, so the week reads as what it met and missed
+/** Removed goals sink to the bottom of their role, so the week reads as what it met and missed
  *  first, and what left it afterwards. */
 function byOutcome(a: HistoryGoal, b: HistoryGoal) {
   return Number(a.outcome === "dropped") - Number(b.outcome === "dropped")
@@ -32,6 +37,7 @@ function byOutcome(a: HistoryGoal, b: HistoryGoal) {
 export function GoalsCard({ goals }: Props) {
   const byRole = useMemo(() => groupBy(goals, g => String(g.roleId)), [goals])
   const roleIds = Object.keys(byRole)
+  const legend = useMemo(() => outcomeLegend(goals), [goals])
 
   return (
     <div className="p-5 rounded-2xl bg-card border-2 border-border h-full">
@@ -90,12 +96,29 @@ export function GoalsCard({ goals }: Props) {
                           />
                         )}
                         {goal.outcome === "dropped" && (
-                          <span className="text-[10px] text-muted-foreground/70 mt-0.5 shrink-0">dropped</span>
+                          <span className="text-[10px] text-muted-foreground/70 mt-0.5 shrink-0">removed</span>
                         )}
                       </li>
                     )
                   })}
                 </ul>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* The glyphs above carry the whole outcome vocabulary and nothing on the card said what they
+          meant. Only the outcomes this week actually used: explaining "Removed" on a week where
+          nothing was removed invites exactly the question the legend exists to answer. */}
+      {legend.length > 0 && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4 pt-3 border-t border-border">
+          {legend.map(outcome => {
+            const { icon: Icon, label, className } = OUTCOME[outcome]
+            return (
+              <div key={outcome} className="flex items-center gap-1.5 text-xs text-muted-foreground font-serif">
+                <Icon className={`w-3 h-3 shrink-0 ${className}`} />
+                {label}
               </div>
             )
           })}

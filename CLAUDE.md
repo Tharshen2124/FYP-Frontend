@@ -141,10 +141,14 @@ pill and past-day dimming only appear when that week is the current one.
   (a tasks-done badge per week, a date jump, and "Load older weeks"), a stats row of ratios
   (goals achieved, tasks done, renewal activities, fixed appointments), role goals marked with how
   each resolved, renewal activities, and a schedule grid whose every chip names the role or
-  dimension it served and whether it was done. It is the one surface that reads a week **as it was
-  recorded**: goals under a since-archived role, goals since dropped and activities since deleted
-  all still appear, flagged — which is why it has its own endpoints rather than composing `/roles`
-  and `/sharpen-the-saw-activities`, both of which filter to `.active`.
+  dimension it served and whether it was done. Both cards carry a legend of only the markers that
+  week used, and the schedule's is split into rows — role goals, Sharpen the Saw, other — because a
+  role name and a dimension label are indistinguishable listed flat. The `dropped` outcome is shown
+  as **"Removed"**: "dropped" is the model's word (`Goal#dropped?`) and reads to a user as giving
+  up rather than as an edit, so the wording stops at the type boundary. It is the one surface that
+  reads a week **as it was recorded**: goals under a since-archived role, goals since dropped and
+  activities since deleted all still appear, flagged — which is why it has its own endpoints rather
+  than composing `/roles` and `/sharpen-the-saw-activities`, both of which filter to `.active`.
 - `/analytics` — 2×2 grid: sharpen-the-saw radar, role task table, daily priority bar chart, weekly
   completion trend. Date/range selectors filter against a fixed week registry.
 

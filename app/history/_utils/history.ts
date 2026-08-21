@@ -19,6 +19,7 @@ import type {
   HistoryStats,
   HistoryWeek,
   LegendEntry,
+  LegendGroup,
 } from "../_types"
 
 /**
@@ -133,13 +134,26 @@ export function toHistoryWeek(week: ApiHistoryWeek, weekHasEnded: boolean): Hist
 }
 
 /**
- * The categories the week actually used, for the schedule's footer legend.
+ * The rows the schedule's footer legend is built from, in the order they are shown.
  *
- * Fixed first, because it is the one category that is the same every week and reads as the
- * baseline the rest sits against. Keyed by kind *and* label so two roles sharing a colour still
- * get a line each.
+ * Role goals and renewal activities are the two vocabularies a reader has to tell apart, so they
+ * get a row each and are named. Fixed appointments and the schema-permitted unlinked task share
+ * the last row: neither belongs to a role or a dimension, which is the only thing that row says.
  */
-export function weekLegend(events: HistoryEvent[]): LegendEntry[] {
+const LEGEND_ROWS: { key: string; title: string; kinds: CategoryKind[] }[] = [
+  { key: "goal", title: "Role goals", kinds: [ "goal" ] },
+  { key: "activity", title: "Sharpen the Saw", kinds: [ "activity" ] },
+  { key: "other", title: "Other", kinds: [ "fixed", "none" ] },
+]
+
+/**
+ * The categories the week actually used, grouped for the schedule's footer legend.
+ *
+ * Keyed by kind *and* label so two roles sharing a colour still get an entry each — the role and
+ * dimension palettes overlap, so colour alone cannot be the identity. A row with nothing in it is
+ * dropped rather than rendered empty, which is what keeps the legend the week's own.
+ */
+export function weekLegend(events: HistoryEvent[]): LegendGroup[] {
   const entries = new Map<string, LegendEntry>()
 
   for (const event of events) {
@@ -154,11 +168,29 @@ export function weekLegend(events: HistoryEvent[]): LegendEntry[] {
     })
   }
 
-  return [...entries.values()].sort((a, b) => {
-    if (a.kind === "fixed") return -1
-    if (b.kind === "fixed") return 1
-    return 0
-  })
+  const all = [ ...entries.values() ]
+
+  return LEGEND_ROWS.map(row => ({
+    key: row.key,
+    title: row.title,
+    entries: all.filter(entry => row.kinds.includes(entry.kind)),
+  })).filter(row => row.entries.length > 0)
+}
+
+/** The order the goals card explains its glyphs in — how a week reads best, not how the union is
+ *  declared: what it met, then what it did not, then what left it. */
+const OUTCOME_ORDER: GoalOutcome[] = [ "achieved", "missed", "dropped", "open" ]
+
+/**
+ * Which outcome markers this week actually used, for the goals card's footer legend.
+ *
+ * Only the ones present, for the same reason the schedule's legend lists only the week's real
+ * categories: explaining a marker that is nowhere on the card invites the question it was added
+ * to answer.
+ */
+export function outcomeLegend(goals: HistoryGoal[]): GoalOutcome[] {
+  const present = new Set(goals.map(goal => goal.outcome))
+  return OUTCOME_ORDER.filter(outcome => present.has(outcome))
 }
 
 /**

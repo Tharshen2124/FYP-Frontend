@@ -6,11 +6,12 @@ import {
   toHistoryActivity,
   toHistoryEvent,
   toHistoryGoal,
+  outcomeLegend,
   weekLegend,
   weekStats,
 } from "@/app/history/_utils/history"
 import { strToMins } from "@/app/history/_utils/time"
-import type { HistoryWeek } from "@/app/history/_types"
+import type { HistoryWeek, LegendGroup } from "@/app/history/_types"
 
 const task = (over: Partial<ApiHistoryTask> = {}): ApiHistoryTask => ({
   task_id: 1,
@@ -153,12 +154,21 @@ describe("toHistoryEvent", () => {
 })
 
 describe("weekLegend", () => {
+  const labelsIn = (groups: LegendGroup[], key: string) =>
+    groups.find(g => g.key === key)?.entries.map(e => e.label) ?? []
+
+  const fixedTask = (over: Partial<ApiHistoryTask> = {}) =>
+    task({ is_fixed_appointment: true, link_kind: null, role_name: null, role_color_id: null, ...over })
+
+  const renewalTask = (over: Partial<ApiHistoryTask> = {}) =>
+    task({ link_kind: "activity", role_name: null, role_color_id: null, dimension: "physical", ...over })
+
   it("lists each category once, however many tasks share it", () => {
     const events = [
       toHistoryEvent(task({ task_id: 1 })),
       toHistoryEvent(task({ task_id: 2, title: "Write up" })),
     ]
-    expect(weekLegend(events).map(e => e.label)).toEqual(["Programmer"])
+    expect(labelsIn(weekLegend(events), "goal")).toEqual(["Programmer"])
   })
 
   it("separates two roles that happen to share a colour", () => {
@@ -166,21 +176,56 @@ describe("weekLegend", () => {
       toHistoryEvent(task({ task_id: 1, role_name: "Programmer" })),
       toHistoryEvent(task({ task_id: 2, role_name: "Parent" })),
     ]
-    expect(weekLegend(events).map(e => e.label)).toEqual(["Programmer", "Parent"])
+    expect(labelsIn(weekLegend(events), "goal")).toEqual(["Programmer", "Parent"])
   })
 
-  it("puts Fixed first, since it is the one category every week shares", () => {
-    const events = [
-      toHistoryEvent(task({ task_id: 1 })),
-      toHistoryEvent(
-        task({ task_id: 2, is_fixed_appointment: true, link_kind: null, role_name: null, role_color_id: null })
-      ),
-    ]
-    expect(weekLegend(events)[0].label).toBe("Fixed")
+  it("keeps role names and dimension labels in rows of their own", () => {
+    // The whole point of the split: "Parent" and "Physical" are indistinguishable on a flat line.
+    const legend = weekLegend([
+      toHistoryEvent(task({ task_id: 1, role_name: "Parent" })),
+      toHistoryEvent(renewalTask({ task_id: 2 })),
+    ])
+    expect(legend.map(g => g.key)).toEqual(["goal", "activity"])
+    expect(labelsIn(legend, "goal")).toEqual(["Parent"])
+    expect(labelsIn(legend, "activity")).toEqual(["Physical"])
+  })
+
+  it("puts fixed appointments last, under the row for what belongs to neither", () => {
+    const legend = weekLegend([
+      toHistoryEvent(fixedTask({ task_id: 1 })),
+      toHistoryEvent(task({ task_id: 2 })),
+      toHistoryEvent(renewalTask({ task_id: 3 })),
+    ])
+    expect(legend.map(g => g.key)).toEqual(["goal", "activity", "other"])
+    expect(labelsIn(legend, "other")).toEqual(["Fixed"])
+  })
+
+  it("leaves out a row the week put nothing in", () => {
+    const legend = weekLegend([toHistoryEvent(fixedTask({ task_id: 1 }))])
+    expect(legend.map(g => g.key)).toEqual(["other"])
   })
 
   it("is empty for a week with nothing scheduled", () => {
     expect(weekLegend([])).toEqual([])
+  })
+})
+
+describe("outcomeLegend", () => {
+  const goals = (...overs: Partial<ApiHistoryGoal>[]) =>
+    overs.map((over, i) => toHistoryGoal(goal({ goal_id: i + 1, ...over }), true))
+
+  it("explains only the markers the week actually used", () => {
+    expect(outcomeLegend(goals({ is_completed: true }))).toEqual(["achieved"])
+  })
+
+  it("orders them as the card reads: met, missed, then what left the week", () => {
+    // Independent of the order the goals arrive in, so two weeks' legends are directly comparable.
+    const week = goals({ is_dropped: true }, {}, { is_completed: true })
+    expect(outcomeLegend(week)).toEqual(["achieved", "missed", "dropped"])
+  })
+
+  it("is empty for a week with no goals, so no rule is drawn under nothing", () => {
+    expect(outcomeLegend([])).toEqual([])
   })
 })
 
