@@ -36,3 +36,18 @@ export interface ApiWeeklyPlan {
   end_date: string
   tasks: ApiTask[]
 }
+
+/** One labelled fact about a task, as the detail dialog lists it. */
+export interface DetailRow {
+  label: string
+  value: string
+}
+
+/** Everything the detail dialog says about a task beyond its title and its time. */
+export interface TaskDetail {
+  /** "Fixed appointment" | "Role goal" | "Sharpen the Saw" | "Task" */
+  kind: string
+  /** The colour the card is drawn in, so the dialog's dot matches the grid. */
+  color: string
+  rows: DetailRow[]
+}

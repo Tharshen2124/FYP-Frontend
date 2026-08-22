@@ -7,17 +7,27 @@ import { HR_PX, CAL_START } from "../_constants/calendar"
 interface Props {
   event: CalEvent
   allItems: CalItem[]
+  /** Opens the detail dialog. The card truncates its title and drops everything else the task
+   *  knows, so this is the only way to read one in full. */
+  onSelect: () => void
 }
 
-export function EventCard({ event, allItems }: Props) {
+export function EventCard({ event, allItems, onSelect }: Props) {
   const top    = (event.startMins - CAL_START * 60) / 60 * HR_PX
   const height = Math.max(20, (event.endMins - event.startMins) / 60 * HR_PX - 2)
   const pos    = getPositionStyle(event, allItems)
   const short  = height < 36
 
   return (
-    <div
-      className="absolute rounded-lg px-2 py-1 overflow-hidden select-none"
+    <button
+      type="button"
+      onClick={onSelect}
+      /* The title is visually truncated and a 20px card shows no time at all, so the accessible
+         name has to carry what the eye gets from the grid position. */
+      aria-label={`${event.title}, ${fmtTime(event.startMins)} to ${fmtTime(event.endMins)}${
+        event.isCompleted ? ", completed" : ""
+      }`}
+      className="absolute rounded-lg px-2 py-1 overflow-hidden select-none text-left cursor-pointer transition hover:brightness-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       style={{
         top,
         height,
@@ -33,8 +43,8 @@ export function EventCard({ event, allItems }: Props) {
         {event.isDailyPriority && !event.isFixed && (
           <Star className="w-3 h-3 mt-0.5 shrink-0 fill-current" style={{ color: event.color }} />
         )}
-        {/* Ticked off in the End-of-Day check-in. The same mark /history uses, so the live week and
-            the recorded one read the same way. */}
+        {/* Ticked off in the End-of-Day check-in or in the detail dialog. The same mark /history
+            uses, so the live week and the recorded one read the same way. */}
         {event.isCompleted && (
           <Check className="w-3 h-3 mt-0.5 shrink-0" style={{ color: event.color }} aria-label="Completed" />
         )}
@@ -54,6 +64,6 @@ export function EventCard({ event, allItems }: Props) {
           )}
         </div>
       </div>
-    </div>
+    </button>
   )
 }

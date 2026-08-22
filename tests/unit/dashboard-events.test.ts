@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
-import { linkLabel, toCalEvents } from "@/app/dashboard/_utils/events"
+import { linkLabel, taskDetail, toCalEvents } from "@/app/dashboard/_utils/events"
+import { fmtDuration } from "@/app/dashboard/_utils/time"
 import type { ApiTask } from "@/app/dashboard/_types"
 
 /**
@@ -82,5 +83,86 @@ describe("toCalEvents", () => {
   it("uses the task id as a stable string key", () => {
     const [event] = toCalEvents([task({ task_id: 42 })])
     expect(event.id).toBe("42")
+  })
+})
+
+/**
+ * The detail dialog reads the `ApiTask` rather than the `CalEvent` the grid draws, because
+ * `toCalEvents` throws most of a task away on purpose — a card has room for a title and a time.
+ * These pin which facts survive into the dialog, and which are dropped rather than shown empty.
+ */
+describe("taskDetail", () => {
+  it("names a goal task by its goal and its role", () => {
+    const { kind, rows } = taskDetail(
+      task({ link_kind: "goal", link_text: "Ship the FYP", role_name: "Professional" })
+    )
+    expect(kind).toBe("Role goal")
+    expect(rows).toEqual([
+      { label: "Goal", value: "Ship the FYP" },
+      { label: "Role", value: "Professional" },
+    ])
+  })
+
+  it("names an activity by its dimension's display label, not the raw id", () => {
+    const { kind, rows } = taskDetail(
+      task({ link_kind: "activity", link_text: "Call a friend", dimension: "social" })
+    )
+    expect(kind).toBe("Sharpen the Saw")
+    expect(rows).toEqual([
+      { label: "Activity", value: "Call a friend" },
+      { label: "Dimension", value: "Social / Emotional" },
+    ])
+  })
+
+  /* Unlike `linkLabel`, which drops an unrecognised dimension entirely: under a "Dimension" label
+     the raw word still tells the reader something. */
+  it("shows an unrecognised dimension as it came", () => {
+    const { rows } = taskDetail(
+      task({ link_kind: "activity", link_text: "Something", dimension: "nonsense" })
+    )
+    expect(rows).toContainEqual({ label: "Dimension", value: "nonsense" })
+  })
+
+  it("gives a fixed appointment its notes and no link rows", () => {
+    const { kind, rows } = taskDetail(
+      task({ is_fixed_appointment: true, description: "Room 4.02" })
+    )
+    expect(kind).toBe("Fixed appointment")
+    expect(rows).toEqual([{ label: "Notes", value: "Room 4.02" }])
+  })
+
+  /* A row is dropped rather than shown empty — "Goal: —" only invites the reader to wonder which
+     one went missing. */
+  it("has no rows at all for a task linked to nothing", () => {
+    expect(taskDetail(task()).rows).toEqual([])
+    expect(taskDetail(task()).kind).toBe("Task")
+  })
+
+  it("ignores a description that is only whitespace", () => {
+    expect(taskDetail(task({ description: "   " })).rows).toEqual([])
+  })
+
+  it("carries the same colour the card is drawn in", () => {
+    expect(taskDetail(task()).color).toBe("#B13BFF")
+    expect(taskDetail(task({ is_daily_priority: true })).color).toBe("#FFCC00")
+    expect(taskDetail(task({ is_fixed_appointment: true, is_daily_priority: true })).color)
+      .toBe("#3b82f6")
+  })
+})
+
+describe("fmtDuration", () => {
+  it("drops the hours when there are none", () => {
+    expect(fmtDuration(45)).toBe("45m")
+    expect(fmtDuration(30)).toBe("30m")
+  })
+
+  it("drops the minutes when the span is whole hours", () => {
+    expect(fmtDuration(60)).toBe("1h")
+    expect(fmtDuration(120)).toBe("2h")
+  })
+
+  it("gives both parts otherwise", () => {
+    expect(fmtDuration(90)).toBe("1h 30m")
+    expect(fmtDuration(185)).toBe("3h 5m")
   })
 })

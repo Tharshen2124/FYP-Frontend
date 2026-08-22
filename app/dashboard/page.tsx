@@ -5,9 +5,11 @@ import { CalendarDays, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sidebar } from "@/components/sidebar"
 import { useRequireAuth } from "@/hooks/use-require-auth"
+import { useCurrentWeek } from "@/hooks/use-current-week"
 import { api } from "@/lib/api"
 import { WeeklyTimetable } from "./_components/weekly-timetable"
 import { EndOfDayModal } from "./_components/end-of-day-modal"
+import { TaskDetailModal } from "./_components/task-detail-modal"
 import { NoPlanCard } from "./_components/no-plan-card"
 import { TimetableLegend } from "./_components/timetable-legend"
 import { toCalEvents } from "./_utils/events"
@@ -18,7 +20,9 @@ type LoadState = "loading" | "ready" | "error"
 
 export default function DashboardPage() {
   const { isReady } = useRequireAuth()
+  const week = useCurrentWeek()
   const [showEodModal, setShowEodModal] = useState(false)
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [plan, setPlan] = useState<ApiWeeklyPlan | null>(null)
   const [loadState, setLoadState] = useState<LoadState>("loading")
   const [reloadKey, setReloadKey] = useState(0)
@@ -58,6 +62,11 @@ export default function DashboardPage() {
   }, [])
 
   const events = useMemo(() => (plan ? toCalEvents(plan.tasks) : []), [plan])
+
+  /* Derived from the held plan rather than copied into state, so ticking a task off patches the
+     plan and the open dialog re-reads it — the button flips with nothing else to keep in step. */
+  const selectedTask =
+    plan?.tasks.find(task => String(task.task_id) === selectedTaskId) ?? null
 
   const handleEodClose = () => {
     localStorage.setItem("eod_shown_date", new Date().toDateString())
@@ -151,12 +160,19 @@ export default function DashboardPage() {
         {loadState === "ready" && plan && (
           <>
             <TimetableLegend />
-            <WeeklyTimetable events={events} />
+            <WeeklyTimetable events={events} onSelectEvent={setSelectedTaskId} />
           </>
         )}
 
         {loadState === "ready" && !plan && <NoPlanCard />}
       </main>
+
+      <TaskDetailModal
+        task={selectedTask}
+        date={week && selectedTask ? week.dayDates[selectedTask.day_of_week] : null}
+        onClose={() => setSelectedTaskId(null)}
+        onCompletionChange={handleCompletionChange}
+      />
 
       <EndOfDayModal
         open={showEodModal}

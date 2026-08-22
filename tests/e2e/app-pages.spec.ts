@@ -310,4 +310,61 @@ test.describe("dashboard", () => {
 
     await expect(page.getByRole("heading", { name: /This week isn't planned yet/ })).toHaveCount(0)
   })
+
+  /* completeOnboarding seeds exactly what these need: "Deep work" on Wednesday, linked to the
+     role "Professional" and the goal "Complete quarterly project milestone", plus the fixed
+     appointment "Team standup" on Monday. */
+
+  test("a card opens a dialog naming what the task serves", async ({ page }) => {
+    await authenticateAsNewUser(page)
+    await completeOnboarding(page)
+
+    await page.getByRole("button", { name: /^Deep work,/ }).click()
+
+    const dialog = page.getByRole("dialog")
+    await expect(dialog.getByRole("heading", { name: "Deep work" })).toBeVisible()
+    // The goal and the role behind the task — neither of which the card has room for.
+    await expect(dialog.getByText("Complete quarterly project milestone")).toBeVisible()
+    await expect(dialog.getByText("Professional", { exact: true })).toBeVisible()
+    await expect(dialog.getByText("Role goal", { exact: true })).toBeVisible()
+    await expect(dialog.getByText("Not completed yet")).toBeVisible()
+
+    await dialog.getByRole("button", { name: "Close task details" }).click()
+    await expect(page.getByRole("dialog")).toHaveCount(0)
+
+    // A fixed appointment opens the same dialog, and says it is one rather than naming a goal.
+    await page.getByRole("button", { name: /^Team standup,/ }).click()
+    await expect(dialog.getByText("Fixed appointment", { exact: true })).toBeVisible()
+    await expect(dialog.getByText("Goal", { exact: true })).toHaveCount(0)
+  })
+
+  test("ticking a task off in the dialog outlives a reload", async ({ page }) => {
+    await authenticateAsNewUser(page)
+    await completeOnboarding(page)
+
+    await page.getByRole("button", { name: /^Deep work,/ }).click()
+
+    const dialog = page.getByRole("dialog")
+    await dialog.getByRole("button", { name: "Mark as done" }).click()
+
+    // The dialog stays open and re-reads the patched plan, so the flip is its own confirmation.
+    await expect(dialog.getByRole("button", { name: "Mark as not done" })).toBeVisible()
+    await expect(dialog.getByText("Completed", { exact: true })).toBeVisible()
+
+    await dialog.getByRole("button", { name: "Close task details" }).click()
+    await expect(page.getByRole("button", { name: /^Deep work,.*completed$/ })).toBeVisible()
+
+    // The assertion that proves the PATCH landed, rather than only the held plan being patched.
+    await page.reload()
+    await expect(page.getByRole("button", { name: /^Deep work,.*completed$/ })).toBeVisible()
+
+    // And back off again, since a check-in is not a one-way door.
+    await page.getByRole("button", { name: /^Deep work,/ }).click()
+    await dialog.getByRole("button", { name: "Mark as not done" }).click()
+    await expect(dialog.getByRole("button", { name: "Mark as done" })).toBeVisible()
+
+    await page.reload()
+    await expect(page.getByRole("button", { name: /^Deep work,/ })).toBeVisible()
+    await expect(page.getByRole("button", { name: /^Deep work,.*completed$/ })).toHaveCount(0)
+  })
 })

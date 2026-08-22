@@ -7,9 +7,11 @@ import type { CalEvent, CalItem } from "../_types"
 
 interface Props {
   events: CalEvent[]
+  /** Called with the task id behind the card that was clicked. */
+  onSelectEvent: (id: string) => void
 }
 
-export function WeeklyTimetable({ events }: Props) {
+export function WeeklyTimetable({ events, onSelectEvent }: Props) {
   const week = useCurrentWeek()
   const calItems: CalItem[] = events.map(e => ({
     id: e.id,
@@ -87,7 +89,12 @@ export function WeeklyTimetable({ events }: Props) {
 
                 {/* Events */}
                 {events.filter(e => e.dayIndex === di).map(event => (
-                  <EventCard key={event.id} event={event} allItems={calItems} />
+                  <EventCard
+                    key={event.id}
+                    event={event}
+                    allItems={calItems}
+                    onSelect={() => onSelectEvent(event.id)}
+                  />
                 ))}
 
                 {/* "Now" indicator — only ever runs on the client, since isToday needs `week`. */}

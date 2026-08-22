@@ -108,8 +108,15 @@ pill and past-day dimming only appear when that week is the current one.
   inherit that colour; an optional "Daily Priority" star shows a badge on the card. Clash detection
   spans fixed appointments *and* tasks.
 - `/onboarding/complete` — Explains Evening Reflections and the End-of-Day check-in; links to `/dashboard`.
-- `/dashboard` — Read-only weekly timetable with today's column highlighted, a "now" indicator line, and
+- `/dashboard` — Weekly timetable with today's column highlighted, a "now" indicator line, and
   a legend. A completed task is struck through with a check, the same mark `/history` uses.
+  Every card is a button: clicking one opens a **detail dialog** carrying the full untruncated
+  title, the day/time/duration, what the task serves (goal + role, or activity + dimension by its
+  display name) and a fixed appointment's notes — all of which the API already sends and the card
+  has no room for. Its footer toggles the task done, which is the only way besides the once-a-day
+  check-in to record one, and the only way at all to record a task on a day that is not today.
+  Any day of the week is tickable: a task done early can be ticked early. The dialog is the whole
+  of the page's write surface — nothing here renames, reschedules or deletes.
   "Edit Weekly Plan" is deliberately disabled — editing a week in place needs its own page
   that loads the current week and saves directly, and pointing it back at the planning flow's last
   step would mean "finish planning", not "save my change". Shows the end-of-day check-in modal once
@@ -255,9 +262,13 @@ of `app/evening-reflections/_utils/weeks.ts` when `/history` grew a strip of its
 not import another route's private folder, and a second copy of "has this week passed" is exactly
 what `lib/date.ts` exists to prevent.
 
-**A task is ticked off in the End-of-Day check-in**, which is the only thing that writes
-`tasks.is_completed` (`PATCH /tasks/:id/completion`). The modal seeds itself from what is already
-stored and sends only what changed, so saving twice does not untick the first save.
+**A task is ticked off in one of two places on `/dashboard`**, both writing
+`tasks.is_completed` through `PATCH /tasks/:id/completion` and both reporting back through the same
+`onCompletionChange(changed)` callback, which `page.tsx` patches its held plan from. The End-of-Day
+check-in seeds itself from what is already stored and sends only what changed, so saving twice does
+not untick the first save. The task detail dialog sends the one task it is showing, and because the
+task it renders is derived from that held plan rather than copied into state, the patch flows back
+in and flips the button — which is why it stays open afterwards rather than confirming with a toast.
 
 Routes with API state follow `/sharpen-the-saw` and `/roles`: a `let cancelled = false` effect for
 the initial load, an `isLoading` guard, and each write sent before local state is patched from the

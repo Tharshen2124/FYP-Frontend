@@ -14,3 +14,14 @@ export function strToMins(hhmm: string): number {
   const [h, m] = hhmm.split(":").map(Number)
   return h * 60 + m
 }
+
+/**
+ * How long a task runs, as words. The grid only ever implies this through a card's height, and a
+ * 30-minute block and a 45-minute one are four pixels apart.
+ */
+export function fmtDuration(mins: number): string {
+  const h = Math.floor(mins / 60)
+  const m = mins % 60
+  if (h === 0) return `${m}m`
+  return m === 0 ? `${h}h` : `${h}h ${m}m`
+}
