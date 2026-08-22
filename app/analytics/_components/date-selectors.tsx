@@ -1,6 +1,6 @@
 "use client"
 
-import { MONTH_NAMES, AVAILABLE_YEARS } from "../_constants/mock-data"
+import { MONTH_NAMES } from "../_constants/analytics"
 import type { DateSelection } from "../_types"
 
 const baseSelect =
@@ -9,10 +9,11 @@ const baseSelect =
 
 interface DatePickerProps {
   value: DateSelection
+  years: number[]
   onChange: (v: DateSelection) => void
 }
 
-function DatePicker({ value, onChange }: DatePickerProps) {
+function DatePicker({ value, years, onChange }: DatePickerProps) {
   const days = Array.from({ length: 31 }, (_, i) => i + 1)
 
   return (
@@ -45,7 +46,7 @@ function DatePicker({ value, onChange }: DatePickerProps) {
         onChange={(e) => onChange({ ...value, year: Number(e.target.value) })}
         className={`${baseSelect} w-16`}
       >
-        {AVAILABLE_YEARS.map((y) => (
+        {years.map((y) => (
           <option key={y} value={y}>{y}</option>
         ))}
       </select>
@@ -57,20 +58,21 @@ function DatePicker({ value, onChange }: DatePickerProps) {
 interface DateRangeSelectorProps {
   from: DateSelection
   to: DateSelection
+  years: number[]
   onFromChange: (v: DateSelection) => void
   onToChange: (v: DateSelection) => void
 }
 
-export function DateRangeSelector({ from, to, onFromChange, onToChange }: DateRangeSelectorProps) {
+export function DateRangeSelector({ from, to, years, onFromChange, onToChange }: DateRangeSelectorProps) {
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center gap-2">
         <span className="text-xs text-muted-foreground w-8 shrink-0">From</span>
-        <DatePicker value={from} onChange={onFromChange} />
+        <DatePicker value={from} years={years} onChange={onFromChange} />
       </div>
       <div className="flex items-center gap-2">
         <span className="text-xs text-muted-foreground w-8 shrink-0">To</span>
-        <DatePicker value={to} onChange={onToChange} />
+        <DatePicker value={to} years={years} onChange={onToChange} />
       </div>
     </div>
   )
@@ -79,14 +81,15 @@ export function DateRangeSelector({ from, to, onFromChange, onToChange }: DateRa
 // Single date selector — resolves to the week containing the chosen date
 interface SingleDateSelectorProps {
   value: DateSelection
+  years: number[]
   onChange: (v: DateSelection) => void
 }
 
-export function SingleDateSelector({ value, onChange }: SingleDateSelectorProps) {
+export function SingleDateSelector({ value, years, onChange }: SingleDateSelectorProps) {
   return (
     <div className="flex items-center gap-2">
       <span className="text-xs text-muted-foreground shrink-0">Week of</span>
-      <DatePicker value={value} onChange={onChange} />
+      <DatePicker value={value} years={years} onChange={onChange} />
     </div>
   )
 }

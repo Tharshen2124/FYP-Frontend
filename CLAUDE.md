@@ -152,8 +152,18 @@ pill and past-day dimming only appear when that week is the current one.
   reads a week **as it was recorded**: goals under a since-archived role, goals since dropped and
   activities since deleted all still appear, flagged — which is why it has its own endpoints rather
   than composing `/roles` and `/sharpen-the-saw-activities`, both of which filter to `.active`.
-- `/analytics` — 2×2 grid: sharpen-the-saw radar, role task table, daily priority bar chart, weekly
-  completion trend. Date/range selectors filter against a fixed week registry.
+- `/analytics` — API-backed. 2×2 grid: sharpen-the-saw radar, role task table, daily priority bar
+  chart, weekly goal completion trend. Like `/history` it reads **finished weeks only**, so the
+  newest week it knows about is last week and the completion card's corner figure is labelled "last
+  week"; the week in progress belongs to `/dashboard`. The whole window — up to 52 finished weeks —
+  is fetched **once** by `_utils/use-analytics.ts`, and every card filters it in the browser, so
+  moving a selector never costs a request. Three of the four cards keep their own filter, which is
+  why they stay in `useState` rather than the URL: none of the three names what the page is about.
+  The radar's "score" is a completion rate — of the tasks scheduled against activities in a
+  dimension, the share done — pooled across the range rather than averaged per week, so a week that
+  scheduled nothing in a dimension contributes nothing instead of a zero that reads as a failure.
+  The completion card counts **goals**, not tasks, which is what makes its "Removed" column mean
+  something: dropped goals sit outside the ratio, the same rule `/history` follows.
 
 ## Layout conventions
 
@@ -205,8 +215,9 @@ Rules:
    non-UI domain constants go in `lib/` — `lib/sharpen-the-saw-dimensions.ts` and
    `lib/role-colors.ts` (the role palette, needed by both `/roles` and `/weekly-plan/goals`).
 5. **Derived/filtered data belongs in `_utils`, raw data in `_constants`.** `/analytics` is the model:
-   `_constants/mock-data.ts` holds the week registry and raw numbers, `_utils/analytics.ts` holds
-   `getSharpenData`, `getRoleStats`, `getDailyPriority`.
+   `_constants/analytics.ts` holds the window sizes and label lists, `_utils/analytics.ts` holds the
+   pure derivations (`getSharpenData`, `getRoleStats`, `getDailyPriority`) and `_utils/use-analytics.ts`
+   owns the one fetch that feeds them.
 6. Routes that are genuinely trivial (`/onboarding/complete` is pure markup) may stay a single
    `page.tsx` — but add the folders as soon as they grow logic, types, or repeated markup.
 
@@ -218,9 +229,9 @@ There is no global data store: state is local `useState` per route, and routes t
 the Rails API through `lib/api.ts`. Auth is the one exception — a JWT in a cookie-backed zustand
 store (`stores/auth-store.ts` + `lib/cookie-storage.ts`).
 
-API-backed routes: `/login`, all four data-writing onboarding steps, `/dashboard`,
-`/sharpen-the-saw`, `/roles`, `/evening-reflections`, `/history`, and all three `/weekly-plan/*`
-steps. `/analytics` is the last one still seeded from its own `_constants/mock-data.ts`.
+Every route that persists anything is API-backed: `/login`, all four data-writing onboarding steps,
+`/dashboard`, `/sharpen-the-saw`, `/roles`, `/evening-reflections`, `/history`, `/analytics`, and
+all three `/weekly-plan/*` steps. Nothing is mock-backed any more.
 
 **"Has this week passed?" is a client decision**, like every other date in this app — the server
 stores no timezone and keeps only a loose backstop that can never fire for a real user. It lives in

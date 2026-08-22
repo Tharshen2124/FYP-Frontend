@@ -76,6 +76,100 @@ export async function seedWeeklyPlan(page: Page) {
 }
 
 /**
+ * Gives the user a *finished* week with something in it: a goal that was achieved, a starred
+ * priority that was not, and a completed renewal task.
+ *
+ * /analytics only reads weeks that have ended, so nothing the UI can plan is visible to it — the
+ * planning flow only ever offers the current week or the next one. This drives the API directly for
+ * last week instead, which is the same set of requests the flow itself makes, in the same order.
+ */
+export async function seedPastWeek(page: Page) {
+  // Standing roles and this week's goals first: a goal needs a role, and roles are long-lived.
+  await seedWeeklyPlan(page)
+
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000"
+
+  await page.evaluate(async (apiUrl: string) => {
+    const cookie = document.cookie.match(/(?:^|; )habitflow-auth=([^;]*)/)
+    const token = JSON.parse(decodeURIComponent(cookie![1])).state.token
+
+    // The Monday of last week, derived from the local clock exactly as lib/date.ts does — every
+    // week_start in this app is the user's local date, never the server's.
+    const monday = new Date()
+    monday.setDate(monday.getDate() + (monday.getDay() === 0 ? -6 : 1 - monday.getDay()) - 7)
+    const weekStart = [
+      monday.getFullYear(),
+      String(monday.getMonth() + 1).padStart(2, "0"),
+      String(monday.getDate()).padStart(2, "0"),
+    ].join("-")
+
+    const call = async (method: string, path: string, body?: unknown) => {
+      const res = await fetch(`${apiUrl}${path}`, {
+        method,
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      })
+      if (!res.ok) throw new Error(`${method} ${path} → ${res.status} ${await res.text()}`)
+      return res.json()
+    }
+
+    const { roles } = await call("GET", `/roles?week_start=${weekStart}`)
+    const roleId = roles[0].role_id
+
+    // Two goals, so the completion card has a ratio rather than 1/1.
+    const { goal: achieved } = await call("POST", `/goals?week_start=${weekStart}`, {
+      role_id: roleId,
+      description: "Ship the past week",
+      is_weekly_priority: true,
+    })
+    const { goal: missed } = await call("POST", `/goals?week_start=${weekStart}`, {
+      role_id: roleId,
+      description: "Write the retrospective",
+    })
+
+    const { activity } = await call("POST", "/sharpen-the-saw-activities", {
+      dimension: "physical",
+      activity_description: "Swim",
+    })
+
+    const { tasks } = await call("POST", `/weekly-plans/tasks?week_start=${weekStart}`, {
+      tasks: [
+        {
+          title: "Draft the final chapter",
+          day_of_week: 1,
+          start_time: "14:00",
+          end_time: "15:30",
+          goal_id: achieved.goal_id,
+        },
+        {
+          title: "Outline the retrospective",
+          day_of_week: 3,
+          start_time: "10:00",
+          end_time: "11:00",
+          goal_id: missed.goal_id,
+          is_daily_priority: true,
+        },
+        {
+          title: "Swim",
+          day_of_week: 1,
+          start_time: "07:00",
+          end_time: "08:00",
+          sharpen_the_saw_activity_id: activity.sharpen_the_saw_activity_id,
+        },
+      ],
+    })
+
+    // Tick off everything but the starred priority, so each card has both halves of a ratio.
+    const done = tasks.filter((t: { title: string }) => t.title !== "Outline the retrospective")
+    for (const task of done) {
+      await call("PATCH", `/tasks/${task.task_id}/completion`, { is_completed: true })
+    }
+
+    await call("PATCH", `/goals/${achieved.goal_id}?week_start=${weekStart}`, { is_completed: true })
+  }, apiUrl)
+}
+
+/**
  * Walks the whole onboarding flow against the live backend and lands on /dashboard, leaving the
  * user with a real weekly plan: three goals, four renewal activities, one fixed appointment
  * ("Team standup", Monday) and one goal-linked task ("Deep work", Wednesday).

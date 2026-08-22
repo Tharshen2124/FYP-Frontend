@@ -137,6 +137,27 @@ export interface ApiPlanTask {
  * time, so shipping every week's goals just to label a list of dates would be the whole history on
  * load — the same reasoning as `ApiReflectionWeek`.
  */
+/**
+ * One planned week's analytics, counts only — the four cards turn them into percentages
+ * themselves, the same division of labour as `ApiHistoryGoal`: a ratio is cheap to compute, and a
+ * client that owns it can re-slice a range without another round trip.
+ *
+ * `dimensions` and `daily_priorities` carry only the rows that exist. The four fixed dimensions
+ * and the seven days live on the client, so it fills the gaps rather than the server shipping
+ * zeroes for them.
+ */
+export interface ApiAnalyticsWeek {
+  week_start: string
+  end_date: string
+  /** `dimension` is the raw stored id ("physical", "social", …); the palette is the client's. */
+  dimensions: { dimension: string; completed: number; total: number }[]
+  /** Tasks resolved through `task -> goal -> role`. A since-archived role still appears here. */
+  roles: { role_id: number; name: string; color_id: string | null; completed: number; total: number }[]
+  daily_priorities: { day_of_week: number; completed: number; total: number }[]
+  /** Active goals only, so a dropped goal cannot sit in the denominator; it is reported beside it. */
+  goals: { achieved: number; total: number; dropped: number }
+}
+
 export interface ApiHistoryWeekMeta {
   week_start: string
   goal_count: number
@@ -485,5 +506,11 @@ export const api = {
    */
   fetchHistoryWeeks: (from: string, to: string) =>
     request<{ weeks: ApiHistoryWeekMeta[] }>(`/history/weeks?from=${from}&to=${to}`),
+  /**
+   * The figures behind /analytics, one row per planned week across a range. Weeks the user never
+   * planned are absent, and the range is capped at 52 weeks server-side.
+   */
+  fetchAnalytics: (from: string, to: string) =>
+    request<{ weeks: ApiAnalyticsWeek[] }>(`/analytics?from=${from}&to=${to}`),
   googleLoginHref: () => `${API_URL}/login`,
 }

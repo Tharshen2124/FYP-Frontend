@@ -1,12 +1,9 @@
 "use client"
 
-import { useState } from "react"
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts"
 import { Star } from "lucide-react"
-import { DEFAULT_DATE } from "../_constants/mock-data"
-import { getDailyPriority, getWeekLabel } from "../_utils/analytics"
 import { SingleDateSelector } from "./date-selectors"
-import type { DateSelection } from "../_types"
+import type { DailyPriorityDay, DateSelection } from "../_types"
 
 interface TooltipPayload {
   payload: { day: string; completed: number; total: number; pct: number }
@@ -23,22 +20,26 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Toolti
   )
 }
 
-export function DailyPriorityChart() {
-  const [date, setDate] = useState<DateSelection>(DEFAULT_DATE)
+interface DailyPriorityChartProps {
+  days: DailyPriorityDay[]
+  label: string
+  value: DateSelection
+  years: number[]
+  onChange: (v: DateSelection) => void
+}
 
-  const weekData   = getDailyPriority(date)
-  const weekLabel  = getWeekLabel(date)
-  const hasData    = weekData.length > 0
+export function DailyPriorityChart({ days, label, value, years, onChange }: DailyPriorityChartProps) {
+  const hasData = days.length > 0
 
-  const chartData = weekData.map((d) => ({
+  const chartData = days.map((d) => ({
     ...d,
     pct: d.total > 0 ? Math.round((d.completed / d.total) * 100) : 0,
   }))
 
-  const daysHit   = weekData.filter((d) => d.total > 0 && d.completed === d.total).length
-  const totalDays = weekData.filter((d) => d.total > 0).length
-  const totalCompleted = weekData.reduce((s, d) => s + d.completed, 0)
-  const totalPossible  = weekData.reduce((s, d) => s + d.total, 0)
+  const daysHit   = days.filter((d) => d.total > 0 && d.completed === d.total).length
+  const totalDays = days.filter((d) => d.total > 0).length
+  const totalCompleted = days.reduce((s, d) => s + d.completed, 0)
+  const totalPossible  = days.reduce((s, d) => s + d.total, 0)
   const overallPct = totalPossible > 0 ? Math.round((totalCompleted / totalPossible) * 100) : 0
 
   return (
@@ -51,21 +52,23 @@ export function DailyPriorityChart() {
           </p>
         </div>
         <div className="text-right shrink-0">
-          <p className="text-2xl font-bold text-primary">{hasData ? `${overallPct}%` : "—"}</p>
+          <p className="text-2xl font-bold text-primary">{totalPossible > 0 ? `${overallPct}%` : "—"}</p>
           <p className="text-xs text-muted-foreground">hit rate</p>
         </div>
       </div>
 
       <div className="mt-3 mb-1">
-        <SingleDateSelector value={date} onChange={setDate} />
+        <SingleDateSelector value={value} years={years} onChange={onChange} />
       </div>
 
       {hasData ? (
         <>
-          <p className="text-xs text-muted-foreground mb-2 font-serif">{weekLabel}</p>
+          <p className="text-xs text-muted-foreground mb-2 font-serif">{label}</p>
 
           <ResponsiveContainer width="100%" height={165}>
-            <BarChart data={chartData} barSize={28} margin={{ top: 8, right: 4, left: -28, bottom: 0 }}>
+            {/* left: -18 rather than -28 — the axis tops out at "100%", and a wider negative margin
+                clipped its leading digit. */}
+            <BarChart data={chartData} barSize={28} margin={{ top: 8, right: 4, left: -18, bottom: 0 }}>
               <XAxis
                 dataKey="day"
                 tick={{ fill: "#b8b8ff", fontSize: 12, fontFamily: "inherit" }}
@@ -97,7 +100,7 @@ export function DailyPriorityChart() {
               <span>Full days hit</span>
             </div>
             <div className="flex items-center gap-1">
-              {weekData.map((d) => {
+              {days.map((d) => {
                 const full    = d.total > 0 && d.completed === d.total
                 const partial = d.total > 0 && d.completed > 0 && d.completed < d.total
                 return (
@@ -120,7 +123,7 @@ export function DailyPriorityChart() {
         </>
       ) : (
         <div className="flex items-center justify-center h-40 text-muted-foreground text-sm font-serif">
-          No data for the selected date
+          You didn&apos;t plan the week containing that date.
         </div>
       )}
     </div>

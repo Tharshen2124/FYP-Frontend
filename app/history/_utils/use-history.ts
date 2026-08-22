@@ -7,22 +7,14 @@ import { api } from "@/lib/api"
 import {
   getWeekStart,
   isWeekStart,
+  latestPastWeekStart,
   localDateParam,
-  localWeekStartParam,
   shiftWeekStart,
   weekStartsBack,
 } from "@/lib/date"
 import { WEEKS_PER_PAGE } from "../_constants/history"
 import { toHistoryWeek } from "./history"
 import type { HistoryWeek, HistoryWeekMeta } from "../_types"
-
-/** The most recent week /history will show: the one before the one the user is standing in.
- *
- *  The live week belongs to /dashboard, which draws it as it stands rather than as it turned out,
- *  and a goal in an unfinished week has no outcome yet — every one of them would read "open". */
-function latestPastWeek(): string {
-  return shiftWeekStart(localWeekStartParam(), -1)
-}
 
 /**
  * Everything this route reads. It lives in a hook rather than in page.tsx for the reason /roles and
@@ -37,7 +29,7 @@ export function useHistory() {
   const pathname = usePathname()
   const param = useSearchParams().get("week_start")
 
-  const newest = latestPastWeek()
+  const newest = latestPastWeekStart()
   // A hand-edited URL naming the current week — or a future one — is clamped rather than refused:
   // there is nothing to look back on there, and the nearest week that does exist is the answer.
   const weekStart = isWeekStart(param) && param <= newest ? param : newest

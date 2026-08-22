@@ -122,6 +122,17 @@ export function formatWeekRange(weekStart: string): string {
 }
 
 /**
+ * The most recent week that has finished: the one before the week the user is standing in.
+ *
+ * /history and /analytics both stop here rather than at the live week. The live week belongs to
+ * /dashboard, which draws it as it stands rather than as it turned out — a goal in an unfinished
+ * week has no outcome yet, and a week still running would read low and climb all week.
+ */
+export function latestPastWeekStart(today: Date = new Date()): string {
+  return shiftWeekStart(localWeekStartParam(today), -1)
+}
+
+/**
  * The `count` Mondays ending at `latest`, most recent first.
  *
  * The week strips on /evening-reflections and /history are generated here rather than taken from

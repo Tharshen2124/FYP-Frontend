@@ -31,6 +31,9 @@ test.describe("app navigation", () => {
   })
 
   test("the sidebar highlights the active route", async ({ page }) => {
+    // /analytics is gated like every other dashboard route now, so an unauthenticated visit is a
+    // redirect to /login and there is no sidebar to highlight.
+    await authenticateAsNewUser(page)
     await page.goto("/analytics")
     const active = page.getByRole("link", { name: "Analytics", exact: true })
     await expect(active).toHaveClass(/text-primary/)

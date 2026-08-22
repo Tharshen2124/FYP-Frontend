@@ -1,5 +1,11 @@
 import { test, expect } from "@playwright/test"
-import { suppressEndOfDayModal, authenticateAsNewUser, completeOnboarding, seedWeeklyPlan } from "./helpers"
+import {
+  suppressEndOfDayModal,
+  authenticateAsNewUser,
+  completeOnboarding,
+  seedWeeklyPlan,
+  seedPastWeek,
+} from "./helpers"
 
 test.beforeEach(async ({ page }) => {
   await suppressEndOfDayModal(page)
@@ -193,13 +199,38 @@ test.describe("history and analytics", () => {
     })
   })
 
-  test("analytics renders all four cards", async ({ page }) => {
-    await page.goto("/analytics")
+  // /analytics reads the live backend now, and it only reads weeks that have *finished* -- so a
+  // fresh user is the case worth pinning: it has to say there is nothing yet rather than draw four
+  // empty charts.
+  test.describe("analytics", () => {
+    test.beforeEach(async ({ page }) => {
+      await authenticateAsNewUser(page)
+      await page.goto("/analytics")
+    })
 
-    await expect(page.getByRole("heading", { name: /Your Analytics/ })).toBeVisible()
-    // Each card exposes its own date selector.
-    await expect(page.locator("select").first()).toBeVisible()
-    await expect(page.getByText("Programmer")).toBeVisible()
+    test("says so for a user with no finished week, rather than charting zeroes", async ({ page }) => {
+      await expect(page.getByRole("heading", { name: /Your Analytics/ })).toBeVisible()
+      await expect(page.getByRole("heading", { name: "Nothing to analyse yet" })).toBeVisible()
+      await expect(page.getByRole("link", { name: "Plan a week" })).toBeVisible()
+    })
+
+    test("renders all four cards once a finished week exists", async ({ page }) => {
+      await seedPastWeek(page)
+      await page.goto("/analytics")
+
+      for (const heading of [
+        "Sharpen the Saw Balance",
+        "Tasks Completed Per Role",
+        "Daily Priority Hit Rate",
+        "Weekly Goal Completion",
+      ]) {
+        await expect(page.getByRole("heading", { name: heading })).toBeVisible()
+      }
+
+      // Each filtered card exposes its own date selector.
+      await expect(page.locator("select").first()).toBeVisible()
+      await expect(page.getByText("Professional")).toBeVisible()
+    })
   })
 })
 
