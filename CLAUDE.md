@@ -159,9 +159,14 @@ pill and past-day dimming only appear when that week is the current one.
   is fetched **once** by `_utils/use-analytics.ts`, and every card filters it in the browser, so
   moving a selector never costs a request. Three of the four cards keep their own filter, which is
   why they stay in `useState` rather than the URL: none of the three names what the page is about.
-  The radar's "score" is a completion rate — of the tasks scheduled against activities in a
-  dimension, the share done — pooled across the range rather than averaged per week, so a week that
-  scheduled nothing in a dimension contributes nothing instead of a zero that reads as a failure.
+  The radar is a **distribution, not four completion rates**: each dimension's figure is its share
+  of the renewal tasks completed across the range, so the four add up to 100 and an even 25% each is
+  a balanced week — which is what Habit 7 is actually asking. A completion rate could not say that,
+  since a dimension with one scheduled task that got done reads 100% while contributing almost
+  nothing. The corner figure collapses the split into one number: total distance from an even share,
+  scaled so covering k of the four dimensions evenly scores (k − 1) / 3 — one dimension 0%, two 33%,
+  three 67%, all four 100%. Counts are pooled across the range rather than the weeks' shares
+  averaged, so a quiet week does not weigh as much as a busy one.
   The completion card counts **goals**, not tasks, which is what makes its "Removed" column mean
   something: dropped goals sit outside the ratio, the same rule `/history` follows.
 

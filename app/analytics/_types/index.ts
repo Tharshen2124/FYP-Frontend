@@ -15,6 +15,8 @@ export interface DateSelection {
 export interface AnalyticsWeek {
   weekStart: string  // ISO Monday
   endDate: string
+  /** `total` is what was scheduled; the balance card reads `completed`, since the question is
+      how renewal was spread, not how much of the plan survived. */
   dimensions: { dimension: SharpenTheSawDimensionId; completed: number; total: number }[]
   roles: { roleId: string; name: string; color: string; completed: number; total: number }[]
   dailyPriorities: { dayOfWeek: number; completed: number; total: number }[]
@@ -23,8 +25,24 @@ export interface AnalyticsWeek {
 
 export interface SharpenDimension {
   dimension: string
-  score: number
   color: string
+  /**
+   * This dimension's share of the renewal tasks completed in the range, as a whole percentage.
+   * The four shares add up to 100 — the card asks how the work was *spread*, not how much of what
+   * was scheduled got done, so an even 25% each is the balanced answer.
+   */
+  share: number
+  /** The count behind the share, so a 50% built on one task can be told from one built on ten. */
+  completed: number
+}
+
+/** The Sharpen the Saw card's whole reading: the split, what it was measured on, and how even it is. */
+export interface SharpenBalance {
+  dimensions: SharpenDimension[]
+  /** Renewal tasks completed across all four dimensions. 0 means there is no split to draw. */
+  completed: number
+  /** 100 when the four shares are even, 0 when one dimension holds everything. */
+  balance: number
 }
 
 export interface RoleTaskStat {

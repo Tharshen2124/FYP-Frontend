@@ -11,7 +11,7 @@ import type {
   DailyPriorityDay,
   DateSelection,
   RoleTaskStat,
-  SharpenDimension,
+  SharpenBalance,
   WeeklyCompletion,
 } from "../_types"
 
@@ -92,39 +92,89 @@ export function getWeekForDate(weeks: AnalyticsWeek[], date: DateSelection): Ana
   )
 }
 
+/** An even split across the four dimensions — the number the card measures balance against. */
+export const EVEN_SHARE = 100 / SHARPEN_THE_SAW_DIMENSIONS.length
+
 /**
- * Per-dimension renewal scores across the range: of the tasks scheduled against activities in that
- * dimension, the share completed.
+ * The furthest a split can sit from even: everything in one dimension, which is (100 − 25) away on
+ * that one and 25 away on each of the other three.
+ */
+const MAX_IMBALANCE = 2 * (100 - EVEN_SHARE)
+
+/**
+ * Rounds shares to whole percentages that still add up to 100. Rounding each one on its own lands
+ * on 99 or 101 often enough to matter, and the four numbers sit in a list on the card where a
+ * reader will add them up. Largest-remainder: floor them all, then give the points that were lost
+ * back to the shares that lost the most.
+ */
+function roundToHundred(shares: number[]): number[] {
+  const whole = shares.map(Math.floor)
+  let remaining = 100 - whole.reduce((sum, n) => sum + n, 0)
+
+  const byRemainder = shares
+    .map((share, index) => ({ index, remainder: share - Math.floor(share) }))
+    .sort((a, b) => b.remainder - a.remainder)
+
+  for (const { index } of byRemainder) {
+    if (remaining <= 0) break
+    whole[index] += 1
+    remaining -= 1
+  }
+  return whole
+}
+
+/**
+ * How the renewal tasks completed across the range were *spread* over the four dimensions.
  *
- * The counts are pooled across the range rather than the per-week percentages averaged. Pooling is
- * the correct aggregation for a ratio, and it also handles the common case cleanly — a week that
- * scheduled nothing in a dimension contributes nothing, instead of a zero that drags the average
- * down as if the user had tried and failed.
+ * This is a distribution, not four separate completion rates: each dimension's share is its
+ * count over the range's total, so the four add up to 100 and an even 25% each is a perfectly
+ * balanced spread. Habit 7 is about renewing all four, so the question the card answers is
+ * "did I neglect one?" — which a per-dimension completion rate cannot say, since a dimension
+ * with a single scheduled task that got done reads 100% while contributing almost nothing.
+ *
+ * `balance` collapses that into one figure: the total distance from an even split, scaled so 100
+ * is perfectly even and 0 is everything in one dimension. Evenly covering k of the four dimensions
+ * scores (k − 1) / 3, so one dimension is 0%, two is 33%, three is 67% and all four is 100%.
+ *
+ * Counts are pooled across the range rather than the weeks' shares averaged: pooling is the
+ * correct aggregation for a ratio, and it stops a quiet week from carrying the same weight as a
+ * busy one.
  */
 export function getSharpenData(
   weeks: AnalyticsWeek[],
   from: DateSelection,
   to: DateSelection
-): SharpenDimension[] {
+): SharpenBalance {
   const range = getWeeksInRange(weeks, from, to)
 
-  return SHARPEN_THE_SAW_DIMENSIONS.map(meta => {
+  const counts = SHARPEN_THE_SAW_DIMENSIONS.map(meta => {
     let completed = 0
-    let total = 0
     for (const week of range) {
       for (const d of week.dimensions) {
-        if (d.dimension !== meta.id) continue
-        completed += d.completed
-        total += d.total
+        if (d.dimension === meta.id) completed += d.completed
       }
     }
+    return completed
+  })
 
-    return {
+  const completed = counts.reduce((sum, n) => sum + n, 0)
+  const shares = counts.map(n => (completed > 0 ? (n / completed) * 100 : 0))
+
+  // Measured off the exact shares rather than the rounded ones, so the headline figure never moves
+  // because a percentage was nudged a point to make the four add up.
+  const imbalance = shares.reduce((sum, share) => sum + Math.abs(share - EVEN_SHARE), 0)
+  const rounded = completed > 0 ? roundToHundred(shares) : shares
+
+  return {
+    completed,
+    balance: completed > 0 ? Math.round((1 - imbalance / MAX_IMBALANCE) * 100) : 0,
+    dimensions: SHARPEN_THE_SAW_DIMENSIONS.map((meta, index) => ({
       dimension: meta.label,
       color: meta.color,
-      score: total > 0 ? Math.round((completed / total) * 100) : 0,
-    }
-  })
+      share: rounded[index],
+      completed: counts[index],
+    })),
+  }
 }
 
 /**

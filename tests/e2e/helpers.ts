@@ -77,7 +77,7 @@ export async function seedWeeklyPlan(page: Page) {
 
 /**
  * Gives the user a *finished* week with something in it: a goal that was achieved, a starred
- * priority that was not, and a completed renewal task.
+ * priority that was not, and renewal tasks spread unevenly over three of the four dimensions.
  *
  * /analytics only reads weeks that have ended, so nothing the UI can plan is visible to it — the
  * planning flow only ever offers the current week or the next one. This drives the API directly for
@@ -127,10 +127,20 @@ export async function seedPastWeek(page: Page) {
       description: "Write the retrospective",
     })
 
-    const { activity } = await call("POST", "/sharpen-the-saw-activities", {
-      dimension: "physical",
-      activity_description: "Swim",
-    })
+    // Three dimensions, unevenly renewed, so the balance card has a real split to draw rather than
+    // one dimension holding everything: two physical tasks done, one mental done, one spiritual not.
+    const activityIds: Record<string, number> = {}
+    for (const [dimension, description] of [
+      ["physical", "Swim"],
+      ["mental", "Read a chapter"],
+      ["spiritual", "Meditate"],
+    ]) {
+      const { activity } = await call("POST", "/sharpen-the-saw-activities", {
+        dimension,
+        activity_description: description,
+      })
+      activityIds[dimension] = activity.sharpen_the_saw_activity_id
+    }
 
     const { tasks } = await call("POST", `/weekly-plans/tasks?week_start=${weekStart}`, {
       tasks: [
@@ -154,14 +164,36 @@ export async function seedPastWeek(page: Page) {
           day_of_week: 1,
           start_time: "07:00",
           end_time: "08:00",
-          sharpen_the_saw_activity_id: activity.sharpen_the_saw_activity_id,
+          sharpen_the_saw_activity_id: activityIds.physical,
+        },
+        {
+          title: "Swim again",
+          day_of_week: 3,
+          start_time: "07:00",
+          end_time: "08:00",
+          sharpen_the_saw_activity_id: activityIds.physical,
+        },
+        {
+          title: "Read a chapter",
+          day_of_week: 1,
+          start_time: "09:00",
+          end_time: "10:00",
+          sharpen_the_saw_activity_id: activityIds.mental,
+        },
+        {
+          title: "Meditate",
+          day_of_week: 2,
+          start_time: "07:00",
+          end_time: "07:30",
+          sharpen_the_saw_activity_id: activityIds.spiritual,
         },
       ],
     })
 
-    // Tick off everything but the starred priority, so each card has both halves of a ratio.
-    const done = tasks.filter((t: { title: string }) => t.title !== "Outline the retrospective")
-    for (const task of done) {
+    // Tick off everything but the starred priority and the spiritual task, so each card has both
+    // halves of a ratio and the balance card can tell a completed renewal task from a planned one.
+    const undone = ["Outline the retrospective", "Meditate"]
+    for (const task of tasks.filter((t: { title: string }) => !undone.includes(t.title))) {
       await call("PATCH", `/tasks/${task.task_id}/completion`, { is_completed: true })
     }
 

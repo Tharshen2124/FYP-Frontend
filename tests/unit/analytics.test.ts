@@ -115,8 +115,27 @@ describe("getWeekForDate", () => {
 })
 
 describe("getSharpenData", () => {
+  /** A single week whose completed renewal tasks fall as given, for testing the split alone. */
+  const split = (counts: Partial<Record<string, number>>) =>
+    [
+      {
+        week_start: "2026-08-10",
+        end_date: "2026-08-16",
+        dimensions: Object.entries(counts).map(([dimension, completed]) => ({
+          dimension,
+          completed: completed!,
+          total: completed!,
+        })),
+        roles: [],
+        daily_priorities: [],
+        goals: { achieved: 0, total: 0, dropped: 0 },
+      },
+    ].map(toAnalyticsWeek)
+
+  const WHOLE_WEEK: [DateSelection, DateSelection] = [d(10, 7), AUG_16]
+
   it("returns one entry per dimension, always all four", () => {
-    expect(getSharpenData(weeks, AUG_3, AUG_16).map(x => x.dimension)).toEqual([
+    expect(getSharpenData(weeks, AUG_3, AUG_16).dimensions.map(x => x.dimension)).toEqual([
       "Physical",
       "Spiritual",
       "Mental",
@@ -124,27 +143,71 @@ describe("getSharpenData", () => {
     ])
   })
 
-  it("reports the week's own completion rate when the range covers one week", () => {
-    // Physical 3/4, mental 2/2; nothing scheduled for the other two.
-    expect(getSharpenData(weeks, d(10, 7), AUG_16).map(x => x.score)).toEqual([75, 0, 100, 0])
+  it("reports each dimension's share of the renewal work, not its completion rate", () => {
+    // The week completed 3 physical and 2 mental tasks, so the split is 60/40. A completion rate
+    // would have said 75% and 100% -- two figures that say nothing about whether renewal was even.
+    expect(getSharpenData(weeks, ...WHOLE_WEEK).dimensions.map(x => x.share)).toEqual([60, 0, 40, 0])
   })
 
-  it("pools the counts across a range rather than averaging the weeks' percentages", () => {
-    // Physical is 3/4 then 1/2: pooled 4/6 = 67, where averaging 75% and 50% would say 63.
-    expect(getSharpenData(weeks, AUG_3, AUG_16)[0].score).toBe(67)
+  it("carries the count behind each share, so a small sample can be told from a large one", () => {
+    expect(getSharpenData(weeks, ...WHOLE_WEEK).dimensions.map(x => x.completed)).toEqual([3, 0, 2, 0])
+    expect(getSharpenData(weeks, ...WHOLE_WEEK).completed).toBe(5)
   })
 
-  it("scores a dimension the range scheduled nothing for as zero", () => {
-    expect(getSharpenData(weeks, AUG_3, AUG_16)[1]).toMatchObject({
-      dimension: "Spiritual",
-      score: 0,
-    })
+  it("pools the counts across a range rather than averaging the weeks' splits", () => {
+    // Physical is 3 of 5 then 1 of 3: pooled 4 of 8 = 50%, where averaging 60% and 33% would say 47.
+    expect(getSharpenData(weeks, AUG_3, AUG_16).dimensions.map(x => x.share)).toEqual([50, 0, 25, 25])
   })
 
-  it("zeroes every dimension when no week matches", () => {
+  it("keeps the four shares adding up to 100 even when they do not divide evenly", () => {
+    const thirds = getSharpenData(split({ physical: 1, mental: 1, social: 1 }), ...WHOLE_WEEK)
+    // 33.3% each rounds to 99 if each is rounded on its own; the lost point goes back to one of them.
+    expect(thirds.dimensions.reduce((sum, x) => sum + x.share, 0)).toBe(100)
+    expect(thirds.dimensions.map(x => x.share).sort((a, b) => b - a)).toEqual([34, 33, 33, 0])
+  })
+
+  it("calls an even split perfectly balanced", () => {
+    const even = getSharpenData(
+      split({ physical: 2, spiritual: 2, mental: 2, social: 2 }),
+      ...WHOLE_WEEK
+    )
+    expect(even.dimensions.map(x => x.share)).toEqual([25, 25, 25, 25])
+    expect(even.balance).toBe(100)
+  })
+
+  it("calls everything in one dimension no balance at all", () => {
+    expect(getSharpenData(split({ physical: 5 }), ...WHOLE_WEEK).balance).toBe(0)
+  })
+
+  it("rates covering more dimensions evenly as more balanced", () => {
+    const two = getSharpenData(split({ physical: 4, mental: 4 }), ...WHOLE_WEEK)
+    const three = getSharpenData(split({ physical: 3, mental: 3, social: 3 }), ...WHOLE_WEEK)
+
+    // Evenly covering k of the four dimensions scores (k - 1) / 3.
+    expect(two.balance).toBe(33)
+    expect(three.balance).toBe(67)
+  })
+
+  it("reads the shape of the split, not how big the counts behind it are", () => {
+    // Two tasks split evenly over two dimensions is the same imbalance as a hundred split the same
+    // way: balance says how the work was spread, and `completed` says how much there was of it.
+    expect(getSharpenData(split({ physical: 1, mental: 1 }), ...WHOLE_WEEK).balance).toBe(
+      getSharpenData(split({ physical: 50, mental: 50 }), ...WHOLE_WEEK).balance
+    )
+  })
+
+  it("reports no split for a week that renewed nothing, rather than a false zero balance", () => {
+    // The week of 27 Jul was planned but completed no renewal task at all.
+    const none = getSharpenData(weeks, d(27, 6), d(2, 7))
+    expect(none.completed).toBe(0)
+    expect(none.balance).toBe(0)
+    expect(none.dimensions.every(x => x.share === 0)).toBe(true)
+  })
+
+  it("has nothing to split when no week matches", () => {
     const data = getSharpenData(weeks, d(1, 0, 2020), d(2, 0, 2020))
-    expect(data).toHaveLength(4)
-    expect(data.every(x => x.score === 0)).toBe(true)
+    expect(data.dimensions).toHaveLength(4)
+    expect(data.completed).toBe(0)
   })
 })
 
