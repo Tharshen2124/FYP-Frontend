@@ -1,9 +1,6 @@
 import { test, expect } from "@playwright/test"
-import { suppressEndOfDayModal, authenticateAsNewUser, seedWeeklyPlan } from "./helpers"
+import { authenticateAsNewUser, seedWeeklyPlan } from "./helpers"
 
-test.beforeEach(async ({ page }) => {
-  await suppressEndOfDayModal(page)
-})
 
 const SIDEBAR_ROUTES: [string, string][] = [
   ["Dashboard", "/dashboard"],

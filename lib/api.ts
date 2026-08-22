@@ -44,6 +44,21 @@ function weekScoped(path: string, weekStart: string = localWeekStartParam()) {
  * Roles are standing; goals belong to exactly one week. A role carried into a new week comes back
  * with an empty `goals` array, so these shapes are always read against a particular `week_start`.
  */
+/** Whether a night's check-in was saved or dismissed. */
+export type CheckInStatus = "completed" | "skipped"
+
+/**
+ * One night's End-of-Day check-in. Like a reflection it is addressed by (week, day) rather than
+ * held by reference — a week has exactly one slot per night.
+ *
+ * This used to be a `localStorage` stamp, which made "have I already checked in tonight?" a
+ * per-browser fact: checking in on a laptop left the phone still prompting.
+ */
+export interface ApiCheckIn {
+  day_of_week: number
+  status: CheckInStatus
+}
+
 /**
  * One evening's entry. `day_of_week` is 0 = Monday … 6 = Sunday, the same indexing as
  * `tasks.day_of_week` and `getWeekDays()` in lib/date.ts, so `getWeekDays(week)[day_of_week]` is
@@ -443,8 +458,30 @@ export const api = {
           role_name: string | null
           dimension: string | null
         }[]
+        check_ins: ApiCheckIn[]
       } | null
+      eod_time: string
     }>(weekScoped("/weekly-plans", weekStart)),
+  /**
+   * Records that a night's check-in was dealt with, and how. Upserted: a night dismissed at nine
+   * and saved at eleven is one night, not two, and a night already saved is never downgraded to a
+   * skip. 422 for a week that was never planned — a check-in hangs off a weekly plan.
+   */
+  saveCheckIn: (dayOfWeek: number, status: CheckInStatus, weekStart?: string) =>
+    request<{ check_in: ApiCheckIn }>("/weekly-plans/check-in", {
+      method: "PUT",
+      body: JSON.stringify(withWeekStart({ day_of_week: dayOfWeek, status }, weekStart)),
+    }),
+  /**
+   * When the End-of-Day check-in appears, as "HH:MM". `/settings` reads and writes it here; the
+   * dashboard gets it on the weekly-plan response, so deciding whether to prompt costs it nothing.
+   */
+  fetchEodTime: () => request<{ eod_time: string }>("/users/eod-time"),
+  updateEodTime: (eodTime: string) =>
+    request<{ eod_time: string }>("/users/eod-time", {
+      method: "PATCH",
+      body: JSON.stringify({ eod_time: eodTime }),
+    }),
   /**
    * One week's reflections and its summary in a single round trip. `planned` is false when the
    * user never planned that week — a normal answer, and looking does not create the plan.

@@ -5,15 +5,11 @@ import {
   completeOnboarding,
   fillEveryDimension,
   seedWeeklyPlan,
-  suppressEndOfDayModal,
 } from "./helpers"
 
 // The only spec that was missing this. Without it, a run after the 21:00 check-in time opens
 // the End-of-Day modal on /dashboard, and a task title then matches twice -- once on the
 // timetable and once in the modal's checklist. Every other spec file already does this.
-test.beforeEach(async ({ page }) => {
-  await suppressEndOfDayModal(page)
-})
 
 const nextButton = (page: Page) => page.getByRole("button", { name: "Next", exact: true })
 

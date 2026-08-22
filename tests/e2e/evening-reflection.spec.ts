@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test"
-import { authenticateAsNewUser, seedWeeklyPlan, suppressEndOfDayModal } from "./helpers"
+import { authenticateAsNewUser, seedWeeklyPlan } from "./helpers"
 
 /**
  * Evening reflections against the live Rails backend.
@@ -48,9 +48,6 @@ async function writeWholeWeek(page: Page, texts: string[] = PLANTED_WEEK) {
   for (let day = 0; day < 7; day++) await writeReflection(page, day, texts[day])
 }
 
-test.beforeEach(async ({ page }) => {
-  await suppressEndOfDayModal(page)
-})
 
 test.describe("evening reflections", () => {
   // A reflection is a real row now rather than page state, so the reload is the assertion.

@@ -6,6 +6,3 @@ export const REQUIRED_DAYS = 7
 
 /** How many weeks the sidebar shows at a time, and how many more "Load older weeks" adds. */
 export const WEEKS_PER_PAGE = 8
-
-/** Mirrors the server's length validation on evening_reflections.content, shown as a counter. */
-export const MAX_REFLECTION_LENGTH = 2000

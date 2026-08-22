@@ -1,3 +1,5 @@
+import type { ApiCheckIn } from "@/lib/api"
+
 export interface CalEvent {
   id: string
   title: string
@@ -35,6 +37,8 @@ export interface ApiWeeklyPlan {
   start_date: string
   end_date: string
   tasks: ApiTask[]
+  /** This week's check-ins, one per night that has been dealt with. Not necessarily seven. */
+  check_ins: ApiCheckIn[]
 }
 
 /** One labelled fact about a task, as the detail dialog lists it. */

@@ -1,20 +1,27 @@
 import { expect, type Page } from "@playwright/test"
 
 /**
- * The end-of-day check-in modal opens on /dashboard once the local clock passes the
- * configured check-in time (default 21:00) and no check-in has been recorded today. Its
- * dialog overlay swallows pointer events, so every test that clicks anything on the
- * dashboard fails when the suite happens to run in the evening.
+ * Sets the signed-in user's End-of-Day check-in time, as "HH:MM".
  *
- * Marking today as already shown keeps the modal closed regardless of when the suite runs.
- *
- * Replace this with an API stub for §8.1 `alreadySubmitted` when Appendix A item 4 moves
- * the flag server-side — `eod_shown_date` disappears at that point.
+ * This lives on the user row now rather than in `localStorage`, so it is also the only way to
+ * decide whether the check-in modal opens during a test. `authenticateAsNewUser` pushes it to
+ * 23:59 for exactly that reason — the dialog's overlay swallows pointer events, so a suite that
+ * happens to run in the evening would fail every test that clicks anything on the dashboard.
  */
-export async function suppressEndOfDayModal(page: Page) {
-  await page.addInitScript(() => {
-    localStorage.setItem("eod_shown_date", new Date().toDateString())
-  })
+export async function setEodTime(page: Page, time: string) {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000"
+
+  await page.evaluate(async ({ apiUrl, time }: { apiUrl: string; time: string }) => {
+    const cookie = document.cookie.match(/(?:^|; )habitflow-auth=([^;]*)/)
+    const token = JSON.parse(decodeURIComponent(cookie![1])).state.token
+
+    const res = await fetch(`${apiUrl}/users/eod-time`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ eod_time: time }),
+    })
+    if (!res.ok) throw new Error(`PATCH /users/eod-time \u2192 ${res.status} ${await res.text()}`)
+  }, { apiUrl, time })
 }
 
 /**
@@ -42,6 +49,9 @@ export async function authenticateAsNewUser(page: Page) {
   await page.locator("form").getByRole("button", { name: "Sign In", exact: true }).click()
 
   await page.waitForURL(/\/onboarding\/roles$/)
+
+  // Out of the way of every test that is not about it. tests/e2e/end-of-day.spec.ts moves it back.
+  await setEodTime(page, "23:59")
 
   return { email, username, password }
 }
@@ -199,6 +209,78 @@ export async function seedPastWeek(page: Page) {
 
     await call("PATCH", `/goals/${achieved.goal_id}?week_start=${weekStart}`, { is_completed: true })
   }, apiUrl)
+}
+
+/**
+ * Signs an existing user in on a fresh page. Paired with a second browser context, this is how a
+ * test stands in for the user's other device: a different browser, no shared storage, same account.
+ */
+export async function loginAs(page: Page, email: string, password: string) {
+  await page.goto("/login")
+  await page.getByLabel("Email Address").fill(email)
+  await page.getByLabel("Password", { exact: true }).fill(password)
+  await page.locator("form").getByRole("button", { name: "Sign In", exact: true }).click()
+  await page.waitForURL(/\/(dashboard|onboarding\/roles)$/)
+}
+
+/** Arms the check-in so it is due the moment the dashboard loads, whenever the suite runs. */
+export async function seedEodTimeNow(page: Page) {
+  await setEodTime(page, "00:01")
+}
+
+/**
+ * Puts one goal-linked task on *today*, in the week `seedWeeklyPlan` has just created.
+ *
+ * The End-of-Day check-in lists today and nothing else, and `completeOnboarding` schedules its
+ * task on a Wednesday — so on six days out of seven a test that needs a tickable task has to place
+ * one against the clock. `POST /weekly-plans/tasks` reconciles the whole week, so this is called
+ * on a plan that has no scheduled tasks yet rather than added to one that has.
+ */
+export async function seedTaskToday(page: Page, title: string) {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000"
+
+  await page.evaluate(async ({ apiUrl, title }: { apiUrl: string; title: string }) => {
+    const cookie = document.cookie.match(/(?:^|; )habitflow-auth=([^;]*)/)
+    const token = JSON.parse(decodeURIComponent(cookie![1])).state.token
+
+    // The local Monday and today's column, derived exactly as lib/date.ts does.
+    const monday = new Date()
+    monday.setDate(monday.getDate() + (monday.getDay() === 0 ? -6 : 1 - monday.getDay()))
+    const weekStart = [
+      monday.getFullYear(),
+      String(monday.getMonth() + 1).padStart(2, "0"),
+      String(monday.getDate()).padStart(2, "0"),
+    ].join("-")
+    const todayIndex = (new Date().getDay() + 6) % 7
+
+    const call = async (method: string, path: string, body?: unknown) => {
+      const res = await fetch(`${apiUrl}${path}`, {
+        method,
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      })
+      if (!res.ok) throw new Error(`${method} ${path} \u2192 ${res.status} ${await res.text()}`)
+      return res.json()
+    }
+
+    const { roles } = await call("GET", `/roles?week_start=${weekStart}`)
+    const { goal } = await call("POST", `/goals?week_start=${weekStart}`, {
+      role_id: roles[0].role_id,
+      description: "Finish what today asked for",
+    })
+
+    await call("POST", `/weekly-plans/tasks?week_start=${weekStart}`, {
+      tasks: [
+        {
+          title,
+          day_of_week: todayIndex,
+          start_time: "09:00",
+          end_time: "10:00",
+          goal_id: goal.goal_id,
+        },
+      ],
+    })
+  }, { apiUrl, title })
 }
 
 /**

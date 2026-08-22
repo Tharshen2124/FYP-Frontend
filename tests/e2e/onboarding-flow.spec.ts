@@ -1,6 +1,5 @@
 import { test, expect, type Page } from "@playwright/test"
 import {
-  suppressEndOfDayModal,
   authenticateAsNewUser,
   completeOnboarding,
   fillEveryDimension,
@@ -8,7 +7,6 @@ import {
 } from "./helpers"
 
 test.beforeEach(async ({ page }) => {
-  await suppressEndOfDayModal(page)
   await authenticateAsNewUser(page)
 })
 

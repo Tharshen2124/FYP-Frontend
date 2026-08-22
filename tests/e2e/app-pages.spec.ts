@@ -1,15 +1,11 @@
 import { test, expect } from "@playwright/test"
 import {
-  suppressEndOfDayModal,
   authenticateAsNewUser,
   completeOnboarding,
   seedWeeklyPlan,
   seedPastWeek,
 } from "./helpers"
 
-test.beforeEach(async ({ page }) => {
-  await suppressEndOfDayModal(page)
-})
 
 test.describe("roles management", () => {
   // /roles reads and writes the live backend now, so every test needs a session and a week that
@@ -103,6 +99,11 @@ test.describe("sharpen the saw management", () => {
 })
 
 test.describe("settings", () => {
+  // The check-in time is a column on the user now, so this page reads the API and needs a session.
+  test.beforeEach(async ({ page }) => {
+    await authenticateAsNewUser(page)
+  })
+
   test("shows the Save bar only after a change, and Discard clears it", async ({ page }) => {
     await page.goto("/settings")
 
@@ -132,14 +133,20 @@ test.describe("settings", () => {
     await expect(parent).toHaveAttribute("aria-checked", "true")
   })
 
-  test("saves the end-of-day time to localStorage", async ({ page }) => {
+  // The time is a column on the user rather than a browser key, so the reload is the assertion:
+  // it comes back from the API, not from this browser's storage.
+  test("saves the end-of-day time against the account", async ({ page }) => {
     await page.goto("/settings")
 
-    await page.getByLabel("Show check-in at").fill("20:15")
-    await page.getByRole("button", { name: "Save", exact: true }).click()
+    const field = page.getByLabel("Show check-in at")
+    await expect(field).toHaveValue("23:59")
 
+    await field.fill("20:15")
+    await page.getByRole("button", { name: "Save", exact: true }).click()
     await expect(page.getByText("End-of-day time saved")).toBeVisible()
-    expect(await page.evaluate(() => localStorage.getItem("eod_time"))).toBe("20:15")
+
+    await page.reload()
+    await expect(page.getByLabel("Show check-in at")).toHaveValue("20:15")
   })
 })
 

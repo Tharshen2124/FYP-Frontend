@@ -1,24 +1,48 @@
 "use client"
 
-import { useState } from "react"
-import { Clock, Moon, Save } from "lucide-react"
+import { useEffect, useState } from "react"
+import { Clock, Loader2, Moon, Save } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { DEFAULT_EOD_TIME, EOD_SHOWN_DATE_KEY, EOD_TIME_KEY } from "../_constants/categories"
+import { api } from "@/lib/api"
+import { DEFAULT_EOD_TIME } from "@/lib/eod"
 
 export function EndOfDayCard() {
-  const [eodTime, setEodTime] = useState(() => {
-    if (typeof window !== "undefined") return localStorage.getItem(EOD_TIME_KEY) ?? DEFAULT_EOD_TIME
-    return DEFAULT_EOD_TIME
-  })
+  const [eodTime, setEodTime] = useState(DEFAULT_EOD_TIME)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
 
-  const saveEodTime = () => {
-    localStorage.setItem(EOD_TIME_KEY, eodTime)
-    // Reset today's shown flag so the modal can appear again with the new time
-    localStorage.removeItem(EOD_SHOWN_DATE_KEY)
-    toast.success("End-of-day time saved")
+  /* The time is a column on the user now rather than a `localStorage` key, so it follows them to
+     whichever device they open the dashboard on — which is the whole reason it moved. */
+  useEffect(() => {
+    let cancelled = false
+    api
+      .fetchEodTime()
+      .then(({ eod_time }) => {
+        if (!cancelled) setEodTime(eod_time)
+      })
+      .catch(() => {
+        if (!cancelled) toast.error("Couldn't load your check-in time — please refresh.")
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [])
+
+  const saveEodTime = async () => {
+    setIsSaving(true)
+    try {
+      const { eod_time } = await api.updateEodTime(eodTime)
+      setEodTime(eod_time)
+      toast.success("End-of-day time saved")
+    } catch {
+      toast.error("Couldn't save your check-in time — please try again.")
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
@@ -44,18 +68,23 @@ export function EndOfDayCard() {
               id="eod-time"
               type="time"
               value={eodTime}
+              disabled={isLoading}
               onChange={e => setEodTime(e.target.value)}
               className="w-36 bg-muted border-border text-foreground"
             />
           </div>
-          <Button onClick={saveEodTime} className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2">
-            <Save className="w-4 h-4" />
+          <Button
+            onClick={saveEodTime}
+            disabled={isLoading || isSaving}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
+          >
+            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             Save
           </Button>
         </div>
 
         <p className="text-xs text-muted-foreground font-serif mt-3">
-          Saving resets today&apos;s shown state so the modal will re-appear at the new time.
+          Saved against your account, so it applies on every device you use.
         </p>
       </div>
     </section>

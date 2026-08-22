@@ -7,11 +7,13 @@ import { Sidebar } from "@/components/sidebar"
 import { useRequireAuth } from "@/hooks/use-require-auth"
 import { useCurrentWeek } from "@/hooks/use-current-week"
 import { api } from "@/lib/api"
+import type { CheckInStatus } from "@/lib/api"
 import { WeeklyTimetable } from "./_components/weekly-timetable"
 import { EndOfDayModal } from "./_components/end-of-day-modal"
 import { TaskDetailModal } from "./_components/task-detail-modal"
 import { NoPlanCard } from "./_components/no-plan-card"
 import { TimetableLegend } from "./_components/timetable-legend"
+import { isCheckInDue } from "./_utils/eod"
 import { toCalEvents } from "./_utils/events"
 import { fmtShortDate } from "./_utils/time"
 import type { ApiWeeklyPlan } from "./_types"
@@ -24,6 +26,7 @@ export default function DashboardPage() {
   const [showEodModal, setShowEodModal] = useState(false)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [plan, setPlan] = useState<ApiWeeklyPlan | null>(null)
+  const [eodTime, setEodTime] = useState<string | null>(null)
   const [loadState, setLoadState] = useState<LoadState>("loading")
   const [reloadKey, setReloadKey] = useState(0)
 
@@ -33,9 +36,10 @@ export default function DashboardPage() {
 
     api
       .fetchWeeklyPlan()
-      .then(({ weekly_plan }) => {
+      .then(({ weekly_plan, eod_time }) => {
         if (cancelled) return
         setPlan(weekly_plan)
+        setEodTime(eod_time)
         setLoadState("ready")
       })
       .catch(() => {
@@ -45,21 +49,26 @@ export default function DashboardPage() {
     return () => { cancelled = true }
   }, [isReady, reloadKey])
 
+  /* The check-in writes a reflection against this week's plan, and the server refuses one for a
+     week that was never planned — so with no plan there is nothing to tick and nothing it would
+     accept. `NoPlanCard` is the whole of the page in that state.
+
+     Everything the decision needs arrives on the one response the page already waits for: the time
+     the user set, and which nights this week have been dealt with. Asking separately would mean
+     either delaying the prompt or showing it and taking it back. */
+  const canPrompt = loadState === "ready" && plan !== null && week !== null
+  /* Keyed on booleans rather than on the plan: ticking a task replaces the plan object, and an
+     effect watching it would re-run in the middle of a save. Once tonight has been recorded this
+     flips true and the effect returns early, so it cannot re-open what the user just closed. */
+  const checkedInToday =
+    plan !== null && week !== null && plan.check_ins.some(c => c.day_of_week === week.todayIdx)
+
   useEffect(() => {
-    const today = new Date().toDateString()
-    const lastShown = localStorage.getItem("eod_shown_date")
-    if (lastShown === today) return
-
-    const savedTime = localStorage.getItem("eod_time") ?? "21:00"
-    const [h, m] = savedTime.split(":").map(Number)
-    const now = new Date()
-    const trigger = new Date()
-    trigger.setHours(h, m, 0, 0)
-
-    if (now >= trigger) {
-      setShowEodModal(true)
-    }
-  }, [])
+    if (!canPrompt || checkedInToday) return
+    /* `new Date()` belongs in here rather than in the render: reading the clock while rendering is
+       the kind of impurity that gives a component two different answers for the same state. */
+    if (isCheckInDue(new Date(), eodTime)) setShowEodModal(true)
+  }, [canPrompt, checkedInToday, eodTime])
 
   const events = useMemo(() => (plan ? toCalEvents(plan.tasks) : []), [plan])
 
@@ -68,9 +77,28 @@ export default function DashboardPage() {
   const selectedTask =
     plan?.tasks.find(task => String(task.task_id) === selectedTaskId) ?? null
 
-  const handleEodClose = () => {
-    localStorage.setItem("eod_shown_date", new Date().toDateString())
+  /* Both ways out of the check-in record that tonight was dealt with, so no device asks again.
+     A save has already written its own `completed` row as part of what the user waited for; a skip
+     is written here, and left to fail quietly — the only cost is being asked once more. */
+  const handleEodClose = (outcome: CheckInStatus) => {
     setShowEodModal(false)
+    if (week === null) return
+
+    setPlan(prev =>
+      prev === null
+        ? prev
+        : {
+            ...prev,
+            check_ins: [
+              ...prev.check_ins.filter(c => c.day_of_week !== week.todayIdx),
+              { day_of_week: week.todayIdx, status: outcome },
+            ],
+          }
+    )
+
+    if (outcome === "skipped") {
+      api.saveCheckIn(week.todayIdx, "skipped").catch(() => {})
+    }
   }
 
   /* The modal has already written these; patching the held plan is what makes the timetable behind

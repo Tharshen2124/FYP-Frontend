@@ -119,8 +119,18 @@ pill and past-day dimming only appear when that week is the current one.
   of the page's write surface — nothing here renames, reschedules or deletes.
   "Edit Weekly Plan" is deliberately disabled — editing a week in place needs its own page
   that loads the current week and saves directly, and pointing it back at the planning flow's last
-  step would mean "finish planning", not "save my change". Shows the end-of-day check-in modal once
-  per day after the time saved in `localStorage["eod_time"]`.
+  step would mean "finish planning", not "save my change".
+  Shows the **End-of-Day check-in** once per day after `users.eod_time`,
+  and only on a week that has a plan — the server refuses a reflection for a week that was never
+  planned, so there would be nothing to tick and nothing it would accept. The check-in writes both
+  halves of what it asks: today's completions through `PATCH /tasks/:id/completion`, and today's
+  reflection through the same `PUT /weekly-plans/evening-reflections` `/evening-reflections` uses.
+  Only the reflection gates Save — ticking nothing is a valid answer for a day where nothing got
+  done — and the textarea is **seeded from the stored entry**, because that endpoint is an upsert
+  keyed by (week, day) and opening blank would replace whatever was written earlier that afternoon.
+  A failed *read* disables the write for the same reason.
+  Both ways out write a **`check_ins` row** — `completed` on save, `skipped` on dismissal — which is
+  what stops it asking again, on this device and every other one.
 - `/roles` — Standing role & goal management (sidebar layout), API-backed. Roles are long-lived;
   the goals shown are **this week's**. Deleting is archiving: a confirmation dialog states how many
   of this week's goals go, how many unfinished tasks come off the calendar, and how many completed
@@ -135,7 +145,7 @@ pill and past-day dimming only appear when that week is the current one.
 - `/weekly-plan/schedule` — API-backed. Tabbed calendar: "Fixed Appointments" and "Scheduled Tasks"
   share one `appts` state so clash detection spans both tabs. Saves both tabs on Next, sending
   `task_id` for anything the server already holds so an edit updates in place.
-- `/settings` — End-of-Day check-in time (persisted to `localStorage`) and Google Calendar settings
+- `/settings` — End-of-Day check-in time (API-backed, `users.eod_time`) and Google Calendar settings
   (connect/disconnect, sync toggle, export category tree with indeterminate parents, sticky
   Discard/Save bar shown only while dirty).
 - `/evening-reflections` — API-backed. Week list sidebar (a `n/7` badge per week, a date jump, and
@@ -266,17 +276,33 @@ what `lib/date.ts` exists to prevent.
 `tasks.is_completed` through `PATCH /tasks/:id/completion` and both reporting back through the same
 `onCompletionChange(changed)` callback, which `page.tsx` patches its held plan from. The End-of-Day
 check-in seeds itself from what is already stored and sends only what changed, so saving twice does
-not untick the first save. The task detail dialog sends the one task it is showing, and because the
-task it renders is derived from that held plan rather than copied into state, the patch flows back
-in and flips the button — which is why it stays open afterwards rather than confirming with a toast.
+not untick the first save. It sends the completions first and reports them before the reflection
+call can throw, so a failed reflection leaves a retry with nothing left to re-tick. The task detail
+dialog sends the one task it is showing, and because the task it renders is derived from that held
+plan rather than copied into state, the patch flows back in and flips the button — which is why it stays open afterwards rather than confirming with a toast.
 
 Routes with API state follow `/sharpen-the-saw` and `/roles`: a `let cancelled = false` effect for
 the initial load, an `isLoading` guard, and each write sent before local state is patched from the
 response, with `toast.error("Couldn't … — please try again.")` on failure. `/roles` keeps that
 lifecycle in `_utils/use-roles.ts` so `page.tsx` stays under the 250-line cap.
 
-Beyond auth, the only `localStorage` is the end-of-day check-in (`eod_time`, `eod_shown_date`),
-written by `/settings` and read by `/dashboard`.
+**Beyond auth, nothing is kept in `localStorage`.** The End-of-Day check-in used to be the one
+exception — `eod_time` and `eod_shown_date` — and both moved server-side, because a browser key
+cannot answer "have I already checked in tonight?" for a user with a laptop *and* a phone. The time
+is now `users.eod_time` and the answer is a `check_ins` row, and both arrive on the weekly-plan
+response the dashboard already waits for, so deciding whether to prompt costs it no extra request
+and never flashes a prompt it then takes back.
+
+What is left in `lib/` is the clock half of that decision: `app/dashboard/_utils/eod.ts`
+(`isCheckInDue`) asks only whether the configured time has passed, and `lib/eod.ts` holds the
+fallback shown before the first response lands. `lib/reflections.ts` holds `MAX_REFLECTION_LENGTH`
+because `/dashboard` and `/evening-reflections` write the same column and mirror the same
+server-side limit, and a route may not import another route's private folder.
+
+Radix mounts a dialog's contents only while it is open, which is why the check-in is split in two:
+`end-of-day-modal.tsx` is the shell and `end-of-day-check-in.tsx` is the body. Every opening is a
+fresh mount of the body, so its state starts from what the server currently holds rather than from
+whatever the last visit left behind — there is no resetting on close to get wrong.
 
 **Goals are week-scoped.** Roles persist week to week; goals belong to exactly one weekly plan, so
 every roles/goals request carries a `week_start`. Nothing is hard-deleted — see the root

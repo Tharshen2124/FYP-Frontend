@@ -10,7 +10,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { DAYS, MAX_REFLECTION_LENGTH } from "../_constants/reflections"
+import { MAX_REFLECTION_LENGTH } from "@/lib/reflections"
+import { DAYS } from "../_constants/reflections"
 
 interface Props {
   dayIndex: number | null

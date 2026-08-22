@@ -1,9 +1,6 @@
 import { test, expect } from "@playwright/test"
-import { suppressEndOfDayModal, authenticateAsNewUser } from "./helpers"
+import { authenticateAsNewUser } from "./helpers"
 
-test.beforeEach(async ({ page }) => {
-  await suppressEndOfDayModal(page)
-})
 
 test.describe("auth guard", () => {
   test("an unauthenticated visit to /dashboard redirects to /login", async ({ page }) => {

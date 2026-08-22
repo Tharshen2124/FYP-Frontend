@@ -30,8 +30,3 @@ export const DEFAULT_CAL_SETTINGS: CalSettings = {
   allowSync: true,
   exportIds: new Set(CATEGORIES.filter(c => !PARENT_IDS.has(c.id)).map(c => c.id)),
 }
-
-export const DEFAULT_EOD_TIME = "21:00"
-
-export const EOD_TIME_KEY = "eod_time"
-export const EOD_SHOWN_DATE_KEY = "eod_shown_date"
