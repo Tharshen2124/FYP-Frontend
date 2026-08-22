@@ -7,7 +7,8 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts"
-import { COMPLETION_WEEKS_SHOWN } from "../_constants/analytics"
+import { CARD_INFO, COMPLETION_WEEKS_SHOWN } from "../_constants/analytics"
+import { MetricInfo } from "./metric-info"
 import type { WeeklyCompletion } from "../_types"
 
 interface TooltipPayload {
@@ -56,6 +57,8 @@ export function WeeklyCompletionTable({ weeks }: { weeks: WeeklyCompletion[] }) 
           <p className="text-xs text-muted-foreground">last week</p>
         </div>
       </div>
+
+      <MetricInfo paragraphs={CARD_INFO.completions} />
 
       {latest ? (
         <>

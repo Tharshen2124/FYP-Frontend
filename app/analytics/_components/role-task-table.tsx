@@ -1,6 +1,8 @@
 "use client"
 
+import { CARD_INFO } from "../_constants/analytics"
 import { DateRangeSelector } from "./date-selectors"
+import { MetricInfo } from "./metric-info"
 import type { DateSelection, RoleTaskStat } from "../_types"
 
 interface RoleTaskTableProps {
@@ -25,6 +27,8 @@ export function RoleTaskTable({
           Completed vs total tasks by role
         </p>
       </div>
+
+      <MetricInfo paragraphs={CARD_INFO.roles} />
 
       <div className="mb-4">
         <DateRangeSelector

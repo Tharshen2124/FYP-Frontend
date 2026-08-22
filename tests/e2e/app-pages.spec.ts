@@ -245,6 +245,31 @@ test.describe("history and analytics", () => {
       // The spiritual task was scheduled but never ticked off, so it is no part of the split.
       await expect(legend.filter({ hasText: "Spiritual" })).toContainText("0%")
     })
+
+    test("explains what it measures behind a toggle on every card", async ({ page }) => {
+      await seedPastWeek(page)
+      await page.goto("/analytics")
+
+      await expect(page.getByRole("button", { name: "How does this work?" })).toHaveCount(4)
+
+      const sharpen = page.locator("div.rounded-2xl").filter({
+        has: page.getByRole("heading", { name: "Sharpen the Saw Balance" }),
+      })
+      const toggle = sharpen.getByRole("button", { name: "How does this work?" })
+
+      // Closed until asked for: the explanation runs to several sentences and would otherwise
+      // push the chart it describes off the card.
+      await expect(toggle).toHaveAttribute("aria-expanded", "false")
+      await expect(sharpen.getByText(/slices of one pie/)).toHaveCount(0)
+
+      await toggle.click()
+      await expect(toggle).toHaveAttribute("aria-expanded", "true")
+      await expect(sharpen.getByText(/slices of one pie/)).toBeVisible()
+      await expect(sharpen.getByText(/weeks that have already finished/)).toBeVisible()
+
+      await toggle.click()
+      await expect(sharpen.getByText(/slices of one pie/)).toHaveCount(0)
+    })
   })
 })
 

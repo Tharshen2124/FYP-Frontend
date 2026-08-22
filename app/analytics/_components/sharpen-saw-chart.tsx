@@ -3,7 +3,9 @@
 import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip,
 } from "recharts"
+import { CARD_INFO } from "../_constants/analytics"
 import { EVEN_SHARE } from "../_utils/analytics"
+import { MetricInfo } from "./metric-info"
 import { DateRangeSelector } from "./date-selectors"
 import type { DateSelection, SharpenBalance } from "../_types"
 
@@ -58,9 +60,9 @@ export function SharpenSawChart({
     <div className="p-6 rounded-2xl bg-card border-2 border-border h-full">
       <div className="flex items-start justify-between gap-3 mb-3">
         <div>
-          <h2 className="text-lg font-bold text-foreground">Sharpen the Saw Balance</h2>
+          <h2 className="text-lg font-bold text-foreground">Sharpen the Saw (STS) Balance</h2>
           <p className="text-xs text-muted-foreground font-serif mt-0.5">
-            How your completed renewal tasks split across the 4 dimensions
+            How your completed STS tasks split across the 4 dimensions
           </p>
         </div>
         <div className="text-right shrink-0">
@@ -68,6 +70,8 @@ export function SharpenSawChart({
           <p className="text-xs text-muted-foreground">balance</p>
         </div>
       </div>
+
+      <MetricInfo paragraphs={CARD_INFO.sharpen} />
 
       <DateRangeSelector
         from={from}

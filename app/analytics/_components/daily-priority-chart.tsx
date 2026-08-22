@@ -2,7 +2,9 @@
 
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts"
 import { Star } from "lucide-react"
+import { CARD_INFO } from "../_constants/analytics"
 import { SingleDateSelector } from "./date-selectors"
+import { MetricInfo } from "./metric-info"
 import type { DailyPriorityDay, DateSelection } from "../_types"
 
 interface TooltipPayload {
@@ -56,6 +58,8 @@ export function DailyPriorityChart({ days, label, value, years, onChange }: Dail
           <p className="text-xs text-muted-foreground">hit rate</p>
         </div>
       </div>
+
+      <MetricInfo paragraphs={CARD_INFO.priority} />
 
       <div className="mt-3 mb-1">
         <SingleDateSelector value={value} years={years} onChange={onChange} />

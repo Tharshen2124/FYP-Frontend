@@ -162,6 +162,11 @@ pill and past-day dimming only appear when that week is the current one.
   Those filters select **weeks, not dates** — a picked date only names the week it falls in, and
   the whole of that week is in or out, which is all the API can report anyway. The selectors say
   "From week of" and print the span they resolved to, so the mapping is never a silent surprise.
+  Every card carries a **"How does this work?"** disclosure (`_components/metric-info.tsx`,
+  copy in `_constants/analytics.ts`): a click-to-open panel rather than a hover tooltip, since the
+  explanations run to several sentences and a hover target is no use on a touch screen. Each says
+  what its big number is *and* what it leaves out — a share is not a completion rate and a dropped
+  goal is not a missed one, neither of which a new user has any reason to guess.
   The radar is a **distribution, not four completion rates**: each dimension's figure is its share
   of the renewal tasks completed across the range, so the four add up to 100 and an even 25% each is
   a balanced week — which is what Habit 7 is actually asking. A completion rate could not say that,
