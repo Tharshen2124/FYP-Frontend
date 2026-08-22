@@ -46,8 +46,8 @@ export default function WeeklyPlanSchedulePage() {
               Weekly <span className="text-primary">Schedule</span>
             </h1>
             <p className="text-muted-foreground font-serif text-lg">
-              Block out your fixed commitments, then schedule tasks linked to your goals and renewal
-              activities. The dates across the top are the week you&apos;re planning.
+              Block out your fixed commitments, then schedule tasks linked to your goals and
+              Sharpen the Saw activities. The dates across the top are the week you&apos;re planning.
             </p>
           </div>
 

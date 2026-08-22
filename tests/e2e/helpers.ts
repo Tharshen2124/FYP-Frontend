@@ -46,7 +46,7 @@ export async function authenticateAsNewUser(page: Page) {
   return { email, username, password }
 }
 
-/** Adds one activity to each of the four renewal dimensions on the onboarding sharpen-the-saw step. */
+/** Adds one activity to each of the four Sharpen the Saw dimensions on the onboarding STS step. */
 export async function fillEveryDimension(page: Page) {
   const dimensions = ["Physical", "Spiritual", "Mental", "Social / Emotional"]
   for (const label of dimensions) {
@@ -77,7 +77,7 @@ export async function seedWeeklyPlan(page: Page) {
 
 /**
  * Gives the user a *finished* week with something in it: a goal that was achieved, a starred
- * priority that was not, and renewal tasks spread unevenly over three of the four dimensions.
+ * priority that was not, and Sharpen the Saw tasks spread unevenly over three of the four dimensions.
  *
  * /analytics only reads weeks that have ended, so nothing the UI can plan is visible to it — the
  * planning flow only ever offers the current week or the next one. This drives the API directly for
@@ -191,7 +191,7 @@ export async function seedPastWeek(page: Page) {
     })
 
     // Tick off everything but the starred priority and the spiritual task, so each card has both
-    // halves of a ratio and the balance card can tell a completed renewal task from a planned one.
+    // halves of a ratio and the balance card can tell a completed Sharpen the Saw task from a planned one.
     const undone = ["Outline the retrospective", "Meditate"]
     for (const task of tasks.filter((t: { title: string }) => !undone.includes(t.title))) {
       await call("PATCH", `/tasks/${task.task_id}/completion`, { is_completed: true })
@@ -203,7 +203,7 @@ export async function seedPastWeek(page: Page) {
 
 /**
  * Walks the whole onboarding flow against the live backend and lands on /dashboard, leaving the
- * user with a real weekly plan: three goals, four renewal activities, one fixed appointment
+ * user with a real weekly plan: three goals, four Sharpen the Saw activities, one fixed appointment
  * ("Team standup", Monday) and one goal-linked task ("Deep work", Wednesday).
  *
  * Used by tests that need a dashboard with something on it.

@@ -406,7 +406,7 @@ export const api = {
       method: "POST",
       body: JSON.stringify(withWeekStart({ tasks }, weekStart)),
     }),
-  /** Which renewal activities a week is committed to. An unplanned week is committed to none. */
+  /** Which Sharpen the Saw activities a week is committed to. An unplanned week is committed to none. */
   fetchWeekActivities: (weekStart?: string) =>
     request<{ activity_ids: number[] }>(weekScoped("/weekly-plans/sharpen-the-saw", weekStart)),
   /**

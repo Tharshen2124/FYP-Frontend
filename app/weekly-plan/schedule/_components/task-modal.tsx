@@ -22,7 +22,7 @@ interface Props {
   onSave: () => void
   /** This week's roles with the goals they hold in it — not a standing library. */
   roles: PlanRole[]
-  /** Only the renewal activities committed to this week, as chosen on the previous step. */
+  /** Only the Sharpen the Saw activities committed to this week, as chosen on the previous step. */
   dimensions: PlanDimension[]
 }
 
@@ -41,7 +41,7 @@ export function TaskModal({ modal, setModal, onSave, roles, dimensions }: Props)
           </DialogTitle>
           <DialogDescription className="text-muted-foreground font-serif">
             {modal.mode === "add"
-              ? "Schedule a task linked to a goal or renewal activity."
+              ? "Schedule a task linked to a goal or Sharpen the Saw activity."
               : "Update the details of this task."}
           </DialogDescription>
         </DialogHeader>
@@ -206,8 +206,8 @@ export function TaskModal({ modal, setModal, onSave, roles, dimensions }: Props)
                 </div>
                 {dimensions.every(d => d.activities.length === 0) && (
                   <p className="text-xs text-muted-foreground font-serif">
-                    You haven&apos;t committed to any renewal activities this week — pick some on the
-                    previous step.
+                    You haven&apos;t committed to any Sharpen the Saw activities this week — pick
+                    some on the previous step.
                   </p>
                 )}
                 {selectedDim && (

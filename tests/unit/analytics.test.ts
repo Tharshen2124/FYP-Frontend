@@ -144,7 +144,7 @@ describe("getWeekForDate", () => {
 })
 
 describe("getSharpenData", () => {
-  /** A single week whose completed renewal tasks fall as given, for testing the split alone. */
+  /** A single week whose completed Sharpen the Saw tasks fall as given, for testing the split alone. */
   const split = (counts: Partial<Record<string, number>>) =>
     [
       {
@@ -172,9 +172,10 @@ describe("getSharpenData", () => {
     ])
   })
 
-  it("reports each dimension's share of the renewal work, not its completion rate", () => {
+  it("reports each dimension's share of the Sharpen the Saw work, not its completion rate", () => {
     // The week completed 3 physical and 2 mental tasks, so the split is 60/40. A completion rate
-    // would have said 75% and 100% -- two figures that say nothing about whether renewal was even.
+    // would have said 75% and 100% -- two figures that say nothing about whether the Sharpen the
+    // Saw work was even.
     expect(getSharpenData(weeks, ...WHOLE_WEEK).dimensions.map(x => x.share)).toEqual([60, 0, 40, 0])
   })
 
@@ -226,7 +227,7 @@ describe("getSharpenData", () => {
   })
 
   it("reports no split for a week that renewed nothing, rather than a false zero balance", () => {
-    // The week of 27 Jul was planned but completed no renewal task at all.
+    // The week of 27 Jul was planned but completed no Sharpen the Saw task at all.
     const none = getSharpenData(weeks, d(27, 6), d(2, 7))
     expect(none.completed).toBe(0)
     expect(none.balance).toBe(0)

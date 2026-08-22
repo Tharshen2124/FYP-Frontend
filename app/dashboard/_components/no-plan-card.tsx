@@ -21,7 +21,7 @@ export function NoPlanCard() {
           </h2>
           <p className="text-muted-foreground font-serif">
             Your last weekly plan has ended. Choose the goals you want to work towards, pick your
-            renewal activities, and put them in the calendar.
+            Sharpen the Saw activities, and put them in the calendar.
           </p>
         </div>
 

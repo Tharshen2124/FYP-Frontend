@@ -7,7 +7,7 @@ export const FIXED_COLOR = "#3b82f6"
 /**
  * A scheduled task with no goal and no activity behind it.
  *
- * The planning UI never creates one — a task must link to a role goal or a renewal activity — but
+ * The planning UI never creates one — a task must link to a role goal or a Sharpen the Saw activity — but
  * the schema permits it, so the schedule says "Unlinked" rather than rendering an untinted chip
  * and leaving the reader to guess.
  */

@@ -31,7 +31,7 @@ export default function WeeklyPlanSharpenTheSawPage() {
       setSelectedActivityIds(new Set(activity_ids.map(String)))
     } catch {
       setDimensions(toPlanDimensions([]))
-      toast.error("Couldn't load your renewal activities — please refresh.")
+      toast.error("Couldn't load your Sharpen the Saw activities — please refresh.")
     } finally {
       setIsLoading(false)
     }
@@ -56,7 +56,7 @@ export default function WeeklyPlanSharpenTheSawPage() {
       await api.saveWeekActivities([...selectedActivityIds].map(Number), week.weekStart)
       router.push(`/weekly-plan/schedule?week_start=${week.weekStart}`)
     } catch {
-      toast.error("Couldn't save this week's renewal activities — please try again.")
+      toast.error("Couldn't save this week's Sharpen the Saw activities — please try again.")
       setIsSaving(false)
     }
   }
@@ -76,15 +76,15 @@ export default function WeeklyPlanSharpenTheSawPage() {
         <div className="max-w-7xl mx-auto">
           <div className="mb-8">
             <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
-              This Week&apos;s <span className="text-primary">Renewal</span>
+              This Week&apos;s Sharpen the <span className="text-primary">Saw</span>
             </h1>
             <p className="text-muted-foreground font-serif text-lg">
-              Choose which renewal activities you&apos;re committing to this week across all four dimensions.
+              Choose which activities you&apos;re committing to this week across all four dimensions.
             </p>
           </div>
 
           {isLoading ? (
-            <p className="text-center text-muted-foreground font-serif mt-8">Loading your renewal activities…</p>
+            <p className="text-center text-muted-foreground font-serif mt-8">Loading your Sharpen the Saw activities…</p>
           ) : (
             <>
               <div className="grid gap-6">

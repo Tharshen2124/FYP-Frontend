@@ -95,7 +95,7 @@ test.describe("onboarding", () => {
     await page.goto("/onboarding/sharpen-the-saw")
 
     await expect(nextButton(page)).toBeDisabled()
-    await expect(page.getByText("Add at least one renewal activity")).toBeVisible()
+    await expect(page.getByText("Add at least one activity")).toBeVisible()
 
     await fillEveryDimension(page)
 

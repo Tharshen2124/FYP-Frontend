@@ -186,7 +186,7 @@ test.describe("weekly plan goals step", () => {
   })
 })
 
-test.describe("weekly plan renewal step", () => {
+test.describe("weekly plan Sharpen the Saw step", () => {
   test.beforeEach(async ({ page }) => {
     await authenticateAsNewUser(page)
     await page.goto("/onboarding/sharpen-the-saw")

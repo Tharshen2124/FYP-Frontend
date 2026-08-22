@@ -95,7 +95,7 @@ export default function OnboardingSharpenTheSawPage() {
               Sharpen the <span className="text-primary">Saw</span>
             </h1>
             <p className="text-muted-foreground font-serif text-lg">
-              Habit 7 — Add renewal activities across the four dimensions of your life to sustain
+              Habit 7 — Add activities across the four dimensions of your life to sustain
               long-term effectiveness.
             </p>
           </div>
@@ -121,7 +121,7 @@ export default function OnboardingSharpenTheSawPage() {
 
           {totalActivities === 0 && (
             <p className="text-center text-muted-foreground font-serif mt-8">
-              Add at least one renewal activity to each dimension to get started.
+              Add at least one activity to each dimension to get started.
             </p>
           )}
         </div>

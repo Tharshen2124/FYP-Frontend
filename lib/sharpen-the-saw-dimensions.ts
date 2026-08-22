@@ -12,7 +12,7 @@ export interface SharpenTheSawDimensionMeta {
 }
 
 /**
- * The four fixed dimensions of renewal from Habit 7 — single source of truth for their
+ * The four fixed Sharpen the Saw dimensions from Habit 7 — single source of truth for their
  * static metadata. Consumed by /sharpen-the-saw and /weekly-plan/sharpen-the-saw.
  */
 export const SHARPEN_THE_SAW_DIMENSIONS: SharpenTheSawDimensionMeta[] = [

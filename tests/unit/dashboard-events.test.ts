@@ -4,7 +4,7 @@ import type { ApiTask } from "@/app/dashboard/_types"
 
 /**
  * The backend sends the parts of a task's link rather than a finished sentence, because the
- * display names for the renewal dimensions ("Social / Emotional", not "social") only exist in the
+ * display names for the Sharpen the Saw dimensions ("Social / Emotional", not "social") only exist in the
  * frontend. These tests pin that composition and the colour rules the timetable draws with.
  */
 

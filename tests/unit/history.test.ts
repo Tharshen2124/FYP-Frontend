@@ -210,7 +210,7 @@ describe("weekLegend", () => {
   const fixedTask = (over: Partial<ApiHistoryTask> = {}) =>
     task({ is_fixed_appointment: true, link_kind: null, role_name: null, role_color_id: null, ...over })
 
-  const renewalTask = (over: Partial<ApiHistoryTask> = {}) =>
+  const stsTask = (over: Partial<ApiHistoryTask> = {}) =>
     task({ link_kind: "activity", role_name: null, role_color_id: null, dimension: "physical", ...over })
 
   it("lists each category once, however many tasks share it", () => {
@@ -233,7 +233,7 @@ describe("weekLegend", () => {
     // The whole point of the split: "Parent" and "Physical" are indistinguishable on a flat line.
     const legend = weekLegend([
       toHistoryEvent(task({ task_id: 1, role_name: "Parent" })),
-      toHistoryEvent(renewalTask({ task_id: 2 })),
+      toHistoryEvent(stsTask({ task_id: 2 })),
     ])
     expect(legend.map(g => g.key)).toEqual(["goal", "activity"])
     expect(labelsIn(legend, "goal")).toEqual(["Parent"])
@@ -244,7 +244,7 @@ describe("weekLegend", () => {
     const legend = weekLegend([
       toHistoryEvent(fixedTask({ task_id: 1 })),
       toHistoryEvent(task({ task_id: 2 })),
-      toHistoryEvent(renewalTask({ task_id: 3 })),
+      toHistoryEvent(stsTask({ task_id: 3 })),
     ])
     expect(legend.map(g => g.key)).toEqual(["goal", "activity", "other"])
     expect(labelsIn(legend, "other")).toEqual(["Fixed"])
@@ -323,7 +323,7 @@ describe("weekStats", () => {
     expect(stats.fixedCount).toBe(1)
   })
 
-  it("counts the week's renewal activities, replacing the old dimensions-covered figure", () => {
+  it("counts the week's Sharpen the Saw activities, replacing the old dimensions-covered figure", () => {
     expect(weekStats(week()).activityCount).toBe(1)
   })
 })

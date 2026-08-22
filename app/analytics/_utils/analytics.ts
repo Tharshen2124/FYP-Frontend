@@ -145,7 +145,7 @@ function roundToHundred(shares: number[]): number[] {
 }
 
 /**
- * How the renewal tasks completed across the range were *spread* over the four dimensions.
+ * How the Sharpen the Saw tasks completed across the range were *spread* over the four dimensions.
  *
  * This is a distribution, not four separate completion rates: each dimension's share is its
  * count over the range's total, so the four add up to 100 and an even 25% each is a perfectly

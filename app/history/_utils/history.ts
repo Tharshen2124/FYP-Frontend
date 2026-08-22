@@ -117,7 +117,7 @@ function category(
     const meta = task.dimension ? dimensionMeta(task.dimension) : undefined
     return {
       kind: "activity",
-      label: meta?.label ?? task.dimension ?? "Renewal",
+      label: meta?.label ?? task.dimension ?? "Sharpen the Saw",
       color: meta?.color ?? UNLINKED_COLOR,
       icon: meta?.icon ?? Clock,
     }
@@ -157,7 +157,7 @@ export function toHistoryWeek(week: ApiHistoryWeek, weekHasEnded: boolean): Hist
 /**
  * The rows the schedule's footer legend is built from, in the order they are shown.
  *
- * Role goals and renewal activities are the two vocabularies a reader has to tell apart, so they
+ * Role goals and Sharpen the Saw activities are the two vocabularies a reader has to tell apart, so they
  * get a row each and are named. Fixed appointments and the schema-permitted unlinked task share
  * the last row: neither belongs to a role or a dimension, which is the only thing that row says.
  */

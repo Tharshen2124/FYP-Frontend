@@ -13,7 +13,7 @@ const withActivities = (dims: Dimension[], count: number): Dimension[] =>
   }))
 
 describe("sharpen-the-saw gating", () => {
-  it("ships with the four renewal dimensions and no activities", () => {
+  it("ships with the four Sharpen the Saw dimensions and no activities", () => {
     expect(INITIAL_DIMENSIONS.map(d => d.id)).toEqual(["physical", "spiritual", "mental", "social"])
     expect(countActivities(INITIAL_DIMENSIONS)).toBe(0)
   })

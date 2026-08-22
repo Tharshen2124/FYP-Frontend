@@ -43,7 +43,7 @@ export function TaskModal({ modal, setModal, onSave, roles, activitiesByDimensio
           </DialogTitle>
           <DialogDescription className="text-muted-foreground font-serif">
             {modal.mode === "add"
-              ? "Schedule a task linked to a goal or renewal activity."
+              ? "Schedule a task linked to a goal or Sharpen the Saw activity."
               : "Update the details of this task."}
           </DialogDescription>
         </DialogHeader>

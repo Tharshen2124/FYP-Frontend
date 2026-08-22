@@ -7,7 +7,7 @@ import type { ApiTask, CalEvent } from "../_types"
  * What a task is working towards, as one line.
  *
  * The backend sends the parts rather than a finished sentence, because the display names for the
- * four renewal dimensions ("Social / Emotional", not "social") live here in the frontend.
+ * four Sharpen the Saw dimensions ("Social / Emotional", not "social") live here in the frontend.
  */
 export function linkLabel(task: ApiTask): string | undefined {
   if (task.link_kind === "goal") {

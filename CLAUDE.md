@@ -118,11 +118,12 @@ pill and past-day dimming only appear when that week is the current one.
   the goals shown are **this week's**. Deleting is archiving: a confirmation dialog states how many
   of this week's goals go, how many unfinished tasks come off the calendar, and how many completed
   tasks are kept. Archived roles list below with a Restore button, and removing a goal offers Undo.
-- `/sharpen-the-saw` — Standing renewal-activity management (sidebar layout), with a delete confirmation.
+- `/sharpen-the-saw` — Standing Sharpen the Saw activity management (sidebar layout), with a
+  delete confirmation.
 - `/weekly-plan/goals` — API-backed. Carry forward the unfinished goals of the last week that was
   actually planned (each pick creates a fresh goal plus a `goal_carryovers` link) and stage
   brand-new ones. Everything commits on Next.
-- `/weekly-plan/sharpen-the-saw` — API-backed. Pick which renewal activities to commit to the week;
+- `/weekly-plan/sharpen-the-saw` — API-backed. Pick which Sharpen the Saw activities to commit to the week;
   `PUT /weekly-plans/sharpen-the-saw` replaces the week's set on Next, and revisiting prefills it.
 - `/weekly-plan/schedule` — API-backed. Tabbed calendar: "Fixed Appointments" and "Scheduled Tasks"
   share one `appts` state so clash detection spans both tabs. Saves both tabs on Next, sending
@@ -139,8 +140,8 @@ pill and past-day dimming only appear when that week is the current one.
 - `/history` — API-backed. Past weeks only: the strip starts at *last* Monday, since the live week
   belongs to `/dashboard` and a goal in an unfinished week has no outcome yet. Week list sidebar
   (a tasks-done badge per week, a date jump, and "Load older weeks"), a stats row of ratios
-  (goals achieved, tasks done, renewal activities, fixed appointments), role goals marked with how
-  each resolved, renewal activities, and a schedule grid whose every chip names the role or
+  (goals achieved, tasks done, Sharpen the Saw activities, fixed appointments), role goals marked with how
+  each resolved, Sharpen the Saw activities, and a schedule grid whose every chip names the role or
   dimension it served and whether it was done. Both cards carry a legend of only the markers that
   week used, and the schedule's is split into rows — role goals, Sharpen the Saw, other — because a
   role name and a dimension label are indistinguishable listed flat. The `dropped` outcome is shown
@@ -168,7 +169,7 @@ pill and past-day dimming only appear when that week is the current one.
   what its big number is *and* what it leaves out — a share is not a completion rate and a dropped
   goal is not a missed one, neither of which a new user has any reason to guess.
   The radar is a **distribution, not four completion rates**: each dimension's figure is its share
-  of the renewal tasks completed across the range, so the four add up to 100 and an even 25% each is
+  of the Sharpen the Saw tasks completed across the range, so the four add up to 100 and an even 25% each is
   a balanced week — which is what Habit 7 is actually asking. A completion rate could not say that,
   since a dimension with one scheduled task that got done reads 100% while contributing almost
   nothing. The corner figure collapses the split into one number: total distance from an even share,

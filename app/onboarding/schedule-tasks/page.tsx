@@ -277,7 +277,7 @@ export default function ScheduleTasksPage() {
               Schedule <span className="text-primary">Tasks</span>
             </h1>
             <p className="text-muted-foreground font-serif text-lg">
-              Block time for your goals and renewal activities. Click any slot to add a task.
+              Block time for your goals and Sharpen the Saw activities. Click any slot to add a task.
             </p>
           </div>
 

@@ -42,9 +42,9 @@ export const DEFAULT_RANGE_WEEKS = 4
  */
 export const CARD_INFO = {
   sharpen: [
-    "Habit 7 asks you to renew yourself in four ways: physical, spiritual, mental and social/emotional. This card looks at the renewal tasks you ticked off over the weeks you picked, and shows how they were split between the four.",
-    "The four percentages are slices of one pie, so they always add up to 100. An even 25% each means every kind of renewal got the same attention, which is what the dashed guide on the chart marks. A long spike means one kind is taking most of your time while another gets almost none.",
-    "The big number rates how even the split is, not how much renewal you did. All four sharing equally scores 100%, three sharing scores about 67%, two about 33%, and everything in one dimension scores 0%.",
+    "Habit 7 asks you to renew yourself in four ways: physical, spiritual, mental and social/emotional. This card looks at the Sharpen the Saw tasks you ticked off over the weeks you picked, and shows how they were split between the four.",
+    "The four percentages are slices of one pie, so they always add up to 100. An even 25% each means every dimension got the same attention, which is what the dashed guide on the chart marks. A long spike means one kind is taking most of your time while another gets almost none.",
+    "The big number rates how even the split is, not how much Sharpen the Saw work you did. All four sharing equally scores 100%, three sharing scores about 67%, two about 33%, and everything in one dimension scores 0%.",
   ],
   roles: [
     "When you schedule a task you can attach it to a goal, and every goal belongs to one of your roles. This card adds those tasks up over the weeks you picked and shows, for each role, how many you finished out of how many you planned.",

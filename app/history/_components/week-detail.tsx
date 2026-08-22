@@ -25,7 +25,7 @@ export function WeekDetail({ weekStart, week, isLoading }: Props) {
           Week of <span className="text-primary">{formatWeekRange(weekStart)}</span>
         </h1>
         <p className="text-muted-foreground font-serif text-sm mt-0.5">
-          A snapshot of how this week turned out — its goals, renewal activities, and schedule.
+          A snapshot of how this week turned out — its goals, Sharpen the Saw activities, and schedule.
         </p>
       </div>
 
@@ -62,8 +62,10 @@ export function WeekDetail({ weekStart, week, isLoading }: Props) {
 /**
  * Four figures about how the week went, rather than how much of it was scheduled.
  *
- * "Dimensions covered" used to sit where "Renewal activities" now does — a number between 0 and 4
- * that said nothing a glance at the card below would not.
+ * "Dimensions covered" used to sit where "STS activities" now does — a number between 0 and 4 that
+ * said nothing a glance at the card below would not. The badge label is truncated at a quarter of
+ * the row, which is why this one abbreviates where the rest of the page spells "Sharpen the Saw"
+ * out — the schedule legend below it names the term in full.
  */
 function StatsRow({ week }: { week: HistoryWeek }) {
   const stats = weekStats(week)
@@ -84,7 +86,7 @@ function StatsRow({ week }: { week: HistoryWeek }) {
       />
       <StatBadge
         value={stats.activityCount}
-        label="Renewal activities"
+        label="STS activities"
         icon={<Zap className="w-4 h-4" />}
       />
       <StatBadge

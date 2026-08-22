@@ -18,8 +18,8 @@ export interface LinkMeta {
 /**
  * Resolves what the modal has selected into the id, label and colour a task carries.
  *
- * Returning `null` is what keeps Save disabled: a task must serve either a goal or a renewal
- * activity, so a half-made selection is not a saveable task.
+ * Returning `null` is what keeps Save disabled: a task must serve either a goal or a Sharpen the
+ * Saw activity, so a half-made selection is not a saveable task.
  */
 export function getLinkMeta(
   modal: LinkSelection,

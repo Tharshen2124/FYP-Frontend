@@ -232,8 +232,8 @@ test.describe("history and analytics", () => {
       await expect(page.getByText("Professional")).toBeVisible()
 
       // The balance card reads a *distribution*, not four completion rates: the seeded week
-      // completed two physical renewal tasks and one mental, so physical holds 67% of the renewal
-      // work and mental 33%. The legend rows are the four dimensions; the radar repeats their
+      // completed two physical Sharpen the Saw tasks and one mental, so physical holds 67% of the
+      // Sharpen the Saw work and mental 33%. The legend rows are the four dimensions; the radar repeats their
       // names, which is why these are scoped to the legend rather than matched on the card.
       const sharpen = page.locator("div.rounded-2xl").filter({
         has: page.getByRole("heading", { name: "Sharpen the Saw Balance" }),

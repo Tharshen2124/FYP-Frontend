@@ -1,7 +1,7 @@
 import { Brain, Flame, Sparkles, Users } from "lucide-react"
 import type { Dimension } from "../_types"
 
-/** The four dimensions of renewal from Habit 7 — each starts with no activities. */
+/** The four Sharpen the Saw dimensions from Habit 7 — each starts with no activities. */
 export const INITIAL_DIMENSIONS: Dimension[] = [
   {
     id: "physical",

@@ -11,7 +11,7 @@ import type { DateSelection, SharpenBalance } from "../_types"
 
 /**
  * The radius axis runs the full 0–100, so a point's distance from the centre *is* its share: 50%
- * reaches half way out, and a dimension holding 65% of the renewal work draws two thirds of the way
+ * reaches half way out, and a dimension holding 65% of the Sharpen the Saw work draws two thirds of the way
  * to the rim. Only a dimension that has taken everything touches the rim.
  *
  * Nothing is fitted to the data, so the same shape always means the same thing and two ranges can
@@ -137,7 +137,7 @@ export function SharpenSawChart({
         <div className="flex items-center justify-center h-52 text-center text-muted-foreground text-sm font-serif px-4">
           {matchedWeeks === 0
             ? "You planned no weeks in this range."
-            : "No renewal tasks were completed in this range, so there is no split to show."}
+            : "No Sharpen the Saw tasks were completed in this range, so there is no split to show."}
         </div>
       )}
     </div>

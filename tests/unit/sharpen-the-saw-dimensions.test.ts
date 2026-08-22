@@ -4,7 +4,7 @@ import { INITIAL_DIMENSIONS } from "@/app/sharpen-the-saw/_constants/dimensions"
 import { groupActivitiesByDimension } from "@/app/sharpen-the-saw/_utils/dimensions"
 
 describe("shared sharpen-the-saw dimension metadata", () => {
-  it("defines exactly the four renewal dimensions in order", () => {
+  it("defines exactly the four Sharpen the Saw dimensions in order", () => {
     expect(SHARPEN_THE_SAW_DIMENSIONS.map(d => d.id)).toEqual(["physical", "spiritual", "mental", "social"])
   })
 

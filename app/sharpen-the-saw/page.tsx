@@ -24,7 +24,7 @@ export default function SharpenTheSawPage() {
         if (!cancelled) setDimensions(groupActivitiesByDimension(activities))
       })
       .catch(() => {
-        if (!cancelled) toast.error("Couldn't load your renewal activities — please refresh.")
+        if (!cancelled) toast.error("Couldn't load your Sharpen the Saw activities — please refresh.")
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false)
@@ -111,12 +111,12 @@ export default function SharpenTheSawPage() {
             Sharpen the <span className="text-primary">Saw</span>
           </h1>
           <p className="text-muted-foreground font-serif">
-            Manage your renewal activities across the four dimensions of life.
+            Manage your activities across the four dimensions of life.
           </p>
         </div>
 
         {isLoading ? (
-          <p className="text-muted-foreground font-serif">Loading your renewal activities…</p>
+          <p className="text-muted-foreground font-serif">Loading your Sharpen the Saw activities…</p>
         ) : (
           <div className="grid gap-6">
             {dimensions.map(dim => (

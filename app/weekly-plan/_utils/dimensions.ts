@@ -11,9 +11,9 @@ export interface ApiActivity {
  * Groups activities under the four fixed dimensions' shared metadata.
  *
  * Lives at the flow level rather than in one route's `_utils` because both steps that show
- * renewal activities need it: the renewal step lists the whole library to choose from, and the
- * schedule step offers only `committedIds` — the ones the user actually committed to this week,
- * which is what makes the choosing step mean anything.
+ * Sharpen the Saw activities need it: the Sharpen the Saw step lists the whole library to choose
+ * from, and the schedule step offers only `committedIds` — the ones the user actually committed
+ * to this week, which is what makes the choosing step mean anything.
  */
 export function toPlanDimensions(
   activities: ApiActivity[],
