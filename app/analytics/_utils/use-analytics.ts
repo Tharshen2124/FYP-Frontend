@@ -8,6 +8,7 @@ import { DEFAULT_RANGE_WEEKS, WEEKS_FETCHED } from "../_constants/analytics"
 import {
   availableYears,
   getDailyPriority,
+  getRangeLabel,
   getRoleStats,
   getSharpenData,
   getWeekLabel,
@@ -98,6 +99,7 @@ export function useAnalytics(isReady: boolean) {
     sharpen: {
       data: getSharpenData(weeks, sharpenFrom, sharpenTo),
       matchedWeeks: getWeeksInRange(weeks, sharpenFrom, sharpenTo).length,
+      spanLabel: getRangeLabel(sharpenFrom, sharpenTo),
       from: sharpenFrom,
       to: sharpenTo,
       onFromChange: setSharpenFrom,
@@ -106,6 +108,7 @@ export function useAnalytics(isReady: boolean) {
     roles: {
       stats: getRoleStats(weeks, roleFrom, roleTo),
       matchedWeeks: getWeeksInRange(weeks, roleFrom, roleTo).length,
+      spanLabel: getRangeLabel(roleFrom, roleTo),
       from: roleFrom,
       to: roleTo,
       onFromChange: setRoleFrom,

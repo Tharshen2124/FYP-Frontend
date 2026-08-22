@@ -9,12 +9,13 @@ interface RoleTaskTableProps {
   from: DateSelection
   to: DateSelection
   years: number[]
+  spanLabel: string
   onFromChange: (v: DateSelection) => void
   onToChange: (v: DateSelection) => void
 }
 
 export function RoleTaskTable({
-  stats, matchedWeeks, from, to, years, onFromChange, onToChange,
+  stats, matchedWeeks, from, to, years, spanLabel, onFromChange, onToChange,
 }: RoleTaskTableProps) {
   return (
     <div className="p-6 rounded-2xl bg-card border-2 border-border h-full">
@@ -30,6 +31,7 @@ export function RoleTaskTable({
           from={from}
           to={to}
           years={years}
+          spanLabel={spanLabel}
           onFromChange={onFromChange}
           onToChange={onToChange}
         />

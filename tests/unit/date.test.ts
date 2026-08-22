@@ -1,6 +1,7 @@
 import { describe, it, expect, afterAll } from "vitest"
 import {
   formatWeekRange,
+  formatWeekSpan,
   getDayIndex,
   getWeekDays,
   isWeekStart,
@@ -224,5 +225,23 @@ describe("formatWeekRange", () => {
 
   it("names both months when the week straddles them", () => {
     expect(formatWeekRange("2026-08-31")).toBe("Mon 31 Aug – Sun 6 Sep")
+  })
+})
+
+describe("formatWeekSpan", () => {
+  it("runs from the Monday of the first week to the Sunday of the last", () => {
+    expect(formatWeekSpan("2026-07-20", "2026-08-10")).toBe("Mon 20 Jul – Sun 16 Aug")
+  })
+
+  it("names the month once when the whole span sits inside it", () => {
+    expect(formatWeekSpan("2026-08-03", "2026-08-24")).toBe("Mon 3 – Sun 30 Aug")
+  })
+
+  it("collapses to a single week when both ends are the same one", () => {
+    expect(formatWeekSpan("2026-08-10", "2026-08-10")).toBe(formatWeekRange("2026-08-10"))
+  })
+
+  it("keeps both months when the same month falls a year apart", () => {
+    expect(formatWeekSpan("2025-08-04", "2026-08-10")).toBe("Mon 4 Aug – Sun 16 Aug")
   })
 })

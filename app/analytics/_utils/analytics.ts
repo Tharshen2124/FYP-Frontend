@@ -1,5 +1,11 @@
 import type { ApiAnalyticsWeek } from "@/lib/api"
-import { formatWeekRange, parseLocalDate } from "@/lib/date"
+import {
+  formatWeekRange,
+  formatWeekSpan,
+  getWeekStart,
+  localDateParam,
+  parseLocalDate,
+} from "@/lib/date"
 import { getColor } from "@/lib/role-colors"
 import {
   SHARPEN_THE_SAW_DIMENSIONS,
@@ -71,6 +77,21 @@ export function availableYears(weeks: AnalyticsWeek[]): number[] {
     years.add(parseLocalDate(week.endDate).getFullYear())
   }
   return [...years].sort((a, b) => a - b)
+}
+
+/**
+ * What a From/To pair actually covers, spelled out for the card.
+ *
+ * The filters select *weeks*: a date is only a way of naming the week it falls in, and that whole
+ * week is either in or out — `getWeeksInRange` matches any week the range touches, and the API
+ * only ever reports whole-week counts, so a half week is never a thing that could be counted.
+ * Showing the resolved span under the selectors is what makes that legible rather than implied.
+ */
+export function getRangeLabel(from: DateSelection, to: DateSelection): string {
+  const a = localDateParam(getWeekStart(toDate(from)))
+  const b = localDateParam(getWeekStart(toDate(to)))
+  const [lo, hi] = a <= b ? [a, b] : [b, a]
+  return formatWeekSpan(lo, hi)
 }
 
 /** Every fetched week that intersects the given range, newest first as the API returns them. */

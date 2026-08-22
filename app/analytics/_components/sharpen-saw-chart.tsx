@@ -42,12 +42,13 @@ interface SharpenSawChartProps {
   from: DateSelection
   to: DateSelection
   years: number[]
+  spanLabel: string
   onFromChange: (v: DateSelection) => void
   onToChange: (v: DateSelection) => void
 }
 
 export function SharpenSawChart({
-  data, matchedWeeks, from, to, years, onFromChange, onToChange,
+  data, matchedWeeks, from, to, years, spanLabel, onFromChange, onToChange,
 }: SharpenSawChartProps) {
   const hasData = matchedWeeks > 0 && data.completed > 0
 
@@ -72,6 +73,7 @@ export function SharpenSawChart({
         from={from}
         to={to}
         years={years}
+        spanLabel={spanLabel}
         onFromChange={onFromChange}
         onToChange={onToChange}
       />

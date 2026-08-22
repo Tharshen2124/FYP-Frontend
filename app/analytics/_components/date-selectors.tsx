@@ -54,31 +54,43 @@ function DatePicker({ value, years, onChange }: DatePickerProps) {
   )
 }
 
-// Range selector — From date + To date
+/**
+ * Range selector — a From date and a To date, each standing for the **week** it falls in.
+ *
+ * Both labels say "week of" and the resolved span is printed underneath, because picking 22 Jul
+ * and reading back a range that starts on the 20th is otherwise a silent surprise. Nothing here
+ * ever counts part of a week: the whole week a date lands in is in or out.
+ */
 interface DateRangeSelectorProps {
   from: DateSelection
   to: DateSelection
   years: number[]
+  /** The whole weeks `from`/`to` resolved to, e.g. `"Mon 20 Jul – Sun 16 Aug"`. */
+  spanLabel: string
   onFromChange: (v: DateSelection) => void
   onToChange: (v: DateSelection) => void
 }
 
-export function DateRangeSelector({ from, to, years, onFromChange, onToChange }: DateRangeSelectorProps) {
+export function DateRangeSelector({
+  from, to, years, spanLabel, onFromChange, onToChange,
+}: DateRangeSelectorProps) {
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center gap-2">
-        <span className="text-xs text-muted-foreground w-8 shrink-0">From</span>
+        <span className="text-xs text-muted-foreground w-20 shrink-0">From week of</span>
         <DatePicker value={from} years={years} onChange={onFromChange} />
       </div>
       <div className="flex items-center gap-2">
-        <span className="text-xs text-muted-foreground w-8 shrink-0">To</span>
+        <span className="text-xs text-muted-foreground w-20 shrink-0">To week of</span>
         <DatePicker value={to} years={years} onChange={onToChange} />
       </div>
+      <p className="text-xs text-muted-foreground font-serif">{spanLabel}</p>
     </div>
   )
 }
 
-// Single date selector — resolves to the week containing the chosen date
+// Single date selector — also stands for the week containing the chosen date; the card prints
+// that week underneath, the same promise the range selector makes.
 interface SingleDateSelectorProps {
   value: DateSelection
   years: number[]

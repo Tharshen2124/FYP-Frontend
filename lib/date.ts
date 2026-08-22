@@ -122,6 +122,28 @@ export function formatWeekRange(weekStart: string): string {
 }
 
 /**
+ * A span of whole weeks named the way a single one is: `"Mon 20 Jul – Sun 16 Aug"`, collapsing to
+ * `formatWeekRange` when both ends land in the same week.
+ *
+ * Both arguments are Mondays. /analytics uses it to spell out what a From/To pair resolved to,
+ * since those filters select *weeks* and a date is only a way of naming the one it falls in.
+ */
+export function formatWeekSpan(fromWeekStart: string, toWeekStart: string): string {
+  if (fromWeekStart === toWeekStart) return formatWeekRange(fromWeekStart)
+
+  const start = parseLocalDate(fromWeekStart)
+  const end = parseLocalDate(shiftWeekStart(toWeekStart, 1))
+  end.setDate(end.getDate() - 1)
+
+  // Unlike a single week, a span can sit in the same month a year apart, so the year counts here.
+  const sameMonth = start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()
+
+  return sameMonth
+    ? `Mon ${start.getDate()} – Sun ${end.getDate()} ${MONTHS[end.getMonth()]}`
+    : `Mon ${start.getDate()} ${MONTHS[start.getMonth()]} – Sun ${end.getDate()} ${MONTHS[end.getMonth()]}`
+}
+
+/**
  * The most recent week that has finished: the one before the week the user is standing in.
  *
  * /history and /analytics both stop here rather than at the live week. The live week belongs to

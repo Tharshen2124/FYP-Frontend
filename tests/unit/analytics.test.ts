@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest"
 import {
   availableYears,
   getDailyPriority,
+  getRangeLabel,
   getRoleStats,
   getSharpenData,
   getWeekForDate,
@@ -99,6 +100,34 @@ describe("getWeeksInRange", () => {
 
   it("returns nothing when no planned week falls in the range", () => {
     expect(getWeeksInRange(weeks, d(1, 0, 2020), d(31, 0, 2020))).toEqual([])
+  })
+
+  it("lets any date in a week stand for the whole of it", () => {
+    // A date is only a way of naming its week: picking the Wednesday selects the same weeks as
+    // picking the Monday, and the days before it are not dropped from the counts.
+    const monday = getWeeksInRange(weeks, d(3, 7), d(10, 7))
+    expect(getWeeksInRange(weeks, d(5, 7), d(12, 7))).toEqual(monday)
+    expect(getWeeksInRange(weeks, d(9, 7), d(16, 7))).toEqual(monday)
+    expect(monday.map(w => w.weekStart)).toEqual(["2026-08-10", "2026-08-03"])
+  })
+})
+
+describe("getRangeLabel", () => {
+  it("spells out the whole weeks a mid-week From/To pair resolved to", () => {
+    // 22 Jul and 12 Aug are both Wednesdays; the range they name runs Monday to Sunday.
+    expect(getRangeLabel(d(22, 6), d(12, 7))).toBe("Mon 20 Jul – Sun 16 Aug")
+  })
+
+  it("reads the same for a reversed range as a forward one", () => {
+    expect(getRangeLabel(d(12, 7), d(22, 6))).toBe(getRangeLabel(d(22, 6), d(12, 7)))
+  })
+
+  it("collapses to one week when both dates fall in the same one", () => {
+    expect(getRangeLabel(d(11, 7), d(15, 7))).toBe("Mon 10 – Sun 16 Aug")
+  })
+
+  it("describes the selection itself, so it still names a range nothing was planned in", () => {
+    expect(getRangeLabel(d(1, 0, 2020), d(8, 0, 2020))).toBe("Mon 30 Dec – Sun 12 Jan")
   })
 })
 

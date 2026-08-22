@@ -159,6 +159,9 @@ pill and past-day dimming only appear when that week is the current one.
   is fetched **once** by `_utils/use-analytics.ts`, and every card filters it in the browser, so
   moving a selector never costs a request. Three of the four cards keep their own filter, which is
   why they stay in `useState` rather than the URL: none of the three names what the page is about.
+  Those filters select **weeks, not dates** — a picked date only names the week it falls in, and
+  the whole of that week is in or out, which is all the API can report anyway. The selectors say
+  "From week of" and print the span they resolved to, so the mapping is never a silent surprise.
   The radar is a **distribution, not four completion rates**: each dimension's figure is its share
   of the renewal tasks completed across the range, so the four add up to 100 and an even 25% each is
   a balanced week — which is what Habit 7 is actually asking. A completion rate could not say that,
