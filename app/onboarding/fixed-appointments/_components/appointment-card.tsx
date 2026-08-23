@@ -1,7 +1,7 @@
 "use client"
 
-import { Pencil, X } from "lucide-react"
-import { CAL_START, HR_PX } from "../_constants/calendar"
+import { Lock, Pencil, X } from "lucide-react"
+import { CAL_START, FIXED_COLOR, HR_PX } from "../_constants/calendar"
 import { getPositionStyle } from "../_utils/calendar"
 import { fmtTime } from "../_utils/time"
 import type { Appt } from "../_types"
@@ -29,14 +29,17 @@ export function AppointmentCard({ appt, allAppts, onEdit, onDelete, onDragStart 
       style={{
         top,
         height,
-        backgroundColor: `${appt.color}25`,
-        borderLeft: `3px solid ${appt.color}`,
+        backgroundColor: `${FIXED_COLOR}20`,
+        borderLeft: `3px solid ${FIXED_COLOR}`,
         ...posStyle,
       }}
     >
-      <p className="text-xs font-bold truncate leading-tight" style={{ color: appt.color }}>
-        {appt.title}
-      </p>
+      <div className="flex items-center gap-1 overflow-hidden">
+        <Lock className="w-2.5 h-2.5 flex-shrink-0" style={{ color: FIXED_COLOR }} />
+        <p className="text-xs font-bold truncate leading-tight" style={{ color: FIXED_COLOR }}>
+          {appt.title}
+        </p>
+      </div>
       {height >= 42 && (
         <p className="text-[10px] text-muted-foreground leading-tight truncate">
           {fmtTime(appt.startMins)} – {fmtTime(appt.endMins)}
@@ -55,7 +58,7 @@ export function AppointmentCard({ appt, allAppts, onEdit, onDelete, onDragStart 
           aria-label={`Edit ${appt.title}`}
           className="p-1 rounded bg-card/90 hover:bg-card transition-colors"
         >
-          <Pencil className="w-2.5 h-2.5" style={{ color: appt.color }} />
+          <Pencil className="w-2.5 h-2.5" style={{ color: FIXED_COLOR }} />
         </button>
         <button
           onClick={e => { e.stopPropagation(); onDelete(appt.id) }}

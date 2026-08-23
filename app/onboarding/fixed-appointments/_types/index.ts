@@ -5,7 +5,6 @@ export interface Appt {
   dayIndex: number
   startMins: number
   endMins: number
-  color: string
 }
 
 export interface ModalState {

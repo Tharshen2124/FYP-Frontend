@@ -8,8 +8,9 @@ export const CAL_END    = 22
 export const TOTAL_HRS  = CAL_END - CAL_START
 export const HR_PX      = 64
 
+// Fixed appointments are one kind of thing, so they read as one colour on every calendar that
+// shows them — this tab, the tasks tab, and onboarding.
 export const FIXED_COLOR  = "#3b82f6"
-export const COLORS        = ["#B13BFF", "#FFCC00", "#14b8a6", "#f97316", "#f43f5e", "#3b82f6", "#22c55e", "#471396"]
 
 export const EMPTY_TASK_MODAL: ModalState = {
   open: false,

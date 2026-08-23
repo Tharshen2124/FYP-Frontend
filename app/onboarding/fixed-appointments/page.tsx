@@ -8,7 +8,7 @@ import { ClashWarningModal } from "@/components/clash-warning-modal"
 import { ClashBlockModal } from "@/components/clash-block-modal"
 import { OnboardingStepper } from "@/components/onboarding-stepper"
 import { api } from "@/lib/api"
-import { CAL_END, CAL_START, COLORS, EMPTY_MODAL, HR_PX } from "./_constants/calendar"
+import { CAL_END, CAL_START, EMPTY_MODAL, HR_PX } from "./_constants/calendar"
 import { getOverlaps } from "./_utils/calendar"
 import { minsToStr, snapMins, strToMins } from "./_utils/time"
 import { toFixedAppointmentsPayload } from "./_utils/appointments"
@@ -25,11 +25,8 @@ export default function FixedAppointmentsPage() {
   const [clashWarning, setClashWarning]   = useState<{ open: boolean; conflictingTitle: string }>({ open: false, conflictingTitle: "" })
   const [clashBlock, setClashBlock]       = useState(false)
 
-  const colorCursor = useRef(0)
   const dragInfo    = useRef<{ id: string; offsetMins: number } | null>(null)
   const colRefs     = useRef<(HTMLDivElement | null)[]>(Array(7).fill(null))
-
-  const nextColor = () => COLORS[colorCursor.current++ % COLORS.length]
 
   // ── open add modal from click on empty slot ──
   const openAdd = (dayIndex: number, clickY: number) => {
@@ -83,7 +80,6 @@ export default function FixedAppointmentsPage() {
         description: modal.description.trim(),
         dayIndex:    modal.dayIndex,
         startMins: s, endMins: e,
-        color: nextColor(),
       }])
       setModal(EMPTY_MODAL)
       return

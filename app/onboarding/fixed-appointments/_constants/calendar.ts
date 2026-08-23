@@ -8,7 +8,9 @@ export const CAL_END   = 22   // 10 PM
 export const TOTAL_HRS = CAL_END - CAL_START
 export const HR_PX     = 64   // pixels per hour → 1 min = HR_PX/60 px
 
-export const COLORS = ["#B13BFF", "#FFCC00", "#14b8a6", "#f97316", "#f43f5e", "#3b82f6", "#22c55e", "#471396"]
+// Fixed appointments are one kind of thing, so they read as one colour — the same blue the
+// later scheduling screens use for them.
+export const FIXED_COLOR = "#3b82f6"
 
 export const EMPTY_MODAL: ModalState = {
   open: false,

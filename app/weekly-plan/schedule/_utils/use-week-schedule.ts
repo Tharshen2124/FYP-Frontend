@@ -6,7 +6,6 @@ import { api } from "@/lib/api"
 import { getColor } from "@/lib/role-colors"
 import { toPlanDimensions } from "../../_utils/dimensions"
 import type { PlanDimension, PlanRole } from "../../_types"
-import { COLORS } from "../_constants/calendar"
 import type { Appt, Task } from "../_types"
 import { fromApiAppointment, fromApiTask, toAppointmentsPayload, toTasksPayload } from "./tasks"
 
@@ -68,9 +67,7 @@ export function useWeekSchedule(weekStart: string): WeekSchedule {
 
       setRoles(planRoles)
       setDimensions(planDimensions)
-      // Appointments have no link to take a colour from, so they cycle the palette by position —
-      // stable across reloads because the server returns them in a fixed order.
-      setAppts(apptsRes.appointments.map((a, i) => fromApiAppointment(a, COLORS[i % COLORS.length])))
+      setAppts(apptsRes.appointments.map(fromApiAppointment))
       setTasks(tasksRes.tasks.map(t => fromApiTask(t, planRoles, planDimensions)))
     } catch {
       setLoadError(true)
@@ -99,7 +96,7 @@ export function useWeekSchedule(weekStart: string): WeekSchedule {
       const savedAppts = await api.savePlanAppointments(toAppointmentsPayload(appts), weekStart)
       const savedTasks = await api.savePlanTasks(toTasksPayload(tasks), weekStart)
 
-      setAppts(savedAppts.appointments.map((a, i) => fromApiAppointment(a, COLORS[i % COLORS.length])))
+      setAppts(savedAppts.appointments.map(fromApiAppointment))
       setTasks(savedTasks.tasks.map(t => fromApiTask(t, roles, dimensions)))
       return true
     } catch {

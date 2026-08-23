@@ -17,7 +17,7 @@ import { ClashWarningModal } from "@/components/clash-warning-modal"
 import { ClashBlockModal } from "@/components/clash-block-modal"
 import { FixedAppointmentCard } from "./fixed-appointment-card"
 import type { Appt, CalItem, ApptModalState, PendingApptAction } from "../_types"
-import { DAYS_FULL, DAYS_SHORT, CAL_START, CAL_END, TOTAL_HRS, HR_PX, COLORS, EMPTY_APPT_MODAL } from "../_constants/calendar"
+import { DAYS_FULL, DAYS_SHORT, CAL_START, CAL_END, TOTAL_HRS, HR_PX, EMPTY_APPT_MODAL } from "../_constants/calendar"
 import { CalendarDayHeader } from "./calendar-day-header"
 import { usePlanWeekDays } from "../_utils/use-plan-week"
 import { getOverlaps } from "../_utils/calendar"
@@ -36,13 +36,10 @@ export function FixedTab({ appts, setAppts, weekStart }: Props) {
   const [clashWarning, setClashWarning] = useState<{ open: boolean; conflictingTitle: string }>({ open: false, conflictingTitle: "" })
   const [clashBlock, setClashBlock]     = useState(false)
 
-  const colorCursor = useRef(0)
   const dragInfo    = useRef<{ id: string; offsetMins: number } | null>(null)
   const colRefs     = useRef<(HTMLDivElement | null)[]>(Array(7).fill(null))
 
   const allCalItems: CalItem[] = appts.map(a => ({ id: a.id, dayIndex: a.dayIndex, startMins: a.startMins, endMins: a.endMins }))
-
-  const nextColor = () => COLORS[colorCursor.current++ % COLORS.length]
 
   const openAdd = (dayIndex: number, clickY: number) => {
     const raw   = CAL_START * 60 + (clickY / HR_PX) * 60
@@ -90,7 +87,6 @@ export function FixedTab({ appts, setAppts, weekStart }: Props) {
       description: modal.description.trim(),
       dayIndex: modal.dayIndex,
       startMins: s, endMins: e,
-      color: existing?.color ?? nextColor(),
       isCompleted: existing?.isCompleted ?? false,
     }
 

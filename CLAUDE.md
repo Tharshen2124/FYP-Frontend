@@ -107,7 +107,8 @@ pill and past-day dimming only appear when that week is the current one.
   each with add / inline-edit / delete activities.
 - `/onboarding/fixed-appointments` — Google Calendar-style weekly view (Mon–Sun, 6 AM–10 PM); click a
   slot to add, hover a card to edit/delete, drag-and-drop to reschedule; clash detection
-  (warn on 1 overlap, block on 2+).
+  (warn on 1 overlap, block on 2+). Appointments carry no colour of their own — they render blue
+  (`FIXED_COLOR`, `#3b82f6`) with a lock icon, the same as everywhere else that shows them.
 - `/onboarding/schedule-tasks` — Same calendar. Fixed appointments render blue (`#3b82f6`) with a lock
   icon and are non-interactive. Tasks must link to either a role goal or a sharpen-the-saw activity and
   inherit that colour; an optional "Daily Priority" star shows a badge on the card. Clash detection

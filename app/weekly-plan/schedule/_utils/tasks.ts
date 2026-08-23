@@ -96,7 +96,7 @@ export function fromApiTask(
   }
 }
 
-export function fromApiAppointment(apiAppt: ApiPlanAppointment, color: string): Appt {
+export function fromApiAppointment(apiAppt: ApiPlanAppointment): Appt {
   return {
     id: String(apiAppt.task_id),
     taskId: apiAppt.task_id,
@@ -105,7 +105,6 @@ export function fromApiAppointment(apiAppt: ApiPlanAppointment, color: string): 
     dayIndex: apiAppt.day_of_week,
     startMins: strToMins(apiAppt.start_time),
     endMins: strToMins(apiAppt.end_time),
-    color,
     isCompleted: apiAppt.is_completed,
   }
 }
