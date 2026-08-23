@@ -226,7 +226,7 @@ test.describe("history and analytics", () => {
       await page.goto("/analytics")
 
       for (const heading of [
-        "Sharpen the Saw Balance",
+        "Sharpen the Saw (STS) Balance",
         "Tasks Completed Per Role",
         "Daily Priority Hit Rate",
         "Weekly Goal Completion",
@@ -243,7 +243,7 @@ test.describe("history and analytics", () => {
       // Sharpen the Saw work and mental 33%. The legend rows are the four dimensions; the radar repeats their
       // names, which is why these are scoped to the legend rather than matched on the card.
       const sharpen = page.locator("div.rounded-2xl").filter({
-        has: page.getByRole("heading", { name: "Sharpen the Saw Balance" }),
+        has: page.getByRole("heading", { name: "Sharpen the Saw (STS) Balance" }),
       })
       const legend = sharpen.locator("div.grid > div")
       await expect(sharpen.getByText("Dashed guide: an even 25% in every dimension")).toBeVisible()
@@ -260,7 +260,7 @@ test.describe("history and analytics", () => {
       await expect(page.getByRole("button", { name: "How does this work?" })).toHaveCount(4)
 
       const sharpen = page.locator("div.rounded-2xl").filter({
-        has: page.getByRole("heading", { name: "Sharpen the Saw Balance" }),
+        has: page.getByRole("heading", { name: "Sharpen the Saw (STS) Balance" }),
       })
       const toggle = sharpen.getByRole("button", { name: "How does this work?" })
 
