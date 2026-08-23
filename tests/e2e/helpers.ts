@@ -66,11 +66,30 @@ export async function fillEveryDimension(page: Page) {
   }
 }
 
-/** Clicks a calendar column at roughly the given hour offset to open its add modal. */
+/**
+ * A day column of the *current* week that still accepts new items, 0 = Monday … 6 = Sunday.
+ *
+ * The calendars block every day that has already passed, so a hard-coded column would make these
+ * specs pass on a Monday and fail on a Friday. `offset` asks for a later day where a spec wants
+ * two distinct ones, clamped to Sunday — the calendar has nowhere further to go.
+ */
+export function schedulableColumn(offset = 0): number {
+  const todayIndex = (new Date().getDay() + 6) % 7
+  return Math.min(6, todayIndex + offset)
+}
+
+/**
+ * Clicks a calendar column at roughly the given hour offset to open its add modal.
+ *
+ * `position` rather than `page.mouse` at a computed viewport point: the column is 1024px tall
+ * inside a 560px scroll box, so the slot wanted is often out of view, and only a locator click
+ * scrolls it in first. The offset is measured the same way the page measures it — from the top of
+ * the column, which is what its own handler subtracts from `clientY`.
+ */
 export async function clickSlot(page: Page, dayIndex: number, hoursFromStart: number) {
   const column = page.locator(`[data-day-column="${dayIndex}"]`)
   const box = (await column.boundingBox())!
-  await page.mouse.click(box.x + box.width / 2, box.y + hoursFromStart * 64 + 10)
+  await column.click({ position: { x: box.width / 2, y: hoursFromStart * 64 + 10 } })
 }
 
 /**
@@ -297,14 +316,14 @@ export async function completeOnboarding(page: Page) {
   await page.getByRole("button", { name: "Next", exact: true }).click()
   await page.waitForURL(/\/onboarding\/fixed-appointments$/)
 
-  await clickSlot(page, 0, 3)
+  await clickSlot(page, schedulableColumn(), 3)
   await page.getByRole("textbox", { name: "Appointment" }).fill("Team standup")
   await page.getByRole("button", { name: "Add Appointment" }).click()
   await expect(page.getByText("Team standup")).toBeVisible()
   await page.getByRole("button", { name: "Next", exact: true }).click()
   await page.waitForURL(/\/onboarding\/schedule-tasks$/)
 
-  await clickSlot(page, 2, 5)
+  await clickSlot(page, schedulableColumn(), 5)
   const taskModal = page.getByRole("dialog")
   await taskModal.getByPlaceholder(/Work on project report/).fill("Deep work")
   await taskModal.getByRole("button", { name: "Professional", exact: true }).click()

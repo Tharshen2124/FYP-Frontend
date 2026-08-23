@@ -13,6 +13,7 @@ import { DAYS_FULL, CAL_START, CAL_END, TOTAL_HRS, HR_PX, FIXED_COLOR, EMPTY_TAS
 import { CalendarDayHeader } from "./calendar-day-header"
 import { usePlanWeekDays } from "../_utils/use-plan-week"
 import { getOverlaps, getPositionStyle } from "../_utils/calendar"
+import { isPastDayIndex } from "@/lib/date"
 import { minsToStr, strToMins, snapMins, fmtTime } from "../_utils/time"
 import { findLinkSelection, getLinkMeta } from "../_utils/tasks"
 
@@ -205,19 +206,26 @@ export function TasksTab({ appts, tasks, setTasks, roles, dimensions, weekStart 
               })}
             </div>
 
-            {DAYS_FULL.map((day, di) => (
+            {DAYS_FULL.map((day, di) => {
+              // A day that has gone takes nothing new. Withholding the handlers is the whole
+              // block: with no `onDragOver` the column never becomes a drop target, so the browser
+              // shows the no-drop cursor and `onDrop` is never reached.
+              const isPast = isPastDayIndex(week?.todayIdx, di)
+              return (
               <div
                 key={day}
                 data-day-column={di}
                 ref={el => { colRefs.current[di] = el }}
+                aria-disabled={isPast || undefined}
+                title={isPast ? "This day has passed — nothing new can be scheduled on it" : undefined}
                 className={[
-                  "relative border-l border-border cursor-pointer select-none",
-                  week != null && week.todayIdx !== -1 && di < week.todayIdx ? "bg-foreground/[0.06]" : "",
+                  "relative border-l border-border select-none",
+                  isPast ? "bg-foreground/[0.06] cursor-not-allowed" : "cursor-pointer",
                 ].join(" ")}
                 style={{ height: calH }}
-                onClick={e => handleColClick(e, di)}
-                onDragOver={onDragOver}
-                onDrop={e => onDrop(e, di)}
+                onClick={isPast ? undefined : e => handleColClick(e, di)}
+                onDragOver={isPast ? undefined : onDragOver}
+                onDrop={isPast ? undefined : e => onDrop(e, di)}
               >
                 {Array.from({ length: TOTAL_HRS }, (_, i) => (
                   <div key={i} className="absolute w-full border-t border-border/50" style={{ top: i * HR_PX }} />
@@ -270,7 +278,8 @@ export function TasksTab({ appts, tasks, setTasks, roles, dimensions, weekStart 
                   />
                 ))}
               </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       </div>
@@ -286,6 +295,7 @@ export function TasksTab({ appts, tasks, setTasks, roles, dimensions, weekStart 
         onSave={handleSave}
         roles={roles}
         dimensions={dimensions}
+        todayIdx={week?.todayIdx ?? null}
       />
 
       <ClashWarningModal

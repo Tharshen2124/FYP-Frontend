@@ -1,4 +1,5 @@
 import { DAYS_SHORT } from "../_constants/calendar"
+import { isPastDayIndex } from "@/lib/date"
 import type { PlanWeekDays } from "../_utils/use-plan-week"
 
 /**
@@ -13,7 +14,7 @@ export function CalendarDayHeader({ week }: { week: PlanWeekDays | null }) {
       <div />
       {DAYS_SHORT.map((d, i) => {
         const isToday = week != null && week.todayIdx === i
-        const isPast = week != null && week.todayIdx !== -1 && i < week.todayIdx
+        const isPast = isPastDayIndex(week?.todayIdx, i)
         return (
           <div key={d} className={["py-3 text-center border-l border-border", isPast ? "opacity-40" : ""].join(" ")}>
             {/* Kept to one line: the calendar body is positioned from the top of this row, and a

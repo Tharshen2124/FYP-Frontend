@@ -6,6 +6,8 @@ import { AppNav } from "@/components/app-nav"
 import { ClashWarningModal } from "@/components/clash-warning-modal"
 import { ClashBlockModal } from "@/components/clash-block-modal"
 import { OnboardingStepper } from "@/components/onboarding-stepper"
+import { PastDaysNotice } from "@/components/past-days-notice"
+import { useCurrentWeek } from "@/hooks/use-current-week"
 import { Spinner } from "@/components/ui/spinner"
 import { Button } from "@/components/ui/button"
 import { CalendarLegend } from "./_components/calendar-legend"
@@ -20,6 +22,7 @@ import type { CalItem, ModalState, PendingAction, Task } from "./_types"
 
 export default function ScheduleTasksPage() {
   const router = useRouter()
+  const week = useCurrentWeek()
 
   const {
     fixedAppts, roles, activitiesByDimension, tasks, setTasks,
@@ -205,6 +208,8 @@ export default function ScheduleTasksPage() {
             </div>
           ) : (
             <>
+              <PastDaysNotice todayIdx={week?.todayIdx ?? null} creates="tasks" />
+
               <CalendarLegend />
 
               <WeekCalendar
@@ -228,7 +233,7 @@ export default function ScheduleTasksPage() {
         </div>
       </main>
 
-      <TaskModal modal={modal} setModal={setModal} onSave={handleSave} roles={roles} activitiesByDimension={activitiesByDimension} />
+      <TaskModal modal={modal} setModal={setModal} onSave={handleSave} roles={roles} activitiesByDimension={activitiesByDimension} todayIdx={week?.todayIdx ?? null} />
 
       <ClashWarningModal
         open={clashWarning.open}

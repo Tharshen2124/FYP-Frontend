@@ -21,6 +21,7 @@ import { DAYS_FULL, DAYS_SHORT, CAL_START, CAL_END, TOTAL_HRS, HR_PX, EMPTY_APPT
 import { CalendarDayHeader } from "./calendar-day-header"
 import { usePlanWeekDays } from "../_utils/use-plan-week"
 import { getOverlaps } from "../_utils/calendar"
+import { isPastDayIndex } from "@/lib/date"
 import { minsToStr, strToMins, snapMins } from "../_utils/time"
 
 interface Props {
@@ -191,19 +192,26 @@ export function FixedTab({ appts, setAppts, weekStart }: Props) {
               })}
             </div>
 
-            {DAYS_FULL.map((day, di) => (
+            {DAYS_FULL.map((day, di) => {
+              // A day that has gone takes nothing new. Withholding the handlers is the whole
+              // block: with no `onDragOver` the column never becomes a drop target, so the browser
+              // shows the no-drop cursor and `onDrop` is never reached.
+              const isPast = isPastDayIndex(week?.todayIdx, di)
+              return (
               <div
                 key={day}
                 data-day-column={di}
                 ref={el => { colRefs.current[di] = el }}
+                aria-disabled={isPast || undefined}
+                title={isPast ? "This day has passed — nothing new can be scheduled on it" : undefined}
                 className={[
-                  "relative border-l border-border cursor-pointer select-none",
-                  week != null && week.todayIdx !== -1 && di < week.todayIdx ? "bg-foreground/[0.06]" : "",
+                  "relative border-l border-border select-none",
+                  isPast ? "bg-foreground/[0.06] cursor-not-allowed" : "cursor-pointer",
                 ].join(" ")}
                 style={{ height: calH }}
-                onClick={e => handleColClick(e, di)}
-                onDragOver={onDragOver}
-                onDrop={e => onDrop(e, di)}
+                onClick={isPast ? undefined : e => handleColClick(e, di)}
+                onDragOver={isPast ? undefined : onDragOver}
+                onDrop={isPast ? undefined : e => onDrop(e, di)}
               >
                 {Array.from({ length: TOTAL_HRS }, (_, i) => (
                   <div key={i} className="absolute w-full border-t border-border/50" style={{ top: i * HR_PX }} />
@@ -223,7 +231,8 @@ export function FixedTab({ appts, setAppts, weekStart }: Props) {
                   />
                 ))}
               </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       </div>
@@ -263,20 +272,29 @@ export function FixedTab({ appts, setAppts, weekStart }: Props) {
             <div className="space-y-1.5">
               <Label className="text-foreground font-bold">Day</Label>
               <div className="grid grid-cols-7 gap-1">
-                {DAYS_SHORT.map((d, i) => (
+                {DAYS_SHORT.map((d, i) => {
+                  // The day it already sits on stays clickable even when past, so opening an
+                  // appointment to rename it is never a one-way trip off its own day.
+                  const blocked = isPastDayIndex(week?.todayIdx, i) && modal.dayIndex !== i
+                  return (
                   <button
                     key={d}
                     type="button"
+                    disabled={blocked}
+                    title={blocked ? "This day has passed" : undefined}
                     onClick={() => setModal(m => ({ ...m, dayIndex: i }))}
                     className={`py-2 rounded-sm text-xs font-bold transition-all ${
                       modal.dayIndex === i
                         ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+                        : blocked
+                          ? "bg-muted/40 text-muted-foreground/40 cursor-not-allowed"
+                          : "bg-muted text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
                     }`}
                   >
                     {d}
                   </button>
-                ))}
+                  )
+                })}
               </div>
             </div>
 

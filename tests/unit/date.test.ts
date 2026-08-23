@@ -4,6 +4,7 @@ import {
   formatWeekSpan,
   getDayIndex,
   getWeekDays,
+  isPastDayIndex,
   isWeekStart,
   localDateParam,
   localWeekStartParam,
@@ -243,5 +244,31 @@ describe("formatWeekSpan", () => {
 
   it("keeps both months when the same month falls a year apart", () => {
     expect(formatWeekSpan("2025-08-04", "2026-08-10")).toBe("Mon 4 Aug – Sun 16 Aug")
+  })
+})
+
+describe("isPastDayIndex", () => {
+  it("blocks the days before today and nothing else", () => {
+    // Thursday: Mon–Wed have gone, today and the weekend have not.
+    expect([0, 1, 2, 3, 4, 5, 6].map(i => isPastDayIndex(3, i))).toEqual([
+      true, true, true, false, false, false, false,
+    ])
+  })
+
+  it("blocks nothing on a Monday, which has nothing before it", () => {
+    expect([0, 1, 2, 3, 4, 5, 6].every(i => !isPastDayIndex(0, i))).toBe(true)
+  })
+
+  it("blocks nothing for a week that is not the current one", () => {
+    // -1 is what usePlanWeekDays reports when the week being planned is not the one today
+    // falls in, so planning next week never dims or blocks a column.
+    expect([0, 1, 2, 3, 4, 5, 6].every(i => !isPastDayIndex(-1, i))).toBe(true)
+  })
+
+  it("blocks nothing before the client clock resolves", () => {
+    // useCurrentWeek is null on the server render and the first client render; blocking then
+    // would bake the server's day into the HTML, which is the whole reason it holds back.
+    expect(isPastDayIndex(null, 0)).toBe(false)
+    expect(isPastDayIndex(undefined, 0)).toBe(false)
   })
 })

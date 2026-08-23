@@ -7,6 +7,8 @@ import { AppNav } from "@/components/app-nav"
 import { ClashWarningModal } from "@/components/clash-warning-modal"
 import { ClashBlockModal } from "@/components/clash-block-modal"
 import { OnboardingStepper } from "@/components/onboarding-stepper"
+import { PastDaysNotice } from "@/components/past-days-notice"
+import { useCurrentWeek } from "@/hooks/use-current-week"
 import { api } from "@/lib/api"
 import { CAL_END, CAL_START, EMPTY_MODAL, HR_PX } from "./_constants/calendar"
 import { getOverlaps } from "./_utils/calendar"
@@ -18,6 +20,7 @@ import type { Appt, ModalState, PendingAction } from "./_types"
 
 export default function FixedAppointmentsPage() {
   const router = useRouter()
+  const week = useCurrentWeek()
   const [appts, setAppts]                 = useState<Appt[]>([])
   const [isSubmitting, setIsSubmitting]   = useState(false)
   const [modal, setModal]                 = useState<ModalState>(EMPTY_MODAL)
@@ -197,6 +200,8 @@ export default function FixedAppointmentsPage() {
             </p>
           </div>
 
+          <PastDaysNotice todayIdx={week?.todayIdx ?? null} creates="appointments" />
+
           <WeekCalendar
             appts={appts}
             colRefs={colRefs}
@@ -219,6 +224,7 @@ export default function FixedAppointmentsPage() {
         onChange={setModal}
         onClose={() => setModal(EMPTY_MODAL)}
         onSave={handleSave}
+        todayIdx={week?.todayIdx ?? null}
       />
 
       <ClashWarningModal

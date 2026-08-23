@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog"
 import { DAYS_SHORT } from "../_constants/calendar"
 import { strToMins } from "../_utils/time"
+import { isPastDayIndex } from "@/lib/date"
 import type { ModalState } from "../_types"
 
 interface Props {
@@ -21,9 +22,11 @@ interface Props {
   onChange: (update: (m: ModalState) => ModalState) => void
   onClose: () => void
   onSave: () => void
+  /** Today's column, so the day picker refuses the days the calendar has already blocked off. */
+  todayIdx: number | null
 }
 
-export function AppointmentModal({ modal, onChange, onClose, onSave }: Props) {
+export function AppointmentModal({ modal, onChange, onClose, onSave, todayIdx }: Props) {
   const endTimeInvalid = strToMins(modal.endTime) <= strToMins(modal.startTime)
 
   return (
@@ -57,20 +60,29 @@ export function AppointmentModal({ modal, onChange, onClose, onSave }: Props) {
           <div className="space-y-1.5">
             <Label className="text-foreground font-bold">Day</Label>
             <div className="grid grid-cols-7 gap-1">
-              {DAYS_SHORT.map((d, i) => (
+              {DAYS_SHORT.map((d, i) => {
+                // The day it already sits on stays clickable even when past, so opening an
+                // appointment to rename it is never a one-way trip off its own day.
+                const blocked = isPastDayIndex(todayIdx, i) && modal.dayIndex !== i
+                return (
                 <button
                   key={d}
                   type="button"
+                  disabled={blocked}
+                  title={blocked ? "This day has passed" : undefined}
                   onClick={() => onChange(m => ({ ...m, dayIndex: i }))}
                   className={`py-2 rounded-sm text-xs font-bold transition-all ${
                     modal.dayIndex === i
                       ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+                      : blocked
+                        ? "bg-muted/40 text-muted-foreground/40 cursor-not-allowed"
+                        : "bg-muted text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
                   }`}
                 >
                   {d}
                 </button>
-              ))}
+                )
+              })}
             </div>
           </div>
 

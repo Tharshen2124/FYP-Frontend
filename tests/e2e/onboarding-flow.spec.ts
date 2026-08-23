@@ -4,6 +4,7 @@ import {
   completeOnboarding,
   fillEveryDimension,
   clickSlot,
+  schedulableColumn,
 } from "./helpers"
 
 test.beforeEach(async ({ page }) => {
@@ -105,7 +106,7 @@ test.describe("onboarding", () => {
 
     await expect(nextButton(page)).toBeDisabled()
 
-    await clickSlot(page, 0, 3)
+    await clickSlot(page, schedulableColumn(), 3)
     await expect(page.getByText("Add Fixed Appointment")).toBeVisible()
 
     await page.getByRole("textbox", { name: "Appointment" }).fill("Team standup")
@@ -115,10 +116,30 @@ test.describe("onboarding", () => {
     await expect(nextButton(page)).toBeEnabled()
   })
 
+  // The calendars refuse a day that has gone rather than only dimming it: work scheduled there
+  // could never be done, and the dashboard would draw it already behind.
+  test("step 3 blocks off the days that have already passed", async ({ page }) => {
+    const todayIndex = (new Date().getDay() + 6) % 7
+    test.skip(todayIndex === 0, "nothing sits behind today on a Monday")
+
+    await page.goto("/onboarding/fixed-appointments")
+    await expect(page.getByText(/blocked off/)).toBeVisible()
+
+    // Clicking Monday opens nothing at all.
+    await clickSlot(page, 0, 3)
+    await expect(page.getByText("Add Fixed Appointment")).toHaveCount(0)
+
+    // And a modal opened on an allowed day cannot be steered back onto one that has passed.
+    await clickSlot(page, schedulableColumn(), 3)
+    const modal = page.getByRole("dialog")
+    await expect(modal.getByRole("button", { name: "Mon", exact: true })).toBeDisabled()
+    await expect(modal.getByRole("button", { name: "Sun", exact: true })).toBeEnabled()
+  })
+
   test("step 3 rejects an end time that is not after the start", async ({ page }) => {
     await page.goto("/onboarding/fixed-appointments")
 
-    await clickSlot(page, 1, 2)
+    await clickSlot(page, schedulableColumn(), 2)
     await page.getByRole("textbox", { name: "Appointment" }).fill("Bad times")
     await page.locator("#appt-from").fill("10:00")
     await page.locator("#appt-to").fill("09:00")
@@ -134,7 +155,7 @@ test.describe("onboarding", () => {
     // Fixed appointments carried in from step 3 are shown but locked.
     await expect(page.getByText("Fixed Appointments").first()).toBeVisible()
 
-    await clickSlot(page, 2, 5)
+    await clickSlot(page, schedulableColumn(), 5)
     await expect(page.getByText("Add Task", { exact: true }).first()).toBeVisible()
 
     await page.getByPlaceholder(/Work on project report/).fill("Deep work")

@@ -89,7 +89,8 @@ Choosing the week is **one decision at step 1**, so `WeekTargetBanner` and its t
 schedule step a mid-flow switch would swap the calendar out from under unsaved edits. That step says
 which week it is on through the calendar's own date headers, which come from
 `schedule/_utils/use-plan-week.ts`: the dates are those of the week being planned, and the "today"
-pill and past-day dimming only appear when that week is the current one.
+pill, the past-day dimming and the block on those days only appear when that week is the current
+one — planning the week ahead leaves all seven columns open.
 
 ## Current pages
 
@@ -107,8 +108,9 @@ pill and past-day dimming only appear when that week is the current one.
   each with add / inline-edit / delete activities.
 - `/onboarding/fixed-appointments` — Google Calendar-style weekly view (Mon–Sun, 6 AM–10 PM); click a
   slot to add, hover a card to edit/delete, drag-and-drop to reschedule; clash detection
-  (warn on 1 overlap, block on 2+). Appointments carry no colour of their own — they render blue
-  (`FIXED_COLOR`, `#3b82f6`) with a lock icon, the same as everywhere else that shows them.
+  (warn on 1 overlap, block on 2+). Days already gone take nothing new — see the calendar notes.
+  Appointments carry no colour of their own — they render blue (`FIXED_COLOR`, `#3b82f6`) with a
+  lock icon, the same as everywhere else that shows them.
 - `/onboarding/schedule-tasks` — Same calendar. Fixed appointments render blue (`#3b82f6`) with a lock
   icon and are non-interactive. Tasks must link to either a role goal or a sharpen-the-saw activity and
   inherit that colour; an optional "Daily Priority" star shows a badge on the card. Clash detection
@@ -277,7 +279,8 @@ all three `/weekly-plan/*` steps. Nothing is mock-backed any more.
 **"Has this week passed?" is a client decision**, like every other date in this app — the server
 stores no timezone and keeps only a loose backstop that can never fire for a real user. It lives in
 `lib/date.ts` (`isPastWeek`/`isFutureWeek`/`isEditableWeek`, alongside `weekStartsBack`, which
-generates a week strip), which compares `YYYY-MM-DD` Mondays as strings. These four were hoisted out
+generates a week strip), which compares `YYYY-MM-DD` Mondays as strings. `isPastDayIndex` answers
+the same question one level down — has this *day* of the displayed week gone? — for the calendars. These four were hoisted out
 of `app/evening-reflections/_utils/weeks.ts` when `/history` grew a strip of its own: a route may
 not import another route's private folder, and a second copy of "has this week passed" is exactly
 what `lib/date.ts` exists to prevent.
@@ -330,6 +333,8 @@ every roles/goals request carries a `week_start`. Nothing is hard-deleted — se
 - `components/clash-warning-modal.tsx` — Warning dialog for exactly 1 overlapping appointment.
   Props: `open`, `conflictingTitle`, `onProceed`, `onCancel`.
 - `components/clash-block-modal.tsx` — Hard-block dialog for 2+ overlaps. Props: `open`, `onClose`.
+- `components/past-days-notice.tsx` — The line above each editable calendar naming the days it has
+  blocked off. Props: `todayIdx`, `creates`. Renders nothing when no day has passed.
 - `components/animated-schedule.tsx` — Hero animation showing a draggable schedule demo.
 - `components/theme-provider.tsx` — `next-themes` wrapper.
 
@@ -352,3 +357,12 @@ each in their own `_constants/calendar.ts`: `CAL_START=6`, `CAL_END=22`, `HR_PX=
 - `getOverlaps(all, dayIndex, startMins, endMins, excludeId)` returns overlapping items.
 - `getPositionStyle(item, allItems)` returns `left/right/width` inline styles; two overlapping events
   split the column 50/50, sorted by `(startMins, id)` for stable column assignment.
+- **A day that has passed is blocked, not just dimmed.** The three editable calendars withhold
+  `onClick`, `onDragOver` and `onDrop` from any column before today, so a click opens nothing and
+  the column never becomes a drop target — the browser draws the no-drop cursor itself. The day
+  picker in each add/edit modal disables those days too, *except* the one the item already sits on,
+  so renaming a task that is already behind is not a one-way trip off its own day. The predicate is
+  `isPastDayIndex(todayIdx, dayIndex)` in `lib/date.ts`, and `components/past-days-notice.tsx` is
+  the sentence above each calendar that states the rule rather than leaving it to be discovered.
+  Both fall silent when nothing is blocked: a Monday, a week that is not the current one
+  (`todayIdx === -1`), and the server render (`null`).

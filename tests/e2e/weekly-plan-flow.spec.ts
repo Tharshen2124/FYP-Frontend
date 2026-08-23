@@ -2,6 +2,7 @@ import { test, expect, type Page } from "@playwright/test"
 import {
   authenticateAsNewUser,
   clickSlot,
+  schedulableColumn,
   completeOnboarding,
   fillEveryDimension,
   seedWeeklyPlan,
@@ -297,7 +298,7 @@ test.describe("weekly plan schedule step", () => {
     await page.goto(`/weekly-plan/schedule?week_start=${currentMonday()}`)
 
     await page.getByRole("tab", { name: "Scheduled Tasks" }).click()
-    await clickSlot(page, 4, 8)
+    await clickSlot(page, schedulableColumn(), 8)
 
     const modal = page.getByRole("dialog")
     await modal.getByPlaceholder(/Work on project report/).fill("Write the summary")

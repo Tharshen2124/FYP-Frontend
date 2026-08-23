@@ -189,3 +189,16 @@ export function isFutureWeek(weekStart: string, today: Date = new Date()): boole
 export function isEditableWeek(weekStart: string, today: Date = new Date()): boolean {
   return !isPastWeek(weekStart, today) && !isFutureWeek(weekStart, today)
 }
+
+/**
+ * Whether day column `dayIndex` names a day of the displayed week that has already gone.
+ *
+ * The three calendars block a past day rather than only dimming it: work scheduled there could
+ * never be done, and the dashboard would draw it already behind. `todayIdx` carries the two cases
+ * where nothing is blocked — `-1` for a week that is not the current one, and `null` before the
+ * client clock resolves (see `hooks/use-current-week.ts`) — so both fall out of the comparison
+ * rather than needing a check at every call site. Today itself is never past.
+ */
+export function isPastDayIndex(todayIdx: number | null | undefined, dayIndex: number): boolean {
+  return todayIdx != null && dayIndex < todayIdx
+}

@@ -3,18 +3,23 @@
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { AppNav } from "@/components/app-nav"
+import { PastDaysNotice } from "@/components/past-days-notice"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { FixedTab } from "./_components/fixed-tab"
 import { TasksTab } from "./_components/tasks-tab"
 import { useWeekSchedule } from "./_utils/use-week-schedule"
+import { usePlanWeekDays } from "./_utils/use-plan-week"
 import { useTargetWeek } from "../_utils/use-target-week"
 
 export default function WeeklyPlanSchedulePage() {
   const router = useRouter()
   const week = useTargetWeek()
   const schedule = useWeekSchedule(week.weekStart)
+  // Both tabs draw the same seven columns, so the notice sits above them rather than in each one.
+  // It says nothing for a week other than the current one, where no day has passed yet.
+  const days = usePlanWeekDays(week.weekStart)
 
   const handleNext = async () => {
     if (!(await schedule.save())) return
@@ -72,6 +77,9 @@ export default function WeeklyPlanSchedulePage() {
               </Button>
             </div>
           ) : (
+            <>
+            <PastDaysNotice todayIdx={days?.todayIdx ?? null} creates="tasks or fixed appointments" />
+
             <Tabs defaultValue="fixed" className="w-full">
               <TabsList className="mb-6 bg-card border border-border h-auto p-1">
                 <TabsTrigger
@@ -103,6 +111,7 @@ export default function WeeklyPlanSchedulePage() {
                 />
               </TabsContent>
             </Tabs>
+            </>
           )}
         </div>
       </main>

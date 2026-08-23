@@ -2,6 +2,7 @@
 
 import { CAL_START, DAYS_FULL, DAYS_SHORT, HR_PX, TOTAL_HRS } from "../_constants/calendar"
 import { useCurrentWeek } from "@/hooks/use-current-week"
+import { isPastDayIndex } from "@/lib/date"
 import { FixedAppointmentCard } from "./fixed-appointment-card"
 import { TaskCard } from "./task-card"
 import type { CalItem, FixedAppt, Task } from "../_types"
@@ -40,7 +41,7 @@ export function WeekCalendar({
         <div />
         {DAYS_SHORT.map((d, i) => {
           const isToday = week?.todayIdx === i
-          const isPast  = week != null && i < week.todayIdx
+          const isPast  = isPastDayIndex(week?.todayIdx, i)
           return (
             <div key={d} className={["py-3 text-center border-l border-border", isPast ? "opacity-40" : ""].join(" ")}>
               {/* Kept to one line: the calendar body is positioned from the top of this row, and a
@@ -76,20 +77,27 @@ export function WeekCalendar({
           </div>
 
           {/* day columns */}
-          {DAYS_FULL.map((day, di) => (
+          {DAYS_FULL.map((day, di) => {
+            // A day that has gone takes nothing new. Withholding the handlers is the whole block:
+            // with no `onDragOver` the column never becomes a drop target, so the browser shows
+            // the no-drop cursor and `onDrop` is never reached.
+            const isPast = isPastDayIndex(week?.todayIdx, di)
+            return (
             <div
               key={day}
               ref={el => { colRefs.current[di] = el }}
               data-day-column={di}
               aria-label={day}
+              aria-disabled={isPast || undefined}
+              title={isPast ? "This day has passed — nothing new can be scheduled on it" : undefined}
               className={[
-                "relative border-l border-border cursor-pointer select-none",
-                week != null && di < week.todayIdx ? "bg-foreground/[0.06]" : "",
+                "relative border-l border-border select-none",
+                isPast ? "bg-foreground/[0.06] cursor-not-allowed" : "cursor-pointer",
               ].join(" ")}
               style={{ height: calH }}
-              onClick={e => onSlotClick(e, di)}
-              onDragOver={onDragOver}
-              onDrop={e => onDrop(e, di)}
+              onClick={isPast ? undefined : e => onSlotClick(e, di)}
+              onDragOver={isPast ? undefined : onDragOver}
+              onDrop={isPast ? undefined : e => onDrop(e, di)}
             >
               {Array.from({ length: TOTAL_HRS }, (_, i) => (
                 <div key={i} className="absolute w-full border-t border-border/50" style={{ top: i * HR_PX }} />
@@ -113,7 +121,8 @@ export function WeekCalendar({
                 />
               ))}
             </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     </div>
