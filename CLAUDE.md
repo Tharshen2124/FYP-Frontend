@@ -94,8 +94,13 @@ pill and past-day dimming only appear when that week is the current one.
 ## Current pages
 
 - `/` — Landing page. Sections live in `app/_components/`, copy/data in `app/_constants/landing.ts`.
-- `/login` — Sign-in / sign-up card with an animated background. Tab switcher, password strength meter
-  (sign-up only), UI-only Google OAuth button. Submitting navigates to `POST_AUTH_HREF`.
+- `/login` — Sign-in / sign-up card with an animated background. Tab switcher and password strength
+  meter (sign-up only); a successful sign-in goes to `DASHBOARD_HREF` or `ONBOARDING_HREF` depending
+  on `is_onboarded`, and a successful sign-up drops the user on the Sign In tab rather than logging
+  them in. **"Continue with Google" is on the Sign In tab only, and only signs in.** An account is
+  opened one way — email, username and password — and Google links to it on first use, so an address
+  with no account behind it comes back as `#error=no_account` and is told to sign up first
+  (`OAUTH_ERROR_MESSAGES` in `_constants/auth.ts`).
 - `/onboarding/roles` — Role & goal management: add/edit roles (icon + colour), inline goal edit,
   weekly-priority star, warning dialog past `MAX_RECOMMENDED_GOALS` (10).
 - `/onboarding/sharpen-the-saw` — Four dimension cards (Physical, Spiritual, Mental, Social/Emotional),

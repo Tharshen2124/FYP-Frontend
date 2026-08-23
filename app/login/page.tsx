@@ -13,7 +13,12 @@ import { AnimatedBackground } from "./_components/animated-background"
 import { AuthTabs } from "./_components/auth-tabs"
 import { AuthForm } from "./_components/auth-form"
 import { GoogleIcon } from "./_components/google-icon"
-import { ONBOARDING_HREF, DASHBOARD_HREF } from "./_constants/auth"
+import {
+  ONBOARDING_HREF,
+  DASHBOARD_HREF,
+  OAUTH_ERROR_MESSAGES,
+  OAUTH_ERROR_FALLBACK,
+} from "./_constants/auth"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -32,7 +37,7 @@ export default function LoginPage() {
       window.history.replaceState(null, "", window.location.pathname)
       router.push(useAuthStore.getState().isOnboarded ? DASHBOARD_HREF : ONBOARDING_HREF)
     } else if (error) {
-      toast.error("Google sign-in failed. Please try again.")
+      toast.error(OAUTH_ERROR_MESSAGES[error] ?? OAUTH_ERROR_FALLBACK)
       window.history.replaceState(null, "", window.location.pathname)
     }
   }, [router])
