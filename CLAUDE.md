@@ -210,6 +210,10 @@ pill and past-day dimming only appear when that week is the current one.
   `<main className="relative z-10 flex-1 overflow-y-auto px-8 py-8">`. No `AppNav`, no `max-w` wrapper.
 - Background decoration on every page: two fixed blurred blobs (`bg-primary/10` top-left,
   `bg-secondary/20` bottom-right).
+- **`<Toaster />` comes before `{children}` in `app/layout.tsx`, and the order is load-bearing.**
+  Sonner replays nothing to a subscriber that arrives late, so a page toasting from a mount effect
+  — `/login` reading `#error=` off a Google callback, the onboarding guard turning an onboarded user
+  away — reaches an empty subscriber list if the Toaster mounts second.
 
 ## File structure convention
 

@@ -47,8 +47,15 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${bricolage.variable} ${ubuntu.variable}`}>
       <body className="font-sans antialiased">
-        {children}
+        {/*
+          Toaster is mounted before the page, not after it. Sonner replays nothing to a subscriber
+          that arrives late, and effects run in tree order, so a page that toasts on mount -- the
+          Google callback landing on /login#error=, the onboarding guard turning someone away --
+          published to nobody when this sat second. It is fixed-position with its own z-index, so
+          coming first costs the layout nothing.
+        */}
         <Toaster />
+        {children}
       </body>
     </html>
   )
