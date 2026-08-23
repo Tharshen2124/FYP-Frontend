@@ -76,6 +76,10 @@ The weekly-plan sub-flow (`/weekly-plan/*`) is the repeatable version of onboard
 Unlike onboarding it *selects* from existing roles/goals and activities rather than creating them,
 and it merges fixed appointments and tasks into one tabbed calendar page.
 
+**`/weekly-plan/edit` is not one of those steps.** It shares the segment, the layout gate and every
+calendar component, but it is a single surface with its own Save bar reached from `/dashboard`, not
+a wizard step — see its entry under Current pages.
+
 **Which week it plans** is the thing that distinguishes it from onboarding, which only ever plans
 the week the user signed up in. The target lives in the URL as `?week_start=YYYY-MM-DD`, so a
 refresh, a Back, or a shared link all land on the same week and the three steps inherit it without
@@ -88,7 +92,7 @@ Choosing the week is **one decision at step 1**, so `WeekTargetBanner` and its t
 `/weekly-plan/goals` only. Steps 2 and 3 inherit the week from the URL and never re-ask — on the
 schedule step a mid-flow switch would swap the calendar out from under unsaved edits. That step says
 which week it is on through the calendar's own date headers, which come from
-`schedule/_utils/use-plan-week.ts`: the dates are those of the week being planned, and the "today"
+`app/weekly-plan/_utils/use-plan-week.ts`: the dates are those of the week being planned, and the "today"
 pill, the past-day dimming and the block on those days only appear when that week is the current
 one — planning the week ahead leaves all seven columns open.
 
@@ -125,9 +129,9 @@ one — planning the week ahead leaves all seven columns open.
   check-in to record one, and the only way at all to record a task on a day that is not today.
   Any day of the week is tickable: a task done early can be ticked early. The dialog is the whole
   of the page's write surface — nothing here renames, reschedules or deletes.
-  "Edit Weekly Plan" is deliberately disabled — editing a week in place needs its own page
-  that loads the current week and saves directly, and pointing it back at the planning flow's last
-  step would mean "finish planning", not "save my change".
+  "Edit Weekly Plan" leads to `/weekly-plan/edit`, not to the planning flow's last step: that route
+  means "finish planning", not "save my change", and it closes off the days already gone — which is
+  exactly the half of the week this button is usually pressed about.
   Shows the **End-of-Day check-in** once per day after `users.eod_time`,
   and only on a week that has a plan — the server refuses a reflection for a week that was never
   planned, so there would be nothing to tick and nothing it would accept. The check-in writes both
@@ -153,6 +157,20 @@ one — planning the week ahead leaves all seven columns open.
 - `/weekly-plan/schedule` — API-backed. Tabbed calendar: "Fixed Appointments" and "Scheduled Tasks"
   share one `appts` state so clash detection spans both tabs. Saves both tabs on Next, sending
   `task_id` for anything the server already holds so an edit updates in place.
+- `/weekly-plan/edit` — API-backed. The same two tabs over the **current** week, reached from
+  `/dashboard`'s "Edit Weekly Plan". It is deliberately not step 3 pointed at this week: that step's
+  Next means "finish planning" and gates on there being a task, whereas this is open it, move one
+  thing, save, go back. It uses the **sidebar layout** despite its URL, because that is where it is
+  reached from and where it returns to.
+  **Every day of the week is live here, including the ones that have passed** — `pastDays="open"`
+  on both tabs. That is the whole point of the page: a task Tuesday didn't get done is dragged to
+  Thursday, and Tuesday is where it is dragged *from*. So no `PastDaysNotice`; a line saying the
+  opposite sits in its place.
+  It takes no `?week_start=` — the current week is the only one the app treats as writable
+  (`isEditableWeek`), and next week is still planned through the wizard.
+  Nothing writes as you go: edits sit in local state until the sticky **Save bar**, which appears
+  only while `useWeekSchedule().isDirty` (the same shape `/settings` uses). Back to Dashboard with
+  changes outstanding asks first, since it is the one gesture that can silently throw them away.
 - `/settings` — End-of-Day check-in time (API-backed, `users.eod_time`) and Google Calendar settings
   (connect/disconnect, sync toggle, export category tree with indeterminate parents, sticky
   Discard/Save bar shown only while dirty).
@@ -206,11 +224,14 @@ one — planning the week ahead leaves all seven columns open.
 
 ## Layout conventions
 
-- Onboarding and weekly-plan pages: `<AppNav>` → `<main className="relative z-10 px-6 py-8">` →
+- Onboarding and weekly-plan **wizard** pages: `<AppNav>` → `<main className="relative z-10 px-6 py-8">` →
   `<div className="max-w-7xl mx-auto">`.
 - Dashboard and post-onboarding pages use a **sidebar layout**:
   `<div className="flex h-screen overflow-hidden bg-background">` → `<Sidebar />` →
   `<main className="relative z-10 flex-1 overflow-y-auto px-8 py-8">`. No `AppNav`, no `max-w` wrapper.
+  **The layout follows the page, not the URL segment**: `/weekly-plan/edit` sits under
+  `/weekly-plan` but is a dashboard-area page — it is reached from `/dashboard` and returns there,
+  and it is not a step with a Next — so it takes the sidebar layout and its own Back button.
 - Background decoration on every page: two fixed blurred blobs (`bg-primary/10` top-left,
   `bg-secondary/20` bottom-right).
 - **`<Toaster />` comes before `{children}` in `app/layout.tsx`, and the order is load-bearing.**
@@ -253,6 +274,11 @@ Rules:
    `_utils/dimensions.ts` and `_components/week-target-banner.tsx`, all three used by more than one
    step. The same private-import rule applies one level up: nothing outside `/weekly-plan` may
    import them.
+   **The whole weekly calendar lives there too** — `_types/calendar.ts`, `_constants/calendar.ts`,
+   `_utils/{calendar,time,tasks,use-plan-week,use-week-schedule}.ts` and the seven components from
+   `CalendarDayHeader` to `FixedTab`/`TasksTab`. It was `/weekly-plan/schedule`'s private code until
+   `/weekly-plan/edit` needed the same calendar; hoisting it is rule 3 working as intended, and is
+   why `schedule/` is now a bare `page.tsx`.
 4. **Genuinely app-wide UI lives in `components/`**, not in a route folder — `AppNav`, `Sidebar`,
    `OnboardingStepper`, the clash modals, and the shadcn primitives in `components/ui/`. Shared
    non-UI domain constants go in `lib/` — `lib/sharpen-the-saw-dimensions.ts` and
@@ -264,7 +290,8 @@ Rules:
 6. Routes that are genuinely trivial (`/onboarding/complete` is pure markup) may stay a single
    `page.tsx` — but add the folders as soon as they grow logic, types, or repeated markup.
 
-`/weekly-plan/schedule` and `/analytics` are the reference implementations.
+`/analytics` is the reference implementation of a route that owns its own private folders, and
+`/weekly-plan` of a flow whose routes share them.
 
 ## State management
 
@@ -273,8 +300,8 @@ the Rails API through `lib/api.ts`. Auth is the one exception — a JWT in a coo
 store (`stores/auth-store.ts` + `lib/cookie-storage.ts`).
 
 Every route that persists anything is API-backed: `/login`, all four data-writing onboarding steps,
-`/dashboard`, `/sharpen-the-saw`, `/roles`, `/evening-reflections`, `/history`, `/analytics`, and
-all three `/weekly-plan/*` steps. Nothing is mock-backed any more.
+`/dashboard`, `/sharpen-the-saw`, `/roles`, `/evening-reflections`, `/history`, `/analytics`, all
+three `/weekly-plan/*` steps and `/weekly-plan/edit`. Nothing is mock-backed any more.
 
 **"Has this week passed?" is a client decision**, like every other date in this app — the server
 stores no timezone and keeps only a loose backstop that can never fire for a real user. It lives in
@@ -323,7 +350,17 @@ every roles/goals request carries a `week_start`. Nothing is hard-deleted — se
 
 ## Shared components
 
-- `components/ui/` — shadcn-generated primitives (Button, Input, Dialog, AlertDialog, Tabs, …)
+- `components/ui/` — shadcn-generated primitives (Button, Input, Dialog, AlertDialog, Tabs, …).
+  **`tabs.tsx` and `separator.tsx` deviate from what shadcn generates, deliberately.** As generated
+  they styled themselves with `data-horizontal:` / `data-vertical:`, which this Tailwind v4 setup
+  compiles to the literal attribute selectors `[data-horizontal]` / `[data-vertical]` — attributes
+  Radix never sets. It sets `data-orientation`, so every one of those rules silently did nothing
+  and `/weekly-plan/schedule` drew its tab list as a full-height column beside the calendar instead
+  of a row above it. They now use `data-[orientation=horizontal]:` and key off the real attribute;
+  `Tabs` also forwards `orientation` to Radix rather than stamping `data-orientation` by hand, so
+  the root, its list and the arrow-key navigation cannot disagree. **Re-running `shadcn add tabs`
+  or `separator` will reintroduce this** — the breakage is invisible in a diff and shows up only as
+  a mislaid layout.
 - `components/app-nav.tsx` — Top nav for onboarding/weekly-plan pages. Props: `action` ("back"|"next"),
   `nextHref`, `nextEnabled`, `onNext`, `backHref`, `extra`. When `nextEnabled && nextHref` it renders a
   `<Link>`; otherwise a disabled or `onNext`-callback button.
@@ -344,10 +381,11 @@ v2 replaced it. Recover from git at `1937e12` if ever needed.)
 
 ## Calendar implementation notes
 
-The three calendar routes (`/onboarding/fixed-appointments`, `/onboarding/schedule-tasks`,
-`/weekly-plan/schedule`) plus the read-only `/dashboard` timetable share the same geometry constants,
-each in their own `_constants/calendar.ts`: `CAL_START=6`, `CAL_END=22`, `HR_PX=64`,
-`TOTAL_HRS = CAL_END - CAL_START`.
+The four editable calendar routes (`/onboarding/fixed-appointments`, `/onboarding/schedule-tasks`,
+`/weekly-plan/schedule`, `/weekly-plan/edit`) plus the read-only `/dashboard` timetable share the
+same geometry constants: `CAL_START=6`, `CAL_END=22`, `HR_PX=64`, `TOTAL_HRS = CAL_END - CAL_START`.
+The two onboarding steps and the dashboard each keep their own `_constants/calendar.ts`; the two
+`/weekly-plan` routes share one calendar outright, at `app/weekly-plan/_constants/calendar.ts`.
 
 - Drag uses an invisible ghost image so the native drag preview is hidden; the drop position is
   computed from `colRefs`.
@@ -357,7 +395,7 @@ each in their own `_constants/calendar.ts`: `CAL_START=6`, `CAL_END=22`, `HR_PX=
 - `getOverlaps(all, dayIndex, startMins, endMins, excludeId)` returns overlapping items.
 - `getPositionStyle(item, allItems)` returns `left/right/width` inline styles; two overlapping events
   split the column 50/50, sorted by `(startMins, id)` for stable column assignment.
-- **A day that has passed is blocked, not just dimmed.** The three editable calendars withhold
+- **A day that has passed is blocked, not just dimmed.** The *planning* calendars withhold
   `onClick`, `onDragOver` and `onDrop` from any column before today, so a click opens nothing and
   the column never becomes a drop target — the browser draws the no-drop cursor itself. The day
   picker in each add/edit modal disables those days too, *except* the one the item already sits on,
@@ -366,3 +404,11 @@ each in their own `_constants/calendar.ts`: `CAL_START=6`, `CAL_END=22`, `HR_PX=
   the sentence above each calendar that states the rule rather than leaving it to be discovered.
   Both fall silent when nothing is blocked: a Monday, a week that is not the current one
   (`todayIdx === -1`), and the server render (`null`).
+- **`/weekly-plan/edit` is the exception, and it is a `PastDayPolicy`, not a special case.** The
+  rule exists because work scheduled into a day that is gone could never be done — which says
+  nothing about *moving* work off one, the entire reason that page exists. `FixedTab`, `TasksTab`
+  and `CalendarDayHeader` take `pastDays: "block" | "open"` (default `"block"`), and each tab
+  collapses it to one `blockedBefore` index that every check below reads: `null` means nothing is
+  blocked, which is already what `isPastDayIndex` answers for a week that is not the current one.
+  `"open"` also drops the dimming, since greying out a column the calendar will happily accept a
+  drop on would be a lie. Today's pill is drawn either way.

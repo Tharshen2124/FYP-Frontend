@@ -1,4 +1,4 @@
-import type { CalItem } from "../_types"
+import type { CalItem } from "../_types/calendar"
 
 export function getOverlaps(
   all: CalItem[],

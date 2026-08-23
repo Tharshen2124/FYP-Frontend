@@ -3,10 +3,11 @@ import {
   findLinkSelection,
   fromApiTask,
   getLinkMeta,
+  isScheduleDirty,
   toTasksPayload,
-} from "@/app/weekly-plan/schedule/_utils/tasks"
+} from "@/app/weekly-plan/_utils/tasks"
 import type { PlanDimension, PlanRole } from "@/app/weekly-plan/_types"
-import type { Task } from "@/app/weekly-plan/schedule/_types"
+import type { Appt, Task } from "@/app/weekly-plan/_types/calendar"
 import type { ApiPlanTask } from "@/lib/api"
 
 // Stand-ins for what the API returns for the week being planned: roles carry the goals they hold
@@ -178,5 +179,69 @@ describe("findLinkSelection", () => {
       selectedDimensionId: "",
       selectedActivityId: "",
     })
+  })
+})
+
+// What /weekly-plan/edit shows its Save bar on. It has to be false for a week nobody has touched
+// -- the bar would otherwise be up the moment the page loads -- and true for the edit that page
+// exists to make: dragging a task off the day it was missed on.
+describe("isScheduleDirty", () => {
+  const task = (over: Partial<Task> = {}): Task => ({
+    id: "99",
+    taskId: 99,
+    title: "Deep work",
+    dayIndex: 1,
+    startMins: 9 * 60,
+    endMins: 10 * 60,
+    color: "#B13BFF",
+    linkType: "role-goal",
+    linkId: "1",
+    linkLabel: "Professional — Ship the report",
+    isDailyPriority: false,
+    isCompleted: false,
+    ...over,
+  })
+
+  const appt = (over: Partial<Appt> = {}): Appt => ({
+    id: "12",
+    taskId: 12,
+    title: "Team standup",
+    description: "",
+    dayIndex: 0,
+    startMins: 9 * 60,
+    endMins: 9 * 60 + 30,
+    isCompleted: false,
+    ...over,
+  })
+
+  const week = { appts: [appt()], tasks: [task()] }
+
+  it("is false for a week that has only been loaded", () => {
+    expect(isScheduleDirty(week, { appts: [appt()], tasks: [task()] })).toBe(false)
+  })
+
+  it("is true once a task moves to another day", () => {
+    expect(isScheduleDirty({ ...week, tasks: [task({ dayIndex: 3 })] }, week)).toBe(true)
+  })
+
+  it("is true for an appointment added in this session", () => {
+    const added = { ...week, appts: [...week.appts, appt({ id: "new", taskId: undefined })] }
+    expect(isScheduleDirty(added, week)).toBe(true)
+  })
+
+  it("is true once something is deleted", () => {
+    expect(isScheduleDirty({ ...week, tasks: [] }, week)).toBe(true)
+  })
+
+  // Completion is /dashboard's to write, and this page never sends it. A week whose only
+  // difference is a task ticked off elsewhere has nothing here to save.
+  it("ignores a change to completion, which this page does not save", () => {
+    expect(isScheduleDirty({ ...week, tasks: [task({ isCompleted: true })] }, week)).toBe(false)
+  })
+
+  // The client-side uuid is a React key, regenerated on every add. If it counted, an edit that
+  // put a card back exactly where it started would still read as unsaved.
+  it("ignores the client-only id", () => {
+    expect(isScheduleDirty({ ...week, tasks: [task({ id: "different-uuid" })] }, week)).toBe(false)
   })
 })

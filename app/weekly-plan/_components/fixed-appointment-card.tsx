@@ -1,5 +1,5 @@
 import { Lock, Pencil, X } from "lucide-react"
-import type { Appt, CalItem } from "../_types"
+import type { Appt, CalItem } from "../_types/calendar"
 import { FIXED_COLOR, HR_PX, CAL_START } from "../_constants/calendar"
 import { getPositionStyle } from "../_utils/calendar"
 import { fmtTime } from "../_utils/time"
@@ -50,6 +50,7 @@ export function FixedAppointmentCard({ appt, allCalItems, onEdit, onDelete, onDr
       <div className="absolute top-0.5 right-0.5 hidden group-hover:flex gap-0.5 z-10">
         <button
           onClick={e => { e.stopPropagation(); onEdit(appt) }}
+          aria-label={`Edit ${appt.title}`}
           className="p-1 rounded bg-card/90 hover:bg-card transition-colors"
         >
           <Pencil className="w-2.5 h-2.5" style={{ color: FIXED_COLOR }} />

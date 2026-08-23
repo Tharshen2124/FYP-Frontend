@@ -10,8 +10,8 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog"
-import type { ModalState } from "../_types"
-import type { PlanDimension, PlanRole } from "../../_types"
+import type { ModalState } from "../_types/calendar"
+import type { PlanDimension, PlanRole } from "../_types"
 import { DAYS_SHORT, EMPTY_TASK_MODAL } from "../_constants/calendar"
 import { strToMins } from "../_utils/time"
 import { getLinkMeta } from "../_utils/tasks"
@@ -23,13 +23,21 @@ interface Props {
   onSave: () => void
   /** This week's roles with the goals they hold in it — not a standing library. */
   roles: PlanRole[]
-  /** Only the Sharpen the Saw activities committed to this week, as chosen on the previous step. */
+  /**
+   * Only the Sharpen the Saw activities committed to this week, as chosen on the weekly plan's
+   * Sharpen the Saw step.
+   */
   dimensions: PlanDimension[]
-  /** Today's column, so the day picker refuses the days the calendar has already blocked off. */
-  todayIdx: number | null
+  /**
+   * The column before which every day is refused, mirroring what the calendar behind the dialog
+   * has already closed off; `null` when nothing is. That is today's column while planning, and
+   * `null` on `/weekly-plan/edit`, where a day that has passed is still a day you can move work on
+   * to.
+   */
+  blockedBefore: number | null
 }
 
-export function TaskModal({ modal, setModal, onSave, roles, dimensions, todayIdx }: Props) {
+export function TaskModal({ modal, setModal, onSave, roles, dimensions, blockedBefore }: Props) {
   const endTimeInvalid = strToMins(modal.endTime) <= strToMins(modal.startTime)
   const canSave        = modal.title.trim().length > 0 && !endTimeInvalid && getLinkMeta(modal, roles, dimensions) !== null
   const selectedRole   = roles.find(r => r.id === modal.selectedRoleId)
@@ -68,7 +76,7 @@ export function TaskModal({ modal, setModal, onSave, roles, dimensions, todayIdx
               {DAYS_SHORT.map((d, i) => {
                 // The day it already sits on stays clickable even when past, so opening a task to
                 // rename it is never a one-way trip off its own day.
-                const blocked = isPastDayIndex(todayIdx, i) && modal.dayIndex !== i
+                const blocked = isPastDayIndex(blockedBefore, i) && modal.dayIndex !== i
                 return (
                 <button
                   key={d}
@@ -163,7 +171,8 @@ export function TaskModal({ modal, setModal, onSave, roles, dimensions, todayIdx
                 </div>
                 {roles.length === 0 && (
                   <p className="text-xs text-muted-foreground font-serif">
-                    No roles with goals for this week yet — add some on the goals step first.
+                    No roles with goals for this week yet — add some on the weekly plan&apos;s
+                    Goals step first.
                   </p>
                 )}
                 {selectedRole && (
@@ -219,7 +228,7 @@ export function TaskModal({ modal, setModal, onSave, roles, dimensions, todayIdx
                 {dimensions.every(d => d.activities.length === 0) && (
                   <p className="text-xs text-muted-foreground font-serif">
                     You haven&apos;t committed to any Sharpen the Saw activities this week — pick
-                    some on the previous step.
+                    some on the weekly plan&apos;s Sharpen the Saw step.
                   </p>
                 )}
                 {selectedDim && (

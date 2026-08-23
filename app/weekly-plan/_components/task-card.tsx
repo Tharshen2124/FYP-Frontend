@@ -1,5 +1,5 @@
 import { Check, Pencil, X, Star } from "lucide-react"
-import type { Task, CalItem } from "../_types"
+import type { Task, CalItem } from "../_types/calendar"
 import { HR_PX, CAL_START } from "../_constants/calendar"
 import { getPositionStyle } from "../_utils/calendar"
 import { fmtTime } from "../_utils/time"
@@ -55,6 +55,7 @@ export function TaskCard({ task, allCalItems, onEdit, onDelete, onDragStart }: P
       <div className="absolute top-0.5 right-0.5 hidden group-hover:flex gap-0.5 z-10">
         <button
           onClick={e => { e.stopPropagation(); onEdit(task) }}
+          aria-label={`Edit ${task.title}`}
           className="p-1 rounded bg-card/90 hover:bg-card transition-colors"
         >
           <Pencil className="w-2.5 h-2.5" style={{ color: task.color }} />

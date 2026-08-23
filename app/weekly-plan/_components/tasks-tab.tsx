@@ -7,8 +7,8 @@ import { ClashBlockModal } from "@/components/clash-block-modal"
 import { TaskCard } from "./task-card"
 import { TaskModal } from "./task-modal"
 import { CalendarLegend } from "./calendar-legend"
-import type { Task, Appt, CalItem, ModalState, PendingTaskAction } from "../_types"
-import type { PlanDimension, PlanRole } from "../../_types"
+import type { Task, Appt, CalItem, ModalState, PastDayPolicy, PendingTaskAction } from "../_types/calendar"
+import type { PlanDimension, PlanRole } from "../_types"
 import { DAYS_FULL, CAL_START, CAL_END, TOTAL_HRS, HR_PX, FIXED_COLOR, EMPTY_TASK_MODAL } from "../_constants/calendar"
 import { CalendarDayHeader } from "./calendar-day-header"
 import { usePlanWeekDays } from "../_utils/use-plan-week"
@@ -25,9 +25,14 @@ interface Props {
   dimensions: PlanDimension[]
   /** The Monday being planned, so the calendar prints that week's dates and not this week's. */
   weekStart: string
+  /**
+   * Whether the days of this week that have gone are closed to new work. `"block"` is the planning
+   * rule; `"open"` is `/weekly-plan/edit`, whose whole job is moving work off a day that is behind.
+   */
+  pastDays?: PastDayPolicy
 }
 
-export function TasksTab({ appts, tasks, setTasks, roles, dimensions, weekStart }: Props) {
+export function TasksTab({ appts, tasks, setTasks, roles, dimensions, weekStart, pastDays = "block" }: Props) {
   const [modal, setModal]                = useState<ModalState>(EMPTY_TASK_MODAL)
   const [pendingAction, setPendingAction] = useState<PendingTaskAction | null>(null)
   const [clashWarning, setClashWarning]  = useState<{ open: boolean; conflictingTitle: string }>({ open: false, conflictingTitle: "" })
@@ -183,6 +188,9 @@ export function TasksTab({ appts, tasks, setTasks, roles, dimensions, weekStart 
   }
 
   const week = usePlanWeekDays(weekStart)
+  // One value carries the policy to every past-day check below: `null` means nothing is blocked,
+  // which is exactly what `isPastDayIndex` already answers for a week that is not the current one.
+  const blockedBefore = pastDays === "block" ? week?.todayIdx ?? null : null
   const calH = TOTAL_HRS * HR_PX
 
   return (
@@ -190,7 +198,7 @@ export function TasksTab({ appts, tasks, setTasks, roles, dimensions, weekStart 
       <CalendarLegend />
 
       <div className="bg-card border-2 border-border rounded-md overflow-hidden">
-        <CalendarDayHeader week={week} />
+        <CalendarDayHeader week={week} pastDays={pastDays} />
 
         <div className="overflow-y-auto" style={{ maxHeight: 560 }}>
           <div className="grid" style={{ gridTemplateColumns: "56px repeat(7, 1fr)", height: calH }}>
@@ -210,7 +218,7 @@ export function TasksTab({ appts, tasks, setTasks, roles, dimensions, weekStart 
               // A day that has gone takes nothing new. Withholding the handlers is the whole
               // block: with no `onDragOver` the column never becomes a drop target, so the browser
               // shows the no-drop cursor and `onDrop` is never reached.
-              const isPast = isPastDayIndex(week?.todayIdx, di)
+              const isPast = isPastDayIndex(blockedBefore, di)
               return (
               <div
                 key={day}
@@ -295,7 +303,7 @@ export function TasksTab({ appts, tasks, setTasks, roles, dimensions, weekStart 
         onSave={handleSave}
         roles={roles}
         dimensions={dimensions}
-        todayIdx={week?.todayIdx ?? null}
+        blockedBefore={blockedBefore}
       />
 
       <ClashWarningModal

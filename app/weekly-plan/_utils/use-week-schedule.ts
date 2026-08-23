@@ -1,13 +1,13 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import { api } from "@/lib/api"
 import { getColor } from "@/lib/role-colors"
-import { toPlanDimensions } from "../../_utils/dimensions"
-import type { PlanDimension, PlanRole } from "../../_types"
-import type { Appt, Task } from "../_types"
-import { fromApiAppointment, fromApiTask, toAppointmentsPayload, toTasksPayload } from "./tasks"
+import { toPlanDimensions } from "./dimensions"
+import type { PlanDimension, PlanRole } from "../_types"
+import type { Appt, Task } from "../_types/calendar"
+import { fromApiAppointment, fromApiTask, isScheduleDirty, toAppointmentsPayload, toTasksPayload } from "./tasks"
 
 export interface WeekSchedule {
   appts: Appt[]
@@ -19,13 +19,19 @@ export interface WeekSchedule {
   isLoading: boolean
   loadError: boolean
   isSaving: boolean
+  /** Whether saving now would write anything. `/weekly-plan/edit` shows its Save bar on this. */
+  isDirty: boolean
+  /** Puts the calendar back to the week as the server last confirmed it. */
+  discard: () => void
   reload: () => void
   save: () => Promise<boolean>
 }
 
 /**
- * Everything `/weekly-plan/schedule` reads and writes, kept out of `page.tsx` the way `/roles`
- * keeps its lifecycle in `_utils/use-roles.ts`.
+ * Everything a week's calendar reads and writes, kept out of `page.tsx` the way `/roles` keeps its
+ * lifecycle in `_utils/use-roles.ts`. Both routes that draw one use it: `/weekly-plan/schedule`
+ * saves on the wizard's Next, `/weekly-plan/edit` on its own Save bar, and the requests either way
+ * are the same.
  *
  * Five things are needed to draw the week: its appointments and tasks, the roles holding this
  * week's goals, the standing activity library, and which of those activities the previous step
@@ -41,6 +47,12 @@ export function useWeekSchedule(weekStart: string): WeekSchedule {
   const [loadError, setLoadError] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
+  /**
+   * The week as the server last confirmed it, which is what "unsaved changes" is measured against.
+   * Kept beside the live state rather than derived from it: after a save the response *is* the new
+   * baseline, so the two are set from the same object and cannot drift apart.
+   */
+  const [saved, setSaved] = useState<{ appts: Appt[]; tasks: Task[] }>({ appts: [], tasks: [] })
 
   const load = useCallback(async (week: string) => {
     setIsLoading(true)
@@ -65,10 +77,14 @@ export function useWeekSchedule(weekStart: string): WeekSchedule {
       const committed = new Set(committedRes.activity_ids.map(String))
       const planDimensions = toPlanDimensions(libraryRes.activities, committed)
 
+      const loadedAppts = apptsRes.appointments.map(fromApiAppointment)
+      const loadedTasks = tasksRes.tasks.map(t => fromApiTask(t, planRoles, planDimensions))
+
       setRoles(planRoles)
       setDimensions(planDimensions)
-      setAppts(apptsRes.appointments.map(fromApiAppointment))
-      setTasks(tasksRes.tasks.map(t => fromApiTask(t, planRoles, planDimensions)))
+      setAppts(loadedAppts)
+      setTasks(loadedTasks)
+      setSaved({ appts: loadedAppts, tasks: loadedTasks })
     } catch {
       setLoadError(true)
       toast.error("Couldn't load your weekly schedule — please try again.")
@@ -96,8 +112,12 @@ export function useWeekSchedule(weekStart: string): WeekSchedule {
       const savedAppts = await api.savePlanAppointments(toAppointmentsPayload(appts), weekStart)
       const savedTasks = await api.savePlanTasks(toTasksPayload(tasks), weekStart)
 
-      setAppts(savedAppts.appointments.map(fromApiAppointment))
-      setTasks(savedTasks.tasks.map(t => fromApiTask(t, roles, dimensions)))
+      const nextAppts = savedAppts.appointments.map(fromApiAppointment)
+      const nextTasks = savedTasks.tasks.map(t => fromApiTask(t, roles, dimensions))
+
+      setAppts(nextAppts)
+      setTasks(nextTasks)
+      setSaved({ appts: nextAppts, tasks: nextTasks })
       return true
     } catch {
       toast.error("Couldn't save your weekly schedule — please try again.")
@@ -107,8 +127,18 @@ export function useWeekSchedule(weekStart: string): WeekSchedule {
     }
   }, [appts, tasks, roles, dimensions, weekStart])
 
+  const isDirty = useMemo(
+    () => isScheduleDirty({ appts, tasks }, saved),
+    [appts, tasks, saved]
+  )
+
+  const discard = useCallback(() => {
+    setAppts(saved.appts)
+    setTasks(saved.tasks)
+  }, [saved])
+
   return {
     appts, setAppts, tasks, setTasks, roles, dimensions,
-    isLoading, loadError, isSaving, reload, save,
+    isLoading, loadError, isSaving, isDirty, discard, reload, save,
   }
 }

@@ -92,7 +92,7 @@ describe("page orchestrators stay slim", () => {
   const pages = relPaths.filter(p => p.endsWith(`${sep}page.tsx`))
 
   it("finds every route page", () => {
-    expect(pages.length).toBe(17)
+    expect(pages.length).toBe(18)
   })
 
   it("keeps each page under 250 lines", () => {

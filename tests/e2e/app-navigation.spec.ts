@@ -60,17 +60,16 @@ test.describe("app navigation", () => {
     await expect(page).toHaveURL(/\/onboarding\/roles$/)
   })
 
-  // Editing a week in place needs its own page — one that loads the current week and saves edits
-  // directly. Until it exists the button has no destination: pointing it at the planning flow's
-  // last step would mean "finish planning", not "save my change".
-  test("dashboard shows Edit Weekly Plan as not yet available", async ({ page }) => {
+  // /weekly-plan/edit, not the planning flow's last step: that one means "finish planning", not
+  // "save my change", and it closes off the days that have already passed.
+  test("dashboard's Edit Weekly Plan opens the edit page", async ({ page }) => {
     await authenticateAsNewUser(page)
     // The button only renders once a plan exists for the current week.
     await seedWeeklyPlan(page)
     await page.goto("/dashboard")
 
-    await expect(page.getByRole("link", { name: /Edit Weekly Plan/ })).toHaveCount(0)
-    await expect(page.getByRole("button", { name: /Edit Weekly Plan/ })).toBeDisabled()
+    await page.getByRole("link", { name: /Edit Weekly Plan/ }).click()
+    await expect(page).toHaveURL(/\/weekly-plan\/edit$/)
   })
 
   test("sign out returns to the login page", async ({ page }) => {
@@ -93,6 +92,7 @@ test.describe("app navigation", () => {
       "/dashboard", "/roles", "/sharpen-the-saw", "/settings",
       "/evening-reflections", "/history", "/analytics",
       "/weekly-plan/goals", "/weekly-plan/sharpen-the-saw", "/weekly-plan/schedule",
+      "/weekly-plan/edit",
     ]
 
     for (const route of routes) {

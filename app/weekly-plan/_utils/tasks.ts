@@ -1,8 +1,8 @@
 import type { ApiPlanAppointment, ApiPlanTask } from "@/lib/api"
 import { FIXED_COLOR } from "../_constants/calendar"
 import { minsToStr, strToMins } from "./time"
-import type { Appt, ModalState, Task } from "../_types"
-import type { PlanDimension, PlanRole } from "../../_types"
+import type { Appt, ModalState, Task } from "../_types/calendar"
+import type { PlanDimension, PlanRole } from "../_types"
 
 type LinkSelection = Pick<
   ModalState,
@@ -131,4 +131,22 @@ export function toTasksPayload(tasks: Task[]) {
     sharpen_the_saw_activity_id: t.linkType === "sharpen-the-saw" ? t.linkId : null,
     is_daily_priority: t.isDailyPriority,
   }))
+}
+
+/**
+ * Whether the calendar on screen differs from the week as the server last confirmed it.
+ *
+ * Compared through the save payloads rather than through the state itself, because those are
+ * exactly the fields a save sends: anything the two agree on is a save that would write nothing.
+ * It also keeps the two fields that are not the calendar's to own out of the comparison — the
+ * client-only `id`, regenerated on every add, and `isCompleted`, which /dashboard writes.
+ */
+export function isScheduleDirty(
+  current: { appts: Appt[]; tasks: Task[] },
+  saved: { appts: Appt[]; tasks: Task[] }
+): boolean {
+  const payload = (s: { appts: Appt[]; tasks: Task[] }) =>
+    JSON.stringify([toAppointmentsPayload(s.appts), toTasksPayload(s.tasks)])
+
+  return payload(current) !== payload(saved)
 }

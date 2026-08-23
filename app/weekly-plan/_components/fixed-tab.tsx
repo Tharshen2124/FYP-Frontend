@@ -16,7 +16,7 @@ import {
 import { ClashWarningModal } from "@/components/clash-warning-modal"
 import { ClashBlockModal } from "@/components/clash-block-modal"
 import { FixedAppointmentCard } from "./fixed-appointment-card"
-import type { Appt, CalItem, ApptModalState, PendingApptAction } from "../_types"
+import type { Appt, CalItem, ApptModalState, PastDayPolicy, PendingApptAction } from "../_types/calendar"
 import { DAYS_FULL, DAYS_SHORT, CAL_START, CAL_END, TOTAL_HRS, HR_PX, EMPTY_APPT_MODAL } from "../_constants/calendar"
 import { CalendarDayHeader } from "./calendar-day-header"
 import { usePlanWeekDays } from "../_utils/use-plan-week"
@@ -29,9 +29,14 @@ interface Props {
   setAppts: React.Dispatch<React.SetStateAction<Appt[]>>
   /** The Monday being planned, so the calendar prints that week's dates and not this week's. */
   weekStart: string
+  /**
+   * Whether the days of this week that have gone are closed to new work. `"block"` is the planning
+   * rule; `"open"` is `/weekly-plan/edit`, whose whole job is moving work off a day that is behind.
+   */
+  pastDays?: PastDayPolicy
 }
 
-export function FixedTab({ appts, setAppts, weekStart }: Props) {
+export function FixedTab({ appts, setAppts, weekStart, pastDays = "block" }: Props) {
   const [modal, setModal]               = useState<ApptModalState>(EMPTY_APPT_MODAL)
   const [pendingAction, setPendingAction] = useState<PendingApptAction | null>(null)
   const [clashWarning, setClashWarning] = useState<{ open: boolean; conflictingTitle: string }>({ open: false, conflictingTitle: "" })
@@ -164,6 +169,9 @@ export function FixedTab({ appts, setAppts, weekStart }: Props) {
   }
 
   const week = usePlanWeekDays(weekStart)
+  // One value carries the policy to every past-day check below: `null` means nothing is blocked,
+  // which is exactly what `isPastDayIndex` already answers for a week that is not the current one.
+  const blockedBefore = pastDays === "block" ? week?.todayIdx ?? null : null
   const calH           = TOTAL_HRS * HR_PX
   const endTimeInvalid = strToMins(modal.endTime) <= strToMins(modal.startTime)
 
@@ -176,7 +184,7 @@ export function FixedTab({ appts, setAppts, weekStart }: Props) {
       </div>
 
       <div className="bg-card border-2 border-border rounded-md overflow-hidden">
-        <CalendarDayHeader week={week} />
+        <CalendarDayHeader week={week} pastDays={pastDays} />
 
         <div className="overflow-y-auto" style={{ maxHeight: 560 }}>
           <div className="grid" style={{ gridTemplateColumns: "56px repeat(7, 1fr)", height: calH }}>
@@ -196,7 +204,7 @@ export function FixedTab({ appts, setAppts, weekStart }: Props) {
               // A day that has gone takes nothing new. Withholding the handlers is the whole
               // block: with no `onDragOver` the column never becomes a drop target, so the browser
               // shows the no-drop cursor and `onDrop` is never reached.
-              const isPast = isPastDayIndex(week?.todayIdx, di)
+              const isPast = isPastDayIndex(blockedBefore, di)
               return (
               <div
                 key={day}
@@ -275,7 +283,7 @@ export function FixedTab({ appts, setAppts, weekStart }: Props) {
                 {DAYS_SHORT.map((d, i) => {
                   // The day it already sits on stays clickable even when past, so opening an
                   // appointment to rename it is never a one-way trip off its own day.
-                  const blocked = isPastDayIndex(week?.todayIdx, i) && modal.dayIndex !== i
+                  const blocked = isPastDayIndex(blockedBefore, i) && modal.dayIndex !== i
                   return (
                   <button
                     key={d}

@@ -1,3 +1,9 @@
+/**
+ * The types behind the weekly calendar, shared by every route in this flow that draws one:
+ * `/weekly-plan/schedule` plans a week and `/weekly-plan/edit` rearranges the one in progress.
+ * The plan entities they hang off — `PlanRole`, `PlanDimension` — live next door in `./index`.
+ */
+
 export type LinkType = "role-goal" | "sharpen-the-saw"
 
 /**
@@ -75,3 +81,13 @@ export type CalItem = {
   startMins: number
   endMins: number
 }
+
+/**
+ * What a calendar does with the days of the displayed week that have already gone.
+ *
+ * `"block"` is the planning rule: a day that is behind can take nothing new, so its column
+ * refuses clicks and drops and the day picker greys it out. `"open"` is `/weekly-plan/edit`,
+ * which exists precisely to rearrange a week in progress — a task Tuesday did not get done is
+ * dragged to Thursday, and the Tuesday it comes off is a day that has passed.
+ */
+export type PastDayPolicy = "block" | "open"
