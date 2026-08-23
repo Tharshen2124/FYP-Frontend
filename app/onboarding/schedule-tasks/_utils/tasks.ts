@@ -22,6 +22,47 @@ export function getLinkMeta(
   return { id: act.id, label: `${dim.label} — ${act.text}` }
 }
 
+/**
+ * The inverse of {@link getLinkMeta}: a saved task carries only the id it links to, but the edit
+ * modal drives two dependent pickers, so it needs the owning role or dimension as well. A link
+ * whose owner has since gone leaves the pair blank rather than half-selected — the modal then
+ * asks for it again, which is the only honest thing it can do.
+ */
+export function toEditModalState(
+  task: Task,
+  roles: ApiRole[],
+  activitiesByDimension: ActivitiesByDimension
+): ModalState {
+  let selectedRoleId = ""
+  let selectedGoalId = ""
+  let selectedDimensionId = ""
+  let selectedActivityId = ""
+
+  if (task.linkType === "role-goal") {
+    const role = roles.find(r => r.goals.some(g => g.id === task.linkId))
+    if (role) { selectedRoleId = role.id; selectedGoalId = task.linkId }
+  } else {
+    const dimId = Object.keys(activitiesByDimension).find(dim =>
+      activitiesByDimension[dim].some(a => a.id === task.linkId)
+    )
+    if (dimId) { selectedDimensionId = dimId; selectedActivityId = task.linkId }
+  }
+
+  return {
+    open: true, mode: "edit", editId: task.id,
+    dayIndex:        task.dayIndex,
+    startTime:       minsToStr(task.startMins),
+    endTime:         minsToStr(task.endMins),
+    title:           task.title,
+    linkType:        task.linkType,
+    selectedRoleId,
+    selectedGoalId,
+    selectedDimensionId,
+    selectedActivityId,
+    isDailyPriority: task.isDailyPriority,
+  }
+}
+
 function resolveLinkLabel(linkType: LinkType, linkId: string, roles: ApiRole[], activitiesByDimension: ActivitiesByDimension): string {
   if (linkType === "role-goal") {
     for (const role of roles) {

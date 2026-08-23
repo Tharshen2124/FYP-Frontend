@@ -1,35 +1,30 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { toast } from "sonner"
 import { AppNav } from "@/components/app-nav"
 import { ClashWarningModal } from "@/components/clash-warning-modal"
 import { ClashBlockModal } from "@/components/clash-block-modal"
 import { OnboardingStepper } from "@/components/onboarding-stepper"
 import { Spinner } from "@/components/ui/spinner"
 import { Button } from "@/components/ui/button"
-import { api } from "@/lib/api"
 import { CalendarLegend } from "./_components/calendar-legend"
 import { WeekCalendar } from "./_components/week-calendar"
 import { TaskModal } from "./_components/task-modal"
 import { CAL_START, CAL_END, HR_PX, EMPTY_MODAL } from "./_constants/calendar"
 import { getOverlaps } from "./_utils/calendar"
 import { minsToStr, strToMins, snapMins } from "./_utils/time"
-import { getLinkMeta, fromApiTask, toScheduleTasksPayload } from "./_utils/tasks"
-import type { ApiActivity, ApiRole, CalItem, FixedAppt, ModalState, PendingAction, Task } from "./_types"
+import { getLinkMeta, toEditModalState } from "./_utils/tasks"
+import { useScheduleTasks } from "./_utils/use-schedule-tasks"
+import type { CalItem, ModalState, PendingAction, Task } from "./_types"
 
 export default function ScheduleTasksPage() {
   const router = useRouter()
 
-  const [isLoading, setIsLoading]         = useState(true)
-  const [loadError, setLoadError]         = useState(false)
-  const [isSubmitting, setIsSubmitting]   = useState(false)
-
-  const [fixedAppts, setFixedAppts]                       = useState<FixedAppt[]>([])
-  const [roles, setRoles]                                 = useState<ApiRole[]>([])
-  const [activitiesByDimension, setActivitiesByDimension] = useState<Record<string, ApiActivity[]>>({})
-  const [tasks, setTasks]                                 = useState<Task[]>([])
+  const {
+    fixedAppts, roles, activitiesByDimension, tasks, setTasks,
+    isLoading, loadError, isSubmitting, reload, submit,
+  } = useScheduleTasks()
 
   const [modal, setModal]                = useState<ModalState>(EMPTY_MODAL)
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null)
@@ -38,57 +33,6 @@ export default function ScheduleTasksPage() {
 
   const dragInfo = useRef<{ id: string; offsetMins: number } | null>(null)
   const colRefs  = useRef<(HTMLDivElement | null)[]>(Array(7).fill(null))
-
-  const loadData = useCallback(async () => {
-    setIsLoading(true)
-    setLoadError(false)
-    try {
-      const [apptsRes, rolesRes, activitiesRes, tasksRes] = await Promise.all([
-        api.fetchFixedAppointments(),
-        api.fetchRoles(),
-        api.fetchSharpenTheSaw(),
-        api.fetchScheduleTasks(),
-      ])
-
-      const mappedRoles: ApiRole[] = rolesRes.roles.map(r => ({
-        id: String(r.role_id),
-        name: r.name,
-        goals: r.goals.map(g => ({ id: String(g.goal_id), text: g.text })),
-      }))
-
-      const mappedActivitiesByDimension: Record<string, ApiActivity[]> = {}
-      for (const a of activitiesRes.activities) {
-        const activity: ApiActivity = { id: String(a.sharpen_the_saw_activity_id), text: a.activity_description, dimension: a.dimension }
-        const bucket = mappedActivitiesByDimension[a.dimension] ?? []
-        bucket.push(activity)
-        mappedActivitiesByDimension[a.dimension] = bucket
-      }
-
-      const mappedFixed: FixedAppt[] = apptsRes.appointments.map(a => ({
-        id: String(a.task_id),
-        title: a.title,
-        dayIndex: a.day_of_week,
-        startMins: strToMins(a.start_time),
-        endMins: strToMins(a.end_time),
-      }))
-
-      const mappedTasks: Task[] = tasksRes.tasks.map(t => fromApiTask(t, mappedRoles, mappedActivitiesByDimension))
-
-      setFixedAppts(mappedFixed)
-      setRoles(mappedRoles)
-      setActivitiesByDimension(mappedActivitiesByDimension)
-      setTasks(mappedTasks)
-    } catch {
-      toast.error("Couldn't load your onboarding data — please try again.")
-      setLoadError(true)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    loadData()
-  }, [loadData])
 
   const allCalItems: CalItem[] = [
     ...fixedAppts,
@@ -108,34 +52,7 @@ export default function ScheduleTasksPage() {
   }
 
   const openEdit = (task: Task) => {
-    let selectedRoleId      = ""
-    let selectedGoalId      = ""
-    let selectedDimensionId = ""
-    let selectedActivityId  = ""
-
-    if (task.linkType === "role-goal") {
-      const role = roles.find(r => r.goals.some(g => g.id === task.linkId))
-      if (role) { selectedRoleId = role.id; selectedGoalId = task.linkId }
-    } else {
-      const dimId = Object.keys(activitiesByDimension).find(dim =>
-        activitiesByDimension[dim].some(a => a.id === task.linkId)
-      )
-      if (dimId) { selectedDimensionId = dimId; selectedActivityId = task.linkId }
-    }
-
-    setModal({
-      open: true, mode: "edit", editId: task.id,
-      dayIndex:        task.dayIndex,
-      startTime:       minsToStr(task.startMins),
-      endTime:         minsToStr(task.endMins),
-      title:           task.title,
-      linkType:        task.linkType,
-      selectedRoleId,
-      selectedGoalId,
-      selectedDimensionId,
-      selectedActivityId,
-      isDailyPriority: task.isDailyPriority,
-    })
+    setModal(toEditModalState(task, roles, activitiesByDimension))
   }
 
   const handleColClick = (e: React.MouseEvent<HTMLDivElement>, dayIndex: number) => {
@@ -249,14 +166,7 @@ export default function ScheduleTasksPage() {
 
   // ── submit ──
   const handleNext = async () => {
-    setIsSubmitting(true)
-    try {
-      await api.submitScheduleTasks(toScheduleTasksPayload(tasks))
-      router.push("/onboarding/complete")
-    } catch {
-      toast.error("Couldn't save your tasks — please try again.")
-      setIsSubmitting(false)
-    }
+    if (await submit()) router.push("/onboarding/complete")
   }
 
   return (
@@ -289,7 +199,7 @@ export default function ScheduleTasksPage() {
           ) : loadError ? (
             <div className="flex flex-col items-center justify-center gap-3 py-24">
               <p className="text-sm text-muted-foreground font-serif">Something went wrong loading your data.</p>
-              <Button onClick={loadData} variant="outline" className="border-border text-foreground hover:bg-secondary/20">
+              <Button onClick={reload} variant="outline" className="border-border text-foreground hover:bg-secondary/20">
                 Try Again
               </Button>
             </div>
