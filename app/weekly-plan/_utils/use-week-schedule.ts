@@ -71,7 +71,11 @@ export function useWeekSchedule(weekStart: string): WeekSchedule {
         id: String(r.role_id),
         name: r.name,
         color: getColor(r.color_id ?? "primary"),
-        goals: r.goals.map(g => ({ id: String(g.goal_id), text: g.text })),
+        goals: r.goals.map(g => ({
+          id: String(g.goal_id),
+          text: g.text,
+          isWeeklyPriority: g.is_weekly_priority,
+        })),
       }))
 
       const committed = new Set(committedRes.activity_ids.map(String))

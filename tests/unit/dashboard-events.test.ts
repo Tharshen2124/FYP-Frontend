@@ -19,6 +19,7 @@ function task(overrides: Partial<ApiTask> = {}): ApiTask {
     end_time: "10:30",
     is_fixed_appointment: false,
     is_daily_priority: false,
+    is_weekly_priority: false,
     is_completed: false,
     link_kind: null,
     link_text: null,
@@ -67,16 +68,32 @@ describe("toCalEvents", () => {
     expect(event.isFixed).toBe(true)
   })
 
-  it("colours a daily priority differently from an ordinary task", () => {
-    const [priority] = toCalEvents([task({ is_daily_priority: true })])
+  it("gives a weekly-priority task the reserved yellow", () => {
+    const [priority] = toCalEvents([task({ is_weekly_priority: true })])
     const [ordinary] = toCalEvents([task()])
     expect(priority.color).toBe("#FFCC00")
     expect(ordinary.color).toBe("#B13BFF")
-    expect(priority.color).not.toBe(ordinary.color)
   })
 
-  it("a fixed appointment stays blue even if daily priority were somehow set", () => {
-    const [event] = toCalEvents([task({ is_fixed_appointment: true, is_daily_priority: true })])
+  /* The rule the whole change turns on: a daily priority is a star, not a colour. Before, it took
+     the yellow, so a card could not say which of the two it was. */
+  it("leaves a daily priority the ordinary colour and flags it instead", () => {
+    const [event] = toCalEvents([task({ is_daily_priority: true })])
+    expect(event.color).toBe("#B13BFF")
+    expect(event.isDailyPriority).toBe(true)
+    expect(event.isWeeklyPriority).toBe(false)
+  })
+
+  it("keeps the yellow for a task that is both", () => {
+    const [event] = toCalEvents([task({ is_weekly_priority: true, is_daily_priority: true })])
+    expect(event.color).toBe("#FFCC00")
+    expect(event.isDailyPriority).toBe(true)
+  })
+
+  it("a fixed appointment stays blue whatever priority flags arrive with it", () => {
+    const [event] = toCalEvents([
+      task({ is_fixed_appointment: true, is_daily_priority: true, is_weekly_priority: true }),
+    ])
     expect(event.color).toBe("#3b82f6")
   })
 
@@ -144,8 +161,9 @@ describe("taskDetail", () => {
 
   it("carries the same colour the card is drawn in", () => {
     expect(taskDetail(task()).color).toBe("#B13BFF")
-    expect(taskDetail(task({ is_daily_priority: true })).color).toBe("#FFCC00")
-    expect(taskDetail(task({ is_fixed_appointment: true, is_daily_priority: true })).color)
+    expect(taskDetail(task({ is_weekly_priority: true })).color).toBe("#FFCC00")
+    expect(taskDetail(task({ is_daily_priority: true })).color).toBe("#B13BFF")
+    expect(taskDetail(task({ is_fixed_appointment: true, is_weekly_priority: true })).color)
       .toBe("#3b82f6")
   })
 })

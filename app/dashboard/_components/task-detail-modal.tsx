@@ -14,7 +14,7 @@ import {
 import { api } from "@/lib/api"
 import { taskDetail } from "../_utils/events"
 import { fmtDuration, fmtShortDate, fmtTime, strToMins } from "../_utils/time"
-import { DAILY_PRIORITY_COLOR, DAYS_FULL } from "../_constants/calendar"
+import { DAYS_FULL, WEEKLY_PRIORITY_COLOR } from "../_constants/calendar"
 import type { ApiTask } from "../_types"
 
 interface Props {
@@ -95,12 +95,20 @@ export function TaskDetailModal({ task, date, onClose, onCompletionChange }: Pro
                 >
                   {detail.kind}
                 </span>
-                {task.is_daily_priority && (
+                {/* The yellow one is the weekly priority — the same reservation the grid behind
+                    this dialog keeps. The daily-priority chip carries a yellow star on neutral
+                    ink, so the two are told apart here exactly as they are on a card. */}
+                {task.is_weekly_priority && (
                   <span
                     className="text-xs font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1"
-                    style={{ backgroundColor: `${DAILY_PRIORITY_COLOR}22`, color: DAILY_PRIORITY_COLOR }}
+                    style={{ backgroundColor: `${WEEKLY_PRIORITY_COLOR}22`, color: WEEKLY_PRIORITY_COLOR }}
                   >
-                    <Star className="w-3 h-3 fill-current" />
+                    Weekly Priority
+                  </span>
+                )}
+                {task.is_daily_priority && (
+                  <span className="text-xs font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1 bg-muted text-muted-foreground">
+                    <Star className="w-3 h-3 fill-current" style={{ color: WEEKLY_PRIORITY_COLOR }} />
                     Daily Priority
                   </span>
                 )}

@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog"
 import type { ModalState } from "../_types/calendar"
 import type { PlanDimension, PlanRole } from "../_types"
-import { DAYS_SHORT, EMPTY_TASK_MODAL } from "../_constants/calendar"
+import { DAYS_SHORT, EMPTY_TASK_MODAL, WEEKLY_PRIORITY_COLOR } from "../_constants/calendar"
 import { strToMins } from "../_utils/time"
 import { getLinkMeta } from "../_utils/tasks"
 import { isPastDayIndex } from "@/lib/date"
@@ -269,7 +269,10 @@ export function TaskModal({ modal, setModal, onSave, roles, dimensions, blockedB
                 : "bg-muted border-border text-muted-foreground hover:border-accent/40 hover:text-foreground"
             }`}
           >
-            <Star className={`w-5 h-5 flex-shrink-0 transition-colors ${modal.isDailyPriority ? "text-accent fill-accent" : "text-muted-foreground"}`} />
+            <Star
+              className={`w-5 h-5 flex-shrink-0 transition-colors ${modal.isDailyPriority ? "fill-current" : "text-muted-foreground"}`}
+              style={modal.isDailyPriority ? { color: WEEKLY_PRIORITY_COLOR } : undefined}
+            />
             <div className="text-left">
               <p className="text-sm font-bold">Mark as Daily Priority</p>
               <p className="text-xs font-serif text-muted-foreground mt-0.5">

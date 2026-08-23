@@ -1,6 +1,6 @@
 import { Pencil, X, Star } from "lucide-react"
 import type { Task, CalItem } from "../_types"
-import { HR_PX, CAL_START, TASK_COLOR, DAILY_PRIORITY_COLOR } from "../_constants/calendar"
+import { HR_PX, CAL_START, TASK_COLOR, WEEKLY_PRIORITY_COLOR } from "../_constants/calendar"
 import { getPositionStyle } from "../_utils/calendar"
 import { fmtTime } from "../_utils/time"
 
@@ -16,7 +16,9 @@ export function TaskCard({ task, allCalItems, onEdit, onDelete, onDragStart }: P
   const top      = (task.startMins - CAL_START * 60) * (HR_PX / 60)
   const height   = Math.max((task.endMins - task.startMins) * (HR_PX / 60), 22)
   const posStyle = getPositionStyle(task, allCalItems)
-  const color    = task.isDailyPriority ? DAILY_PRIORITY_COLOR : TASK_COLOR
+  /* Yellow is reserved for work on a weekly-priority goal. A daily priority used to take it and
+     no longer does — it is the star below, which reads the same on a card of either colour. */
+  const color    = task.isWeeklyPriority ? WEEKLY_PRIORITY_COLOR : TASK_COLOR
 
   return (
     <div
@@ -34,7 +36,11 @@ export function TaskCard({ task, allCalItems, onEdit, onDelete, onDragStart }: P
     >
       <div className="flex items-center gap-1 overflow-hidden">
         {task.isDailyPriority && (
-          <Star className="w-2.5 h-2.5 flex-shrink-0 fill-accent text-accent" />
+          <Star
+            className="w-2.5 h-2.5 flex-shrink-0 fill-current"
+            style={{ color: WEEKLY_PRIORITY_COLOR }}
+            aria-label="Daily priority"
+          />
         )}
         <p className="text-xs font-bold truncate leading-tight" style={{ color }}>
           {task.title}

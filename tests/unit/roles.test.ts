@@ -6,6 +6,8 @@ import {
   countGoals,
 } from "@/app/roles/_utils/roles"
 import { ROLE_COLORS, ROLE_ICONS, MAX_RECOMMENDED_GOALS } from "@/app/roles/_constants/roles"
+import { WEEKLY_PRIORITY_COLOR } from "@/lib/role-colors"
+import { SHARPEN_THE_SAW_DIMENSIONS } from "@/lib/sharpen-the-saw-dimensions"
 import type { Role } from "@/app/roles/_types"
 
 // The page loads its roles from the API, so these are fixtures rather than page seed data.
@@ -20,7 +22,7 @@ const ROLES: Role[] = [
       { id: "g2", text: "Mentor junior team member" },
     ],
   },
-  { id: "2", name: "Parent", iconId: "users", colorId: "accent", goals: [{ id: "g3", text: "Plan weekend family activity" }] },
+  { id: "2", name: "Parent", iconId: "users", colorId: "teal", goals: [{ id: "g3", text: "Plan weekend family activity" }] },
 ]
 
 describe("role icon lookup", () => {
@@ -42,6 +44,28 @@ describe("getColor", () => {
 
   it("falls back to the primary colour for an unknown id", () => {
     expect(getColor("nope")).toBe("#B13BFF")
+  })
+
+  /* "accent" was this palette's yellow. A migration reassigned every stored row, but a client
+     holding a stale role must still not paint it yellow — that colour now means something else. */
+  it("does not resolve the retired yellow id", () => {
+    expect(getColor("accent")).toBe("#B13BFF")
+  })
+})
+
+/**
+ * Yellow means one thing on a schedule: this task serves a goal the user named a weekly priority.
+ * That only holds while nothing *else* a calendar tints a task by can claim it — so both palettes
+ * are checked here rather than each trusting the other to stay clear.
+ */
+describe("the reserved yellow", () => {
+  it("is offered by no role colour", () => {
+    expect(ROLE_COLORS.map(c => c.value)).not.toContain(WEEKLY_PRIORITY_COLOR)
+    expect(ROLE_COLORS.map(c => c.id)).not.toContain("accent")
+  })
+
+  it("is used by no Sharpen the Saw dimension", () => {
+    expect(SHARPEN_THE_SAW_DIMENSIONS.map(d => d.color)).not.toContain(WEEKLY_PRIORITY_COLOR)
   })
 })
 

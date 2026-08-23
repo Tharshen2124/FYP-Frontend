@@ -21,11 +21,18 @@ export interface HistoryEvent {
   dayIndex: number
   startMins: number
   endMins: number
-  /** The role's colour, the dimension's colour, or the fixed-appointment blue. */
+  /** The role's colour, the dimension's colour, or the fixed-appointment blue.
+   *
+   *  Deliberately the *category's* colour even when the chip is drawn in the reserved yellow: the
+   *  footer legend names the week's roles and dimensions, and a weekly-priority task must not
+   *  rename its role to yellow there. What the chip paints is {@link HistoryEvent.isWeeklyPriority}
+   *  applied on top of this. */
   color: string
   isFixed: boolean
   isCompleted: boolean
   isDailyPriority: boolean
+  /** Whether the goal behind this task was one of that week's priorities — the reserved yellow. */
+  isWeeklyPriority: boolean
   categoryKind: CategoryKind
   /** "Fixed", the role's name, or the dimension's display label. */
   categoryLabel: string

@@ -139,6 +139,7 @@ export function toHistoryEvent(task: ApiHistoryTask): HistoryEvent {
     isFixed: task.is_fixed_appointment,
     isCompleted: task.is_completed,
     isDailyPriority: task.is_daily_priority,
+    isWeeklyPriority: task.is_weekly_priority,
     categoryKind: kind,
     categoryLabel: label,
     icon,

@@ -4,22 +4,30 @@ import { minsToStr, strToMins } from "./time"
 
 type ActivitiesByDimension = Record<string, ApiActivity[]>
 
+export interface LinkMeta {
+  id: string
+  label: string
+  /** True only for a goal the user named a weekly priority — a Sharpen the Saw activity is never
+   *  one. It rides on the link because that is where the fact lives: the task inherits it. */
+  isWeeklyPriority: boolean
+}
+
 export function getLinkMeta(
   modal: Pick<ModalState, "linkType" | "selectedRoleId" | "selectedGoalId" | "selectedDimensionId" | "selectedActivityId">,
   roles: ApiRole[],
   activitiesByDimension: ActivitiesByDimension
-): { id: string; label: string } | null {
+): LinkMeta | null {
   if (modal.linkType === "role-goal") {
     const role = roles.find(r => r.id === modal.selectedRoleId)
     const goal = role?.goals.find(g => g.id === modal.selectedGoalId)
     if (!role || !goal) return null
-    return { id: goal.id, label: `${role.name} — ${goal.text}` }
+    return { id: goal.id, label: `${role.name} — ${goal.text}`, isWeeklyPriority: goal.isWeeklyPriority }
   }
 
   const dim = DIMENSION_META.find(d => d.id === modal.selectedDimensionId)
   const act = (activitiesByDimension[modal.selectedDimensionId] ?? []).find(a => a.id === modal.selectedActivityId)
   if (!dim || !act) return null
-  return { id: act.id, label: `${dim.label} — ${act.text}` }
+  return { id: act.id, label: `${dim.label} — ${act.text}`, isWeeklyPriority: false }
 }
 
 /**
@@ -63,20 +71,27 @@ export function toEditModalState(
   }
 }
 
-function resolveLinkLabel(linkType: LinkType, linkId: string, roles: ApiRole[], activitiesByDimension: ActivitiesByDimension): string {
+/** The label and the priority together, because both are read off the same lookup: a saved task
+ *  carries only the id it links to, and its colour is the linked goal's business, not its own. */
+function resolveLink(
+  linkType: LinkType,
+  linkId: string,
+  roles: ApiRole[],
+  activitiesByDimension: ActivitiesByDimension
+): { label: string; isWeeklyPriority: boolean } {
   if (linkType === "role-goal") {
     for (const role of roles) {
       const goal = role.goals.find(g => g.id === linkId)
-      if (goal) return `${role.name} — ${goal.text}`
+      if (goal) return { label: `${role.name} — ${goal.text}`, isWeeklyPriority: goal.isWeeklyPriority }
     }
-    return "Unknown goal"
+    return { label: "Unknown goal", isWeeklyPriority: false }
   }
 
   for (const dim of DIMENSION_META) {
     const act = (activitiesByDimension[dim.id] ?? []).find(a => a.id === linkId)
-    if (act) return `${dim.label} — ${act.text}`
+    if (act) return { label: `${dim.label} — ${act.text}`, isWeeklyPriority: false }
   }
-  return "Unknown activity"
+  return { label: "Unknown activity", isWeeklyPriority: false }
 }
 
 export interface ApiTask {
@@ -93,6 +108,7 @@ export interface ApiTask {
 export function fromApiTask(apiTask: ApiTask, roles: ApiRole[], activitiesByDimension: ActivitiesByDimension): Task {
   const linkType: LinkType = apiTask.goal_id != null ? "role-goal" : "sharpen-the-saw"
   const linkId = String(apiTask.goal_id ?? apiTask.sharpen_the_saw_activity_id)
+  const link = resolveLink(linkType, linkId, roles, activitiesByDimension)
 
   return {
     id: String(apiTask.task_id),
@@ -102,7 +118,8 @@ export function fromApiTask(apiTask: ApiTask, roles: ApiRole[], activitiesByDime
     endMins: strToMins(apiTask.end_time),
     linkType,
     linkId,
-    linkLabel: resolveLinkLabel(linkType, linkId, roles, activitiesByDimension),
+    linkLabel: link.label,
+    isWeeklyPriority: link.isWeeklyPriority,
     isDailyPriority: apiTask.is_daily_priority,
   }
 }

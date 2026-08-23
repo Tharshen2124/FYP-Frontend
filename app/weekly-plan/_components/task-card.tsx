@@ -1,6 +1,6 @@
 import { Check, Pencil, X, Star } from "lucide-react"
 import type { Task, CalItem } from "../_types/calendar"
-import { HR_PX, CAL_START } from "../_constants/calendar"
+import { HR_PX, CAL_START, WEEKLY_PRIORITY_COLOR } from "../_constants/calendar"
 import { getPositionStyle } from "../_utils/calendar"
 import { fmtTime } from "../_utils/time"
 
@@ -35,8 +35,14 @@ export function TaskCard({ task, allCalItems, onEdit, onDelete, onDragStart }: P
         {task.isCompleted && (
           <Check className="w-2.5 h-2.5 flex-shrink-0" style={{ color: task.color }} />
         )}
+        {/* Always the reserved yellow, never the card's own colour. A daily priority is the one
+            mark that has to read the same on a role-coloured card and a yellow one. */}
         {task.isDailyPriority && (
-          <Star className="w-2.5 h-2.5 flex-shrink-0 fill-accent text-accent" />
+          <Star
+            className="w-2.5 h-2.5 flex-shrink-0 fill-current"
+            style={{ color: WEEKLY_PRIORITY_COLOR }}
+            aria-label="Daily priority"
+          />
         )}
         <p className="text-xs font-bold truncate leading-tight" style={{ color: task.color }}>
           {task.title}

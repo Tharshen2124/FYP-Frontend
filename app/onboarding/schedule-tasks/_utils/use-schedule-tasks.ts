@@ -52,7 +52,11 @@ export function useScheduleTasks(): ScheduleTasksData {
       const mappedRoles: ApiRole[] = rolesRes.roles.map(r => ({
         id: String(r.role_id),
         name: r.name,
-        goals: r.goals.map(g => ({ id: String(g.goal_id), text: g.text })),
+        goals: r.goals.map(g => ({
+          id: String(g.goal_id),
+          text: g.text,
+          isWeeklyPriority: g.is_weekly_priority,
+        })),
       }))
 
       const mappedActivitiesByDimension: Record<string, ApiActivity[]> = {}

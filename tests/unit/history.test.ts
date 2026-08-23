@@ -23,6 +23,7 @@ const task = (over: Partial<ApiHistoryTask> = {}): ApiHistoryTask => ({
   end_time: "15:30",
   is_fixed_appointment: false,
   is_daily_priority: false,
+  is_weekly_priority: false,
   is_completed: false,
   link_kind: "goal",
   link_text: "Ship the FYP",
@@ -121,7 +122,9 @@ describe("toHistoryActivity", () => {
   it("resolves the display label the frontend owns, not the stored string", () => {
     const resolved = toHistoryActivity(activity())
     expect(resolved.dimensionLabel).toBe("Social / Emotional")
-    expect(resolved.dimensionColor).toBe("#FFCC00")
+    /* Rose, not the yellow it used to be: that colour is reserved for a weekly-priority task, so
+       a Social / Emotional chip may not also claim it. */
+    expect(resolved.dimensionColor).toBe("#f43f5e")
   })
 
   it("flags an activity deleted since rather than dropping it", () => {

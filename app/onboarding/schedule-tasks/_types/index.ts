@@ -11,6 +11,9 @@ export interface Task {
   linkType: LinkType
   linkId: string
   linkLabel: string
+  /** Whether the goal behind this task is one of the week's priorities. Derived from the link, not
+   *  chosen here — the calendar reserves one colour for it. */
+  isWeeklyPriority: boolean
   isDailyPriority: boolean
 }
 
@@ -52,6 +55,7 @@ export interface FixedAppt {
 export interface ApiGoal {
   id: string
   text: string
+  isWeeklyPriority: boolean
 }
 
 export interface ApiRole {

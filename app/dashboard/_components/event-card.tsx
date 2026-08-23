@@ -2,7 +2,7 @@ import { Check, Lock, Star } from "lucide-react"
 import { fmtTime } from "../_utils/time"
 import { getPositionStyle } from "../_utils/calendar"
 import type { CalEvent, CalItem } from "../_types"
-import { HR_PX, CAL_START } from "../_constants/calendar"
+import { HR_PX, CAL_START, WEEKLY_PRIORITY_COLOR } from "../_constants/calendar"
 
 interface Props {
   event: CalEvent
@@ -40,8 +40,14 @@ export function EventCard({ event, allItems, onSelect }: Props) {
         {event.isFixed && (
           <Lock className="w-3 h-3 mt-0.5 shrink-0" style={{ color: event.color }} />
         )}
+        {/* Always the reserved yellow, never the card's own colour. A daily priority is the one
+            mark that has to read the same on a magenta card and a yellow one. */}
         {event.isDailyPriority && !event.isFixed && (
-          <Star className="w-3 h-3 mt-0.5 shrink-0 fill-current" style={{ color: event.color }} />
+          <Star
+            className="w-3 h-3 mt-0.5 shrink-0 fill-current"
+            style={{ color: WEEKLY_PRIORITY_COLOR }}
+            aria-label="Daily priority"
+          />
         )}
         {/* Ticked off in the End-of-Day check-in or in the detail dialog. The same mark /history
             uses, so the live week and the recorded one read the same way. */}

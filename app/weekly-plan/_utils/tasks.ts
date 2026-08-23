@@ -1,8 +1,8 @@
 import type { ApiPlanAppointment, ApiPlanTask } from "@/lib/api"
-import { FIXED_COLOR } from "../_constants/calendar"
+import { FIXED_COLOR, WEEKLY_PRIORITY_COLOR } from "../_constants/calendar"
 import { minsToStr, strToMins } from "./time"
 import type { Appt, ModalState, Task } from "../_types/calendar"
-import type { PlanDimension, PlanRole } from "../_types"
+import type { PlanDimension, PlanGoal, PlanRole } from "../_types"
 
 type LinkSelection = Pick<
   ModalState,
@@ -13,6 +13,17 @@ export interface LinkMeta {
   id: string
   label: string
   color: string
+}
+
+/**
+ * What a task serving this goal is drawn in.
+ *
+ * A weekly priority overrides the role's own colour. That is the whole force of reserving yellow:
+ * scanning the week, the goals the user said matter most this week are the ones that stand out,
+ * and which role they belong to is the caption's job rather than the tint's.
+ */
+function goalColor(goal: PlanGoal, role: PlanRole): string {
+  return goal.isWeeklyPriority ? WEEKLY_PRIORITY_COLOR : role.color
 }
 
 /**
@@ -30,7 +41,7 @@ export function getLinkMeta(
     const role = roles.find(r => r.id === modal.selectedRoleId)
     const goal = role?.goals.find(g => g.id === modal.selectedGoalId)
     if (!role || !goal) return null
-    return { id: goal.id, label: `${role.name} — ${goal.text}`, color: role.color }
+    return { id: goal.id, label: `${role.name} — ${goal.text}`, color: goalColor(goal, role) }
   }
 
   const dim = dimensions.find(d => d.id === modal.selectedDimensionId)
@@ -87,7 +98,7 @@ export function fromApiTask(
     dayIndex: apiTask.day_of_week,
     startMins: strToMins(apiTask.start_time),
     endMins: strToMins(apiTask.end_time),
-    color: role?.color ?? dim?.color ?? FIXED_COLOR,
+    color: goal && role ? goalColor(goal, role) : dim?.color ?? FIXED_COLOR,
     linkType: isGoal ? "role-goal" : "sharpen-the-saw",
     linkId,
     linkLabel: label,

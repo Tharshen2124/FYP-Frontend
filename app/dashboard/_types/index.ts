@@ -9,6 +9,9 @@ export interface CalEvent {
   color: string
   isFixed?: boolean
   isDailyPriority?: boolean
+  /** Whether the goal behind this task is one of the week's priorities. It is what earns the card
+   *  the reserved yellow, so it is carried separately from `color`. */
+  isWeeklyPriority?: boolean
   isCompleted: boolean
   linkLabel?: string
 }
@@ -25,6 +28,8 @@ export interface ApiTask {
   end_time: string
   is_fixed_appointment: boolean
   is_daily_priority: boolean
+  /** The goal's flag, not the task's — false for a fixed appointment or a Sharpen the Saw task. */
+  is_weekly_priority: boolean
   is_completed: boolean
   link_kind: "goal" | "activity" | null
   link_text: string | null

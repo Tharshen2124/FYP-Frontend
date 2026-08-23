@@ -2,6 +2,7 @@
 
 import { useMemo } from "react"
 import { CalendarDays, Check, Circle, Star } from "lucide-react"
+import { WEEKLY_PRIORITY_COLOR } from "@/lib/role-colors"
 import { DAYS } from "../_constants/history"
 import { groupBy } from "../_utils/group"
 import { weekLegend } from "../_utils/history"
@@ -20,9 +21,9 @@ interface Props {
  * make "not done" indistinguishable from "nothing rendered here". A fixed appointment is a
  * commitment rather than an intention, so an unticked one is left unmarked.
  */
-function CompletionMark({ event }: { event: HistoryEvent }) {
+function CompletionMark({ event, color }: { event: HistoryEvent; color: string }) {
   if (event.isCompleted) {
-    return <Check className="w-2.5 h-2.5 shrink-0" style={{ color: event.color }} aria-label="Completed" />
+    return <Check className="w-2.5 h-2.5 shrink-0" style={{ color }} aria-label="Completed" />
   }
 
   if (event.isFixed) return null
@@ -32,23 +33,35 @@ function CompletionMark({ event }: { event: HistoryEvent }) {
 
 function EventChip({ event }: { event: HistoryEvent }) {
   const Icon = event.icon
+  /* The reserved yellow overrides the role's colour, exactly as the live calendars draw it — a
+     week reads back the way it was planned. `event.color` stays the category's own, because that
+     is what the footer legend names. */
+  const color = event.isWeeklyPriority ? WEEKLY_PRIORITY_COLOR : event.color
 
   return (
     <div
       className="rounded-lg px-2 py-1.5 border"
-      style={{ backgroundColor: event.color + "22", borderColor: event.color + "55" }}
-      title={`${event.categoryLabel} — ${event.title}, ${fmtTime(event.startMins)}–${fmtTime(event.endMins)}`}
+      style={{ backgroundColor: color + "22", borderColor: color + "55" }}
+      title={`${event.categoryLabel} — ${event.title}, ${fmtTime(event.startMins)}–${fmtTime(event.endMins)}${
+        event.isWeeklyPriority ? " (weekly priority)" : ""
+      }`}
     >
       <div className="flex items-center gap-1 mb-0.5">
-        <Icon className="w-2.5 h-2.5 shrink-0" style={{ color: event.color }} />
-        <span className="text-[10px] font-bold leading-tight truncate" style={{ color: event.color }}>
+        <Icon className="w-2.5 h-2.5 shrink-0" style={{ color }} />
+        <span className="text-[10px] font-bold leading-tight truncate" style={{ color }}>
           {fmtTime(event.startMins)}
         </span>
         <span className="ml-auto flex items-center gap-0.5 shrink-0">
+          {/* Always the reserved yellow, never the chip's own colour: a daily priority has to read
+              the same on a role-coloured chip and a yellow one. */}
           {event.isDailyPriority && (
-            <Star className="w-2.5 h-2.5 shrink-0 fill-current" style={{ color: event.color }} aria-label="Daily priority" />
+            <Star
+              className="w-2.5 h-2.5 shrink-0 fill-current"
+              style={{ color: WEEKLY_PRIORITY_COLOR }}
+              aria-label="Daily priority"
+            />
           )}
-          <CompletionMark event={event} />
+          <CompletionMark event={event} color={color} />
         </span>
       </div>
 
@@ -61,8 +74,9 @@ function EventChip({ event }: { event: HistoryEvent }) {
       </p>
 
       {/* The line the old table was missing: what this task was actually for. The colour carries
-          the same answer, but only the caption survives being read one chip at a time. */}
-      <p className="text-[10px] leading-tight mt-0.5 truncate opacity-80" style={{ color: event.color }}>
+          the same answer, but only the caption survives being read one chip at a time — and on a
+          yellow chip the caption is the only thing left naming the role. */}
+      <p className="text-[10px] leading-tight mt-0.5 truncate opacity-80" style={{ color }}>
         {event.categoryLabel}
       </p>
     </div>
@@ -85,6 +99,10 @@ function LegendRow({ title, children }: { title: string; children: React.ReactNo
 export function ScheduleCard({ week }: Props) {
   const byDay = useMemo(() => groupBy(week.events, e => String(e.dayIndex)), [week.events])
   const legend = useMemo(() => weekLegend(week.events), [week.events])
+  /* Only the marks this week actually used, the same rule the category rows follow: explaining a
+     yellow chip on a week that has none invites exactly the question the legend exists to answer. */
+  const hasWeeklyPriority = week.events.some(e => e.isWeeklyPriority)
+  const hasDailyPriority = week.events.some(e => e.isDailyPriority)
 
   return (
     <div className="p-5 rounded-2xl bg-card border-2 border-border">
@@ -134,6 +152,35 @@ export function ScheduleCard({ week }: Props) {
               })}
             </LegendRow>
           ))}
+
+          {/* The reserved yellow and the star, behind their own rule. They cut across the rows
+              above rather than sitting in them: either can land on a task of any category. */}
+          {(hasWeeklyPriority || hasDailyPriority) && (
+            <div className="pt-2 border-t border-border">
+              <LegendRow title="Priority">
+                {hasWeeklyPriority && (
+                  <span className="flex items-center gap-1.5 text-xs text-muted-foreground font-serif">
+                    {/* The chip's own fill is too faint to read at 12px, so this borrows the
+                        calendar legends' treatment instead: a solid edge carries the colour. */}
+                    <span
+                      className="w-3 h-3 rounded-sm shrink-0"
+                      style={{
+                        backgroundColor: `${WEEKLY_PRIORITY_COLOR}40`,
+                        borderLeft: `3px solid ${WEEKLY_PRIORITY_COLOR}`,
+                      }}
+                    />
+                    Weekly priority goal
+                  </span>
+                )}
+                {hasDailyPriority && (
+                  <span className="flex items-center gap-1.5 text-xs text-muted-foreground font-serif">
+                    <Star className="w-3 h-3 shrink-0 fill-current" style={{ color: WEEKLY_PRIORITY_COLOR }} />
+                    Daily priority
+                  </span>
+                )}
+              </LegendRow>
+            </div>
+          )}
 
           {/* The two marks, in neutral ink and behind their own rule. Tinting them would put them
               in the same visual vocabulary as the categories above and read as two more of them. */}

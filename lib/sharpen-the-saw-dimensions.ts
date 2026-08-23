@@ -42,6 +42,8 @@ export const SHARPEN_THE_SAW_DIMENSIONS: SharpenTheSawDimensionMeta[] = [
     label: "Social / Emotional",
     description: "Meaningful relationships, empathy, and contribution",
     icon: Users,
-    color: "#FFCC00",
+    // Rose rather than the yellow this dimension used to be: yellow is reserved for a task under a
+    // weekly-priority goal (WEEKLY_PRIORITY_COLOR), and the schedules tint a task by its dimension.
+    color: "#f43f5e",
   },
 ]

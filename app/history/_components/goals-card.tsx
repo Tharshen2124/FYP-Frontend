@@ -2,6 +2,7 @@
 
 import { useMemo } from "react"
 import { ArrowRight, Check, Minus, Star, Target, X } from "lucide-react"
+import { WEEKLY_PRIORITY_COLOR } from "@/lib/role-colors"
 import { groupBy } from "../_utils/group"
 import { ordinal, outcomeLegend } from "../_utils/history"
 import type { GoalOutcome, HistoryGoal } from "../_types"
@@ -93,12 +94,18 @@ export function GoalsCard({ goals }: Props) {
                         >
                           {goal.text}
                         </span>
+                        {/* Named, not just starred, and in the one colour the schedule reserves
+                            for it — so the yellow cards on the week below and this label are
+                            legible as the same claim rather than two unrelated marks. The star
+                            was tinted with the role's colour, which said the opposite. */}
                         {goal.isWeeklyPriority && (
-                          <Star
-                            className="w-3 h-3 mt-0.5 shrink-0 fill-current"
-                            style={{ color: roleColor }}
-                            aria-label="Weekly priority"
-                          />
+                          <span
+                            className="text-[10px] uppercase tracking-wide font-semibold mt-0.5 shrink-0 px-1.5 py-0.5 rounded inline-flex items-center gap-1"
+                            style={{ backgroundColor: `${WEEKLY_PRIORITY_COLOR}22`, color: WEEKLY_PRIORITY_COLOR }}
+                          >
+                            <Star className="w-2.5 h-2.5 shrink-0 fill-current" />
+                            Weekly priority
+                          </span>
                         )}
                         {/* How long this one has been running. A goal on its fifth week is the
                             page's most useful signal and nothing else on it says so. */}

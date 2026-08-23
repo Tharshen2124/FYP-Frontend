@@ -226,6 +226,8 @@ export interface ApiHistoryTask {
   end_time: string
   is_fixed_appointment: boolean
   is_daily_priority: boolean
+  /** The goal's flag, not the task's — false for anything that does not serve a goal. */
+  is_weekly_priority: boolean
   is_completed: boolean
   link_kind: "goal" | "activity" | null
   link_text: string | null
@@ -452,6 +454,7 @@ export const api = {
           end_time: string
           is_fixed_appointment: boolean
           is_daily_priority: boolean
+          is_weekly_priority: boolean
           is_completed: boolean
           link_kind: "goal" | "activity" | null
           link_text: string | null

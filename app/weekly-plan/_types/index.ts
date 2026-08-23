@@ -11,6 +11,9 @@ import type { ElementType } from "react"
 export interface PlanGoal {
   id: string
   text: string
+  /** Named a priority for this week on /roles. A task serving one is drawn in the reserved yellow
+   *  rather than the role's own colour. */
+  isWeeklyPriority: boolean
 }
 
 export interface PlanRole {

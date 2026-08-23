@@ -1,5 +1,5 @@
 import { SHARPEN_THE_SAW_DIMENSIONS } from "@/lib/sharpen-the-saw-dimensions"
-import { DAILY_PRIORITY_COLOR, FIXED_COLOR, TASK_COLOR } from "../_constants/calendar"
+import { FIXED_COLOR, TASK_COLOR, WEEKLY_PRIORITY_COLOR } from "../_constants/calendar"
 import { strToMins } from "./time"
 import type { ApiTask, CalEvent, DetailRow, TaskDetail } from "../_types"
 
@@ -30,9 +30,17 @@ export function linkLabel(task: ApiTask): string | undefined {
   return undefined
 }
 
+/**
+ * What a task is drawn in.
+ *
+ * Yellow is reserved, and this is what earns it: the task serves a goal the user named a weekly
+ * priority. A *daily* priority used to take the colour and no longer does — it is a star on the
+ * card instead. The two say different things, and one of them has to be the one a glance across
+ * the week answers: which of these is work on what matters most this week.
+ */
 function colorFor(task: ApiTask): string {
   if (task.is_fixed_appointment) return FIXED_COLOR
-  if (task.is_daily_priority) return DAILY_PRIORITY_COLOR
+  if (task.is_weekly_priority) return WEEKLY_PRIORITY_COLOR
   return TASK_COLOR
 }
 
@@ -85,6 +93,7 @@ export function toCalEvents(tasks: ApiTask[]): CalEvent[] {
     color: colorFor(task),
     isFixed: task.is_fixed_appointment,
     isDailyPriority: task.is_daily_priority,
+    isWeeklyPriority: task.is_weekly_priority,
     isCompleted: task.is_completed,
     linkLabel: linkLabel(task),
   }))

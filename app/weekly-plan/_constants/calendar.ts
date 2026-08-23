@@ -12,6 +12,10 @@ export const HR_PX      = 64
 // shows them — this tab, the tasks tab, and onboarding.
 export const FIXED_COLOR  = "#3b82f6"
 
+/* Re-exported rather than repeated: the reserved yellow is one fact about the whole app, and the
+   role palette is where it is defined precisely because no role may take it. */
+export { WEEKLY_PRIORITY_COLOR } from "@/lib/role-colors"
+
 export const EMPTY_TASK_MODAL: ModalState = {
   open: false,
   mode: "add",

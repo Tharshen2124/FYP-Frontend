@@ -92,6 +92,8 @@ export default function ScheduleTasksPage() {
       linkType: modal.linkType,
       linkId: meta.id,
       linkLabel: meta.label,
+      // Inherited from the goal, not chosen here: /roles is where a weekly priority is set.
+      isWeeklyPriority: meta.isWeeklyPriority,
       isDailyPriority: modal.isDailyPriority,
     }
 

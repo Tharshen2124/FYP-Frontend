@@ -13,8 +13,18 @@ import type { ApiPlanTask } from "@/lib/api"
 // Stand-ins for what the API returns for the week being planned: roles carry the goals they hold
 // in that week, dimensions carry only the activities committed to it.
 const ROLES: PlanRole[] = [
-  { id: "11", name: "Professional", color: "#B13BFF", goals: [{ id: "1", text: "Ship the report" }] },
-  { id: "12", name: "Health", color: "#14b8a6", goals: [{ id: "2", text: "Run 5km" }] },
+  {
+    id: "11",
+    name: "Professional",
+    color: "#B13BFF",
+    goals: [
+      { id: "1", text: "Ship the report", isWeeklyPriority: false },
+      // The same role holds both, which is the case that matters: the yellow has to come off the
+      // goal rather than off the role, or one priority would repaint every task under it.
+      { id: "3", text: "Submit the paper", isWeeklyPriority: true },
+    ],
+  },
+  { id: "12", name: "Health", color: "#14b8a6", goals: [{ id: "2", text: "Run 5km", isWeeklyPriority: false }] },
 ]
 
 const DIMENSIONS: PlanDimension[] = [
@@ -47,6 +57,14 @@ describe("getLinkMeta", () => {
     expect(
       getLinkMeta({ ...base, linkType: "role-goal", selectedRoleId: "11", selectedGoalId: "1" }, ROLES, DIMENSIONS)
     ).toEqual({ id: "1", color: "#B13BFF", label: "Professional — Ship the report" })
+  })
+
+  /* The reservation, at the point a task is given its colour: a weekly-priority goal overrides
+     the role's own colour, and its sibling under the same role does not. */
+  it("gives a weekly-priority goal the reserved yellow instead of its role's colour", () => {
+    expect(
+      getLinkMeta({ ...base, linkType: "role-goal", selectedRoleId: "11", selectedGoalId: "3" }, ROLES, DIMENSIONS)
+    ).toEqual({ id: "3", color: "#FFCC00", label: "Professional — Submit the paper" })
   })
 
   it("returns the activity's id, the dimension colour and a 'Dimension — Activity' label", () => {
@@ -104,6 +122,11 @@ describe("fromApiTask", () => {
       startMins: 9 * 60,
       endMins: 10 * 60 + 30,
     })
+  })
+
+  it("reads a saved task's colour back off its goal's priority, not its role", () => {
+    expect(fromApiTask(apiTask({ goal_id: 3 }), ROLES, DIMENSIONS).color).toBe("#FFCC00")
+    expect(fromApiTask(apiTask({ goal_id: 1 }), ROLES, DIMENSIONS).color).toBe("#B13BFF")
   })
 
   it("resolves an activity link to its dimension", () => {
