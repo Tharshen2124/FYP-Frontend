@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { AlertTriangle } from "lucide-react"
 import { toast } from "sonner"
@@ -32,6 +32,11 @@ export default function OnboardingRolesPage() {
   const [pendingGoal, setPendingGoal] = useState<PendingGoal | null>(null)
   const [goalToDelete, setGoalToDelete] = useState<{ roleId: string; goal: Goal } | null>(null)
   const [editingGoal, setEditingGoal] = useState<EditingGoal | null>(null)
+
+  // Goal ids are local only — they key React's lists and name a goal to edit or delete, and never
+  // reach the API (`toRolesPayload` drops them). A counter keeps that out of render, where
+  // Date.now() would be an impure call, and cannot collide the way two adds in one millisecond can.
+  const nextGoalId = useRef(0)
 
   const totalGoals = countGoals(roles)
 
@@ -86,7 +91,8 @@ export default function OnboardingRolesPage() {
   }
 
   const addGoalToRole = (roleId: string, goalText: string) => {
-    const newGoal: Goal = { id: Date.now().toString(), text: goalText }
+    nextGoalId.current += 1
+    const newGoal: Goal = { id: `goal-${nextGoalId.current}`, text: goalText }
     setRoles(roles.map(r => (r.id === roleId ? { ...r, goals: [...r.goals, newGoal] } : r)))
     setGoalInputs(prev => ({ ...prev, [roleId]: "" }))
   }

@@ -31,7 +31,7 @@ export function ClashWarningModal({ open, conflictingTitle, onProceed, onCancel 
             <div>
               <p>
                 This time slot overlaps with{" "}
-                <span className="font-bold text-foreground">"{conflictingTitle}"</span>.
+                <span className="font-bold text-foreground">&ldquo;{conflictingTitle}&rdquo;</span>.
               </p>
               <p>
                 Overlapping commitments can split your focus and reduce effectiveness.

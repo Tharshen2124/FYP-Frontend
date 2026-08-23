@@ -60,6 +60,10 @@ export function AnimatedSchedule() {
       } else {
         setShowNewTask(false)
         setIsTyping(false)
+        // Cleared here rather than in the typing effect below: wiping the line is part of stopping
+        // the animation, and doing it in an effect body is a second render just to undo the first.
+        setTypingText("")
+        setCharIndex(0)
       }
       
       currentPos = (currentPos + 1) % positions.length
@@ -70,11 +74,7 @@ export function AnimatedSchedule() {
 
   // Typing animation
   useEffect(() => {
-    if (!isTyping) {
-      setTypingText("")
-      setCharIndex(0)
-      return
-    }
+    if (!isTyping) return
 
     const currentTask = TYPING_TASKS[typingIndex]
     

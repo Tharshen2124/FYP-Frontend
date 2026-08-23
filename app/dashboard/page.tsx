@@ -8,6 +8,7 @@ import { useRequireAuth } from "@/hooks/use-require-auth"
 import { useCurrentWeek } from "@/hooks/use-current-week"
 import { api } from "@/lib/api"
 import type { CheckInStatus } from "@/lib/api"
+import { getDayIndex } from "@/lib/date"
 import { WeeklyTimetable } from "./_components/weekly-timetable"
 import { EndOfDayModal } from "./_components/end-of-day-modal"
 import { TaskDetailModal } from "./_components/task-detail-modal"
@@ -20,13 +21,34 @@ import type { ApiWeeklyPlan } from "./_types"
 
 type LoadState = "loading" | "ready" | "error"
 
+/**
+ * Whether tonight's check-in should open.
+ *
+ * Everything the decision needs arrives on the one response the page already waits for: the time
+ * the user set, and which nights this week have been dealt with. Asking separately would mean
+ * either delaying the prompt or showing it and taking it back — so it is answered there, once, as
+ * the plan lands, rather than by an effect watching the state that response produced.
+ *
+ * That is also where the clock belongs. Reading it while rendering is the kind of impurity that
+ * gives a component two different answers for the same state, and reading it in an effect body
+ * means a second render just to open a dialog.
+ *
+ * With no plan there is nothing to tick and nothing the server would accept — it refuses a
+ * reflection for a week that was never planned. `NoPlanCard` is the whole of the page in that state.
+ */
+function isEodPromptDue(plan: ApiWeeklyPlan | null, eodTime: string | null): boolean {
+  if (plan === null) return false
+  if (plan.check_ins.some(c => c.day_of_week === getDayIndex())) return false
+
+  return isCheckInDue(new Date(), eodTime)
+}
+
 export default function DashboardPage() {
   const { isReady } = useRequireAuth()
   const week = useCurrentWeek()
   const [showEodModal, setShowEodModal] = useState(false)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [plan, setPlan] = useState<ApiWeeklyPlan | null>(null)
-  const [eodTime, setEodTime] = useState<string | null>(null)
   const [loadState, setLoadState] = useState<LoadState>("loading")
   const [reloadKey, setReloadKey] = useState(0)
 
@@ -39,8 +61,10 @@ export default function DashboardPage() {
       .then(({ weekly_plan, eod_time }) => {
         if (cancelled) return
         setPlan(weekly_plan)
-        setEodTime(eod_time)
         setLoadState("ready")
+        /* Asked once, here: the modal is opened by the arrival of the answer, and never re-opened
+           by a later patch to the plan — ticking a task off replaces that object. */
+        if (isEodPromptDue(weekly_plan, eod_time)) setShowEodModal(true)
       })
       .catch(() => {
         if (!cancelled) setLoadState("error")
@@ -48,27 +72,6 @@ export default function DashboardPage() {
 
     return () => { cancelled = true }
   }, [isReady, reloadKey])
-
-  /* The check-in writes a reflection against this week's plan, and the server refuses one for a
-     week that was never planned — so with no plan there is nothing to tick and nothing it would
-     accept. `NoPlanCard` is the whole of the page in that state.
-
-     Everything the decision needs arrives on the one response the page already waits for: the time
-     the user set, and which nights this week have been dealt with. Asking separately would mean
-     either delaying the prompt or showing it and taking it back. */
-  const canPrompt = loadState === "ready" && plan !== null && week !== null
-  /* Keyed on booleans rather than on the plan: ticking a task replaces the plan object, and an
-     effect watching it would re-run in the middle of a save. Once tonight has been recorded this
-     flips true and the effect returns early, so it cannot re-open what the user just closed. */
-  const checkedInToday =
-    plan !== null && week !== null && plan.check_ins.some(c => c.day_of_week === week.todayIdx)
-
-  useEffect(() => {
-    if (!canPrompt || checkedInToday) return
-    /* `new Date()` belongs in here rather than in the render: reading the clock while rendering is
-       the kind of impurity that gives a component two different answers for the same state. */
-    if (isCheckInDue(new Date(), eodTime)) setShowEodModal(true)
-  }, [canPrompt, checkedInToday, eodTime])
 
   const events = useMemo(() => (plan ? toCalEvents(plan.tasks) : []), [plan])
 
