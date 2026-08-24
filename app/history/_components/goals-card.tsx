@@ -22,13 +22,11 @@ interface Props {
  * counting it as one would also mean pruning could move the percentage on the tile above, which is
  * why the stats row leaves it out of both halves of the ratio.
  *
- * `carried` is the other thing a cross used to overstate: the goal was unfinished when the week
- * closed, but it went on into the next week rather than stopping. An arrow, because that is what
- * happened to it.
+ * There is no `carried` glyph: carrying forward is not one of these. It says nothing about how the
+ * week went — see the badge below, which sits beside whichever of these the week earned.
  */
 const OUTCOME = {
   achieved: { icon: Check, label: "Achieved", className: "text-primary" },
-  carried: { icon: ArrowRight, label: "Carried on", className: "text-muted-foreground/60" },
   missed: { icon: X, label: "Missed", className: "text-muted-foreground/60" },
   dropped: { icon: Minus, label: "Removed", className: "text-muted-foreground/60" },
   open: { icon: Minus, label: "Still open", className: "text-muted-foreground/60" },
@@ -44,6 +42,7 @@ export function GoalsCard({ goals }: Props) {
   const byRole = useMemo(() => groupBy(goals, g => String(g.roleId)), [goals])
   const roleIds = Object.keys(byRole)
   const legend = useMemo(() => outcomeLegend(goals), [goals])
+  const anyCarried = useMemo(() => goals.some(g => g.isCarriedForward), [goals])
 
   return (
     <div className="p-5 rounded-2xl bg-card border-2 border-border h-full">
@@ -117,6 +116,19 @@ export function GoalsCard({ goals }: Props) {
                             {ordinal(goal.weekIndex)} week
                           </span>
                         )}
+                        {/* Where it went, next to where it came from. Deliberately a badge and not
+                            a glyph: it is not an alternative to the outcome on the left, it is a
+                            second fact about the same goal, and an unfinished goal that continued
+                            has earned both the cross and this. */}
+                        {goal.isCarriedForward && (
+                          <span
+                            className="text-[10px] mt-0.5 shrink-0 px-1.5 py-0.5 rounded bg-muted text-muted-foreground/80 inline-flex items-center gap-1"
+                            title="Carried forward into the following week"
+                          >
+                            <ArrowRight className="w-2.5 h-2.5 shrink-0" />
+                            Carried on
+                          </span>
+                        )}
                         {goal.outcome === "dropped" && (
                           <span className="text-[10px] text-muted-foreground/70 mt-0.5 shrink-0">removed</span>
                         )}
@@ -132,8 +144,10 @@ export function GoalsCard({ goals }: Props) {
 
       {/* The glyphs above carry the whole outcome vocabulary and nothing on the card said what they
           meant. Only the outcomes this week actually used: explaining "Removed" on a week where
-          nothing was removed invites exactly the question the legend exists to answer. */}
-      {legend.length > 0 && (
+          nothing was removed invites exactly the question the legend exists to answer. The arrow
+          earns its line on the same terms — it is the one marker that is not an outcome, so a week
+          that carried nothing forward should not be told what it would have meant. */}
+      {(legend.length > 0 || anyCarried) && (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4 pt-3 border-t border-border">
           {legend.map(outcome => {
             const { icon: Icon, label, className } = OUTCOME[outcome]
@@ -144,6 +158,12 @@ export function GoalsCard({ goals }: Props) {
               </div>
             )
           })}
+          {anyCarried && (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-serif">
+              <ArrowRight className="w-3 h-3 shrink-0 text-muted-foreground/60" />
+              Carried into the next week
+            </div>
+          )}
         </div>
       )}
     </div>

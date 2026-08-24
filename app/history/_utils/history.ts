@@ -23,28 +23,31 @@ import type {
 } from "../_types"
 
 /**
- * How a goal resolved.
+ * How a goal resolved **in this week**, which is the only week it belongs to.
  *
- * The order of the tests is the order of precedence, and each step is deliberate:
+ * The order of the tests is the order of precedence:
  *
- * - **Dropped wins over everything.** A goal the user removed is reported as removed even if it had
- *   been ticked off first, because the interesting fact about it is that it left the week.
- * - **Achieved beats carried.** Carrying a finished goal forward is allowed — the picker filters on
- *   `.active` and `carried_to`, not on completion — and for *this* week it was still achieved.
- * - **Carried beats missed.** A goal unfinished when the week closed but continued into the next
- *   one has not been given up on, and a bare cross says it has.
+ * - **Dropped wins over everything.** A goal the user removed is reported as removed even if its
+ *   tasks had been ticked off first, because the interesting fact is that it left the week.
+ * - **Achieved is read off the tasks** (`Goal.achieved` server-side), so a goal with nothing
+ *   scheduled is *not* achieved — nothing to do is not the same as everything done. It falls
+ *   through to missed once the week has ended, like any other unfinished goal.
+ * - **Missed only once the week is over**, so a live week reads `open` rather than failing early.
+ *
+ * Carrying forward is not consulted here at all — see {@link GoalOutcome}. It is drawn as its own
+ * badge, so an unfinished goal that continued shows a cross *and* an arrow rather than one
+ * standing in for the other.
  *
  * `weekHasEnded` is passed in rather than read from the clock here: the caller knows the user's
  * local date, and /history only ever asks about past weeks.
  */
 export function goalOutcome(
-  { isDropped, isCompleted, isCarriedForward = false, weekHasEnded }:
-  { isDropped: boolean; isCompleted: boolean; isCarriedForward?: boolean; weekHasEnded: boolean }
+  { isDropped, isAchieved, weekHasEnded }:
+  { isDropped: boolean; isAchieved: boolean; weekHasEnded: boolean }
 ): GoalOutcome {
   if (isDropped) return "dropped"
-  if (isCompleted) return "achieved"
-  if (!weekHasEnded) return "open"
-  return isCarriedForward ? "carried" : "missed"
+  if (isAchieved) return "achieved"
+  return weekHasEnded ? "missed" : "open"
 }
 
 /** `1 → "1st"`, `3 → "3rd"`, `11 → "11th"`. Only ever used on a small count of weeks, but the
@@ -64,8 +67,7 @@ export function toHistoryGoal(goal: ApiHistoryGoal, weekHasEnded: boolean): Hist
     isWeeklyPriority: goal.is_weekly_priority,
     outcome: goalOutcome({
       isDropped: goal.is_dropped,
-      isCompleted: goal.is_completed,
-      isCarriedForward: goal.is_carried_forward,
+      isAchieved: goal.is_achieved,
       weekHasEnded,
     }),
     weekIndex: goal.week_index,
@@ -201,7 +203,7 @@ export function weekLegend(events: HistoryEvent[]): LegendGroup[] {
 
 /** The order the goals card explains its glyphs in — how a week reads best, not how the union is
  *  declared: what it met, what it is still on, what it did not, then what left it. */
-const OUTCOME_ORDER: GoalOutcome[] = [ "achieved", "carried", "missed", "dropped", "open" ]
+const OUTCOME_ORDER: GoalOutcome[] = [ "achieved", "missed", "dropped", "open" ]
 
 /**
  * Which outcome markers this week actually used, for the goals card's footer legend.
@@ -219,9 +221,9 @@ export function outcomeLegend(goals: HistoryGoal[]): GoalOutcome[] {
  * The four tiles.
  *
  * Dropped goals are out of both halves of the goal ratio: a goal the user pruned is neither an
- * achievement nor a miss, and counting it either way would make pruning change the score. A
- * *carried* goal stays in, deliberately — it was not achieved in this week, and this tile is about
- * this week. That it continued is the goals card's business, not the ratio's.
+ * achievement nor a miss, and counting it either way would make pruning change the score. A goal
+ * that was *carried forward* stays in, deliberately — this tile is about this week, and in this
+ * week it was not achieved. That it continued is the goals card's business, not the ratio's.
  * Fixed appointments are out of the task ratio, since they have a tile of their own.
  */
 export function weekStats(week: HistoryWeek): HistoryStats {

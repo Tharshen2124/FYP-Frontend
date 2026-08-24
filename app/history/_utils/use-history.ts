@@ -90,8 +90,8 @@ export function useHistory() {
       .then(({ week }) => {
         if (cancelled) return
         // Every week this route offers has ended, so the goal outcomes it derives can only be
-        // achieved, missed or dropped. Passing the fact rather than assuming it keeps the mapper
-        // honest if the route is ever pointed at a live week.
+        // achieved, missed or dropped — never `open`. Passing the fact rather than assuming it
+        // keeps the mapper honest if the route is ever pointed at a live week.
         setLoaded({ weekStart, week: week && toHistoryWeek(week, true) })
       })
       .catch(() => {

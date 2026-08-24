@@ -1,16 +1,20 @@
 import type { ElementType } from "react"
 
 /**
- * How a goal resolved. All five are derived rather than stored — from `is_dropped`, `is_completed`,
- * `is_carried_forward` and whether the week has ended — because the server keeps no timezone and so
- * cannot decide the last of those.
+ * How a goal resolved *in its own week* — derived rather than stored, from `is_achieved`,
+ * `is_dropped` and whether the week has ended, because the server keeps no timezone and so cannot
+ * decide the last of those.
  *
- * Two of them exist to stop the cross overstating its case. A `dropped` goal is reported apart from
- * a missed one, so pruning a goal neither reads as a failure nor quietly raises the completion
- * percentage. A `carried` goal was unfinished when the week closed but continued into the next one,
- * which is a different fact from having stopped.
+ * Carrying forward is deliberately **not** one of these. It is a different claim about a different
+ * week: a carryover copies the goal into the next week and leaves this row where it is
+ * (`goals_controller#carry`), so "did the work happen here?" and "did it continue?" are independent
+ * and a goal can answer both. `HistoryGoal.isCarriedForward` carries the second, drawn as a badge
+ * beside the outcome. Folding it in here forced the card to pick a winner between them.
+ *
+ * `dropped` stays, because it really is an alternative to the other three: a goal the user pruned
+ * neither reads as a failure nor quietly raises the completion percentage.
  */
-export type GoalOutcome = "achieved" | "dropped" | "missed" | "carried" | "open"
+export type GoalOutcome = "achieved" | "dropped" | "missed" | "open"
 
 /** What a schedule chip was for. `none` is the schema-permitted, UI-unreachable unlinked task. */
 export type CategoryKind = "fixed" | "goal" | "activity" | "none"

@@ -192,13 +192,15 @@ export interface ApiHistoryRole {
   is_archived: boolean
 }
 
-/** `is_completed` and `is_dropped` rather than a finished `outcome`: whether the week has ended is
+/** `is_achieved` and `is_dropped` rather than a finished `outcome`: whether the week has ended is
  *  a client fact, so the server sends the parts and the client composes the outcome. */
 export interface ApiHistoryGoal {
   goal_id: number
   text: string
   is_weekly_priority: boolean
-  is_completed: boolean
+  /** Whether every task under this goal was done — read off the tasks by `Goal.achieved`, not off
+   *  the vestigial `goals.is_completed` column, which never had a writer. */
+  is_achieved: boolean
   is_dropped: boolean
   /** 1-based position in this goal's carry-forward chain: 1 for one begun in this week, 3 for one
    *  carried in twice. Goals are week-owned copies, so this is a walk of `goal_carryovers`. */
