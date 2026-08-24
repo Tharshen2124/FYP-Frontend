@@ -5,6 +5,7 @@ import {
   schedulableColumn,
   completeOnboarding,
   fillEveryDimension,
+  seedNextWeekPlan,
   seedWeeklyPlan,
 } from "./helpers"
 
@@ -47,17 +48,57 @@ test.describe("weekly plan target week", () => {
     await expect(page.getByText("This week is already planned")).toBeVisible()
   })
 
-  test("the toggle switches between the two, and the choice survives a reload", async ({ page }) => {
+  // The week is decided by the rule and reported, never asked. Re-planning a week that is already
+  // planned belongs to /weekly-plan/edit, /roles and /sharpen-the-saw, so a control here would only
+  // be a second, worse route to those.
+  test("offers no control to change the week it picked", async ({ page }) => {
     await authenticateAsNewUser(page)
     await seedWeeklyPlan(page)
     await page.goto("/weekly-plan/goals")
     await expect(page).toHaveURL(new RegExp(`week_start=${mondayAfter(currentMonday())}`))
 
-    await page.getByRole("button", { name: /Plan this week instead/ }).click()
-    await expect(page).toHaveURL(new RegExp(`week_start=${currentMonday()}`))
+    await expect(page.getByRole("button", { name: /Plan this week instead/ })).toHaveCount(0)
+    await expect(page.getByRole("button", { name: /Plan next week instead/ })).toHaveCount(0)
+  })
+
+  // The flow stops one week ahead. Planning further out is planning a week whose shape is not known
+  // yet, and the week after next becomes reachable on its own once next week starts.
+  test("refuses a third week when this week and the next are both planned", async ({ page }) => {
+    await authenticateAsNewUser(page)
+    await seedWeeklyPlan(page)
+    await seedNextWeekPlan(page)
+    await page.goto("/weekly-plan/goals")
+
+    await expect(page.getByText(/planned through next week/)).toBeVisible()
+    await expect(nextButton(page)).toBeDisabled()
+
+    // No week is stamped into the URL, so a reload re-runs the check rather than walking back into
+    // the wizard on a week that needs no planning.
+    await expect(page).toHaveURL(/\/weekly-plan\/goals$/)
+    await page.reload()
+    await expect(page.getByText(/planned through next week/)).toBeVisible()
+  })
+
+  test("points at the surfaces that do change a planned week", async ({ page }) => {
+    await authenticateAsNewUser(page)
+    await seedWeeklyPlan(page)
+    await seedNextWeekPlan(page)
+    await page.goto("/weekly-plan/goals")
+
+    await page.getByRole("link", { name: /Edit Weekly Plan/ }).click()
+    await page.waitForURL(/\/weekly-plan\/edit$/)
+  })
+
+  test("the week it picked survives a reload", async ({ page }) => {
+    await authenticateAsNewUser(page)
+    await seedWeeklyPlan(page)
+    await page.goto("/weekly-plan/goals")
+
+    const nextWeek = mondayAfter(currentMonday())
+    await expect(page).toHaveURL(new RegExp(`week_start=${nextWeek}`))
 
     await page.reload()
-    await expect(page).toHaveURL(new RegExp(`week_start=${currentMonday()}`))
+    await expect(page).toHaveURL(new RegExp(`week_start=${nextWeek}`))
   })
 
   test("carries the chosen week through every step", async ({ page }) => {

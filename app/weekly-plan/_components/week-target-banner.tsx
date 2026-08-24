@@ -1,20 +1,23 @@
 "use client"
 
-import { ArrowLeftRight, CalendarRange } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { CalendarRange } from "lucide-react"
 import type { TargetWeek } from "../_utils/use-target-week"
 
 /**
- * Names the week this flow is writing to, and offers the other one.
+ * Names the week this flow is writing to, and says why it is that one.
  *
- * **The first step only.** Choosing the week is one decision taken at the start of one flow, so
- * repeating the control on the later steps would be noise — and worse than noise on the schedule
- * step, where switching week mid-edit would swap the calendar out from under unsaved changes.
- * Those steps say which week they are on by other means: the calendar prints the week's real
- * dates across the top.
+ * **The first step only.** Which week is being planned is settled before the user arrives, so
+ * repeating this on the later steps would be noise — and worse than noise on the schedule step,
+ * where it would compete with the calendar's own date headers.
  *
- * Here it earns its place, because "This Week's Goals" is otherwise a lie half the time — on
- * Wednesday of an already-planned week the flow is filling in *next* week.
+ * It earns its place here because "Goals for the Week" is otherwise a lie half the time: on
+ * Wednesday of an already-planned week the flow is filling in *next* week, and nothing else on the
+ * page says so.
+ *
+ * There is no control to change the week. The rule decides it — current week if unplanned,
+ * otherwise the one ahead — and re-planning a week already planned belongs to the surfaces built
+ * for it: `/weekly-plan/edit` for appointments and tasks, `/roles` for a goal, `/sharpen-the-saw`
+ * for an activity. This banner reports the decision; it does not ask.
  */
 export function WeekTargetBanner({ week }: { week: TargetWeek }) {
   if (week.isResolving) {
@@ -22,39 +25,26 @@ export function WeekTargetBanner({ week }: { week: TargetWeek }) {
   }
 
   // Only claims what has actually been established. A week reached by a hand-written URL, or one
-  // shown before the check comes back, gets no explanation rather than a confident wrong one.
+  // shown before the check comes back, gets the week's dates and no explanation, rather than a
+  // confident wrong one. The two branches below are the only two the rule can produce.
   const reason =
     week.currentWeekIsPlanned === null ? null
-    : week.isCurrentWeek ? (week.currentWeekIsPlanned
-        ? "You're re-planning the week you're in."
-        : "You haven't planned this week yet.")
     : week.currentWeekIsPlanned ? "This week is already planned, so this is the week ahead."
-    : "You haven't planned this week yet — the toggle comes back to it."
+    : "You haven't planned this week yet."
 
   return (
-    <div className="mb-6 flex flex-wrap items-center justify-between gap-4 bg-card border-2 border-border rounded-xl px-5 py-4">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
-          <CalendarRange className="w-5 h-5 text-primary" />
-        </div>
-        <div>
-          <p className="text-foreground font-bold leading-tight">
-            Planning <span className="text-primary">{week.label}</span>
-          </p>
-          {reason && (
-            <p className="text-sm text-muted-foreground font-serif leading-tight">{reason}</p>
-          )}
-        </div>
+    <div className="mb-6 flex items-center gap-3 bg-card border-2 border-border rounded-xl px-5 py-4">
+      <div className="w-10 h-10 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
+        <CalendarRange className="w-5 h-5 text-primary" />
       </div>
-
-      <Button
-        variant="outline"
-        onClick={week.toggleWeek}
-        className="border-border text-foreground hover:bg-secondary/20"
-      >
-        <ArrowLeftRight className="w-4 h-4 mr-2" />
-        {week.isCurrentWeek ? "Plan next week instead" : "Plan this week instead"}
-      </Button>
+      <div>
+        <p className="text-foreground font-bold leading-tight">
+          Planning <span className="text-primary">{week.label}</span>
+        </p>
+        {reason && (
+          <p className="text-sm text-muted-foreground font-serif leading-tight">{reason}</p>
+        )}
+      </div>
     </div>
   )
 }

@@ -88,10 +88,26 @@ if it has no plan, otherwise next week**, then `router.replace`s it in. That sec
 flow takes a week at all — always planning next week would leave someone returning after a gap
 unable to fill in the week they are standing in.
 
-Choosing the week is **one decision at step 1**, so `WeekTargetBanner` and its toggle live on
-`/weekly-plan/goals` only. Steps 2 and 3 inherit the week from the URL and never re-ask — on the
-schedule step a mid-flow switch would swap the calendar out from under unsaved edits. That step says
-which week it is on through the calendar's own date headers, which come from
+**The rule is the whole decision — there is no control to override it.** `WeekTargetBanner` on
+`/weekly-plan/goals` reports which week was picked and why ("You haven't planned this week yet." /
+"This week is already planned, so this is the week ahead."), and that is all it does. It used to
+carry a toggle between the two weeks; that was removed, because re-planning a week already planned
+is what the surfaces built for it are for — `/weekly-plan/edit` for appointments and tasks,
+`/roles` for a goal, `/sharpen-the-saw` for an activity. A toggle here was a second, worse route to
+those, and it made "which week am I editing?" a question the user had to keep answering.
+
+**And it stops one week ahead.** With this week *and* the next both planned there is no third week
+on offer: `useTargetWeek` resolves nothing, leaves the URL bare so a reload re-runs the check, and
+sets `isFullyPlanned`. Step 1 then renders `AlreadyPlannedNotice` in place of the wizard — it names
+both planned weeks, says the week after next becomes available once next week starts, and links to
+the three surfaces above. Planning further out means planning a week whose shape is not known yet,
+and an empty wizard over a finished week only invites staging goals into it. The notice is a page
+rather than a toast-and-redirect because reaching it from the sidebar is an ordinary thing to do,
+and a bounce with a fading message reads as a malfunction rather than an answer.
+
+The banner lives on step 1 only. Steps 2 and 3 inherit the week from the URL and never re-ask — on
+the schedule step a mid-flow switch would swap the calendar out from under unsaved edits. That step
+says which week it is on through the calendar's own date headers, which come from
 `app/weekly-plan/_utils/use-plan-week.ts`: the dates are those of the week being planned, and the "today"
 pill, the past-day dimming and the block on those days only appear when that week is the current
 one — planning the week ahead leaves all seven columns open.

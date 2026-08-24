@@ -105,6 +105,48 @@ export async function seedWeeklyPlan(page: Page) {
 }
 
 /**
+ * Puts a plan on *next* week as well, so the flow has nowhere left to go.
+ *
+ * One goal is enough: a `weekly_plans` row is filed the first time a week is written to, and that
+ * row existing is the only thing `useTargetWeek` asks about. Driven through the API rather than the
+ * wizard because walking three steps to assert the fourth is refused would test the walk, not the
+ * refusal.
+ */
+export async function seedNextWeekPlan(page: Page) {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000"
+
+  await page.evaluate(async (apiUrl: string) => {
+    const cookie = document.cookie.match(/(?:^|; )habitflow-auth=([^;]*)/)
+    const token = JSON.parse(decodeURIComponent(cookie![1])).state.token
+
+    // The Monday after this one, derived from the local clock exactly as lib/date.ts does.
+    const monday = new Date()
+    monday.setDate(monday.getDate() + (monday.getDay() === 0 ? -6 : 1 - monday.getDay()) + 7)
+    const weekStart = [
+      monday.getFullYear(),
+      String(monday.getMonth() + 1).padStart(2, "0"),
+      String(monday.getDate()).padStart(2, "0"),
+    ].join("-")
+
+    const call = async (method: string, path: string, body?: unknown) => {
+      const res = await fetch(`${apiUrl}${path}`, {
+        method,
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      })
+      if (!res.ok) throw new Error(`${method} ${path} → ${res.status} ${await res.text()}`)
+      return res.json()
+    }
+
+    const { roles } = await call("GET", `/roles?week_start=${weekStart}`)
+    await call("POST", `/goals?week_start=${weekStart}`, {
+      role_id: roles[0].role_id,
+      description: "Already planned ahead",
+    })
+  }, apiUrl)
+}
+
+/**
  * Gives the user a *finished* week with something in it: a goal that was achieved, a starred
  * priority that was not, and Sharpen the Saw tasks spread unevenly over three of the four dimensions.
  *

@@ -6,6 +6,7 @@ import { toast } from "sonner"
 import { AppNav } from "@/components/app-nav"
 import { api } from "@/lib/api"
 import { countCommitted, countStaged, groupCandidatesByRole, toWeekRole } from "./_utils/goals"
+import { AlreadyPlannedNotice } from "./_components/already-planned-notice"
 import { RoleGoalsCard } from "./_components/role-goals-card"
 import { WeekTargetBanner } from "../_components/week-target-banner"
 import { useTargetWeek } from "../_utils/use-target-week"
@@ -51,6 +52,12 @@ export default function WeeklyPlanGoalsPage() {
   useEffect(() => {
     if (week.weekStart) loadWeek(week.weekStart)
   }, [week.weekStart, loadWeek])
+
+  // Planned through next week: the flow has nothing to write, so it explains instead of opening an
+  // empty wizard over a week that needs no planning. Checked before the loading state, because
+  // there is no week to load and `isResolving` has already settled to false. Held as the labels
+  // themselves rather than a boolean, so the notice below narrows without an assertion.
+  const plannedLabels = week.isFullyPlanned ? week.plannedLabels : null
 
   const toggleCandidate = (goalId: string) => {
     setSelectedIds(prev => {
@@ -116,7 +123,11 @@ export default function WeeklyPlanGoalsPage() {
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-secondary/20 rounded-full blur-3xl" />
       </div>
 
-      <AppNav action="next" nextEnabled={plannedCount > 0 && !isSaving && !isLoading} onNext={handleNext} />
+      <AppNav
+        action="next"
+        nextEnabled={plannedLabels === null && plannedCount > 0 && !isSaving && !isLoading}
+        onNext={handleNext}
+      />
 
       <main className="relative z-10 px-6 py-8">
         <div className="max-w-7xl mx-auto">
@@ -125,10 +136,19 @@ export default function WeeklyPlanGoalsPage() {
               Goals for the <span className="text-primary">Week</span>
             </h1>
             <p className="text-muted-foreground font-serif text-lg">
-              Carry forward what you didn&apos;t finish last time, or set new goals for this week.
+              {plannedLabels
+                ? "Nothing to plan right now — here's where to change what's already there."
+                : "Carry forward what you didn't finish last time, or set new goals for this week."}
             </p>
           </div>
 
+          {plannedLabels ? (
+            <AlreadyPlannedNotice
+              thisWeek={plannedLabels.thisWeek}
+              nextWeek={plannedLabels.nextWeek}
+            />
+          ) : (
+          <>
           <WeekTargetBanner week={week} />
 
           {isLoading ? (
@@ -161,6 +181,8 @@ export default function WeeklyPlanGoalsPage() {
             <p className="text-center text-muted-foreground font-serif mt-8">
               Carry a goal forward or add a new one to continue.
             </p>
+          )}
+          </>
           )}
         </div>
       </main>
