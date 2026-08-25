@@ -5,6 +5,14 @@ import { Switch as SwitchPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 
+// Radix renders `data-state="checked" | "unchecked"`, so every stateful style here has to hang off
+// `data-[state=...]`, the way every other Radix-backed component in components/ui does. An earlier
+// version styled `data-checked:` / `data-unchecked:` instead, which Tailwind compiles to
+// `[data-checked]` -- an attribute Radix never sets. The track colour and the thumb's travel both
+// silently did nothing, leaving a thumb that never moved on a track that was never painted.
+//
+// The off track is `bg-input` (#1a0080) on a `bg-card` (#130066) surface, which is nearly the same
+// colour, so the border is what makes it read as a track at all rather than decoration.
 function Switch({
   className,
   size = "default",
@@ -17,14 +25,29 @@ function Switch({
       data-slot="switch"
       data-size={size}
       className={cn(
-        "peer group/switch relative inline-flex shrink-0 items-center rounded-full border border-transparent transition-all outline-none after:absolute after:-inset-x-3 after:-inset-y-2 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-[size=default]:h-[18.4px] data-[size=default]:w-[32px] data-[size=sm]:h-[14px] data-[size=sm]:w-[24px] dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 data-checked:bg-primary data-unchecked:bg-input dark:data-unchecked:bg-input/80 data-disabled:cursor-not-allowed data-disabled:opacity-50",
+        // `after:` widens the hit area past the drawn control without moving anything around it.
+        "peer group/switch relative inline-flex shrink-0 cursor-pointer items-center rounded-full border-2 transition-colors outline-none after:absolute after:-inset-x-3 after:-inset-y-2",
+        "focus-visible:ring-3 focus-visible:ring-ring/50",
+        "aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20",
+        "data-[size=default]:h-7 data-[size=default]:w-12 data-[size=sm]:h-6 data-[size=sm]:w-10",
+        "data-[state=unchecked]:border-border data-[state=unchecked]:bg-input",
+        "data-[state=checked]:border-primary data-[state=checked]:bg-primary",
+        "disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}
       {...props}
     >
       <SwitchPrimitive.Thumb
         data-slot="switch-thumb"
-        className="pointer-events-none block rounded-full bg-background ring-0 transition-transform group-data-[size=default]/switch:size-4 group-data-[size=sm]/switch:size-3 group-data-[size=default]/switch:data-checked:translate-x-[calc(100%-2px)] group-data-[size=sm]/switch:data-checked:translate-x-[calc(100%-2px)] dark:data-checked:bg-primary-foreground group-data-[size=default]/switch:data-unchecked:translate-x-0 group-data-[size=sm]/switch:data-unchecked:translate-x-0 dark:data-unchecked:bg-foreground"
+        className={cn(
+          "pointer-events-none block rounded-full bg-foreground shadow-sm ring-0 transition-transform",
+          "group-data-[size=default]/switch:size-5 group-data-[size=sm]/switch:size-4",
+          // Travel is the track's content box less the thumb: 48 - 4 border - 20 thumb = 24px, and
+          // 40 - 4 - 16 = 20px for sm. Hard-coded because a percentage translate measures the thumb.
+          "data-[state=unchecked]:translate-x-0",
+          "group-data-[size=default]/switch:data-[state=checked]:translate-x-6",
+          "group-data-[size=sm]/switch:data-[state=checked]:translate-x-5"
+        )}
       />
     </SwitchPrimitive.Root>
   )

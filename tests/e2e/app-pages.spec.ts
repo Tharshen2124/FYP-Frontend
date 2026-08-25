@@ -185,11 +185,25 @@ test.describe("settings", () => {
     await page.goto("/settings")
 
     const toggle = page.getByRole("switch", { name: "Allow Sync Changes" })
+
+    // How far the thumb sits from the left of its track. The switch once styled `data-checked:`,
+    // which Tailwind compiles to `[data-checked]` -- an attribute Radix never sets, since it writes
+    // `data-state="checked"`. The track went unpainted and the thumb never moved, and nothing here
+    // failed: aria-checked was correct all along, so the only sign the control worked was the toast.
+    const thumbOffset = async () => {
+      const track = await toggle.boundingBox()
+      const thumb = await toggle.locator("[data-slot=switch-thumb]").boundingBox()
+      return Math.round(thumb!.x - track!.x)
+    }
+
     await expect(toggle).toHaveAttribute("aria-checked", "true")
+    await expect.poll(thumbOffset).toBeGreaterThan(10)
+
     await toggle.click()
 
     await expect(page.getByText(/Automatic sync off/)).toBeVisible()
     await expect(toggle).toHaveAttribute("aria-checked", "false")
+    await expect.poll(thumbOffset).toBeLessThan(10)
     expect(patches).toEqual([
       expect.objectContaining({ sync_enabled: false }),
     ])
