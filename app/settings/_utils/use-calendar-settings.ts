@@ -34,6 +34,9 @@ export function useCalendarSettings() {
   const [current, setCurrent] = useState<CalSettings>(empty)
   const [isLoading, setIsLoading] = useState(true)
   const [isBusy, setIsBusy] = useState(false)
+  // Set only by the connect redirect, so the offer to push is made once, on the visit that
+  // connected. A reload has already cleared the fragment and will not ask again.
+  const [justConnected, setJustConnected] = useState(false)
 
   const applyCalendar = useCallback((calendar: ApiCalendarSettings, cats: CategoryItem[]) => {
     const ids = fromApiPreference(cats, calendar.export_preference)
@@ -51,7 +54,10 @@ export function useCalendarSettings() {
     const hash = window.location.hash.replace(/^#/, "")
     if (hash) {
       const params = new URLSearchParams(hash)
-      if (params.get("calendar") === "connected") toast.success("Google Calendar connected")
+      if (params.get("calendar") === "connected") {
+        toast.success("Google Calendar connected")
+        setJustConnected(true)
+      }
       const error = params.get("calendar_error")
       if (error) toast.error(CONNECT_ERRORS[error] ?? "Couldn't connect Google Calendar. Please try again.")
       if (params.has("calendar") || params.has("calendar_error")) {
@@ -188,10 +194,14 @@ export function useCalendarSettings() {
     }
   }
 
+  const dismissJustConnected = () => setJustConnected(false)
+
   return {
     categories,
     connected,
     syncedAt,
+    justConnected,
+    dismissJustConnected,
     current,
     isDirty,
     isLoading,

@@ -167,6 +167,37 @@ export function GoogleCalendarCard() {
         </div>
       )}
 
+      {/* Connecting creates an empty HabitFlow calendar and nothing else: auto-sync only fires on
+          the next write, so a user who connects and changes nothing sees a calendar that stays
+          blank and reads as broken. Offering the first push here is what closes that gap, and it
+          is an offer rather than an automatic sync because the export categories sit right below,
+          unread — someone who means to untick a role first should get to. Waiting on isLoading
+          keeps it from opening over the skeleton. */}
+      <AlertDialog
+        open={cal.justConnected && !cal.isLoading}
+        onOpenChange={open => {
+          if (!open) cal.dismissJustConnected()
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>You&apos;re connected</AlertDialogTitle>
+            <AlertDialogDescription>
+              Now that you&apos;re connected, would you like us to push your tasks to your calendar?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>No, I can click the Sync button later</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={cal.syncNow}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              Yes, push them now
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Disconnecting deletes the HabitFlow calendar outright, which is the only way to take its
           events with it — worth saying out loud before it happens. */}
       <AlertDialog open={confirmingDisconnect} onOpenChange={setConfirmingDisconnect}>

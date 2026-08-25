@@ -196,6 +196,11 @@ one — planning the week ahead leaves all seven columns open.
   `/login` uses for sign-in, and for the same reason: a fragment never reaches a server.
   Beside Disconnect (which deletes the HabitFlow calendar outright, so it confirms first) is a
   **Sync now** button that runs inline and reports what it wrote.
+  Landing on `#calendar=connected` also **offers the first push in a dialog**, because connecting
+  creates an *empty* calendar and auto-sync only fires on the next write — so a user who connects
+  and then changes nothing watches a blank calendar and concludes the feature is broken. It is an
+  offer rather than an automatic sync because the export categories sit right below it, unread. The
+  fragment is cleared as it is read, so the offer belongs to the visit that connected.
   **The Allow Sync switch saves itself; the Save bar governs the export tree alone.** It used to sit
   behind that bar with the tree, and it read as broken — a switch that flips and then does nothing
   is indistinguishable from one that does not work, and the bar it was waiting on is further down

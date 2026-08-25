@@ -250,6 +250,79 @@ test.describe("settings", () => {
     await expect(page.getByText("You have unsaved changes.")).toBeVisible()
   })
 
+  /**
+   * Connecting creates an empty calendar: auto-sync only fires on the next write, so a user who
+   * connects and then changes nothing watches a blank calendar and concludes it does not work.
+   * The offer to push is made once, on the visit the redirect lands on.
+   */
+  test("offers to push the first sync when the connect redirect lands", async ({ page }) => {
+    await connectedCalendar(page)
+
+    const syncs: string[] = []
+    await page.route("**/calendar/sync", route => {
+      syncs.push(route.request().method())
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          weeks: 1,
+          written: 3,
+          deleted: 0,
+          calendar: {
+            connected: true,
+            sync_enabled: true,
+            export_preference: { fixed_appointments: true, excluded_dimensions: [], excluded_role_ids: [] },
+            synced_at: "2026-08-25T07:03:10Z",
+          },
+        }),
+      })
+    })
+
+    await page.goto("/settings#calendar=connected")
+
+    const dialog = page.getByRole("alertdialog")
+    await expect(dialog.getByRole("heading", { name: "You're connected" })).toBeVisible()
+    await expect(dialog.getByText(/would you like us to push your tasks/)).toBeVisible()
+    await dialog.getByRole("button", { name: "Yes, push them now" }).click()
+
+    await expect(page.getByText("Synced 3 events")).toBeVisible()
+    expect(syncs).toEqual([ "POST" ])
+    // The freshly stamped time comes back with the sync response.
+    await expect(page.getByText(/Last synced/)).toBeVisible()
+  })
+
+  test("declining the first push syncs nothing and leaves the Sync button to do it", async ({ page }) => {
+    await connectedCalendar(page)
+
+    const syncs: string[] = []
+    await page.route("**/calendar/sync", route => {
+      syncs.push(route.request().method())
+      return route.fulfill({ status: 200, contentType: "application/json", body: "{}" })
+    })
+
+    await page.goto("/settings#calendar=connected")
+
+    const dialog = page.getByRole("alertdialog")
+    await dialog.getByRole("button", { name: "No, I can click the Sync button later" }).click()
+
+    await expect(page.getByRole("alertdialog")).toHaveCount(0)
+    expect(syncs).toEqual([])
+    await expect(page.getByRole("button", { name: "Sync now" })).toBeVisible()
+  })
+
+  // The fragment is cleared as it is read, so the offer belongs to the visit that connected and
+  // does not follow the user around every later trip to this page.
+  test("does not repeat the offer on a reload", async ({ page }) => {
+    await connectedCalendar(page)
+    await page.goto("/settings#calendar=connected")
+    await expect(page.getByRole("alertdialog")).toBeVisible()
+
+    await page.reload()
+
+    await expect(page.getByRole("button", { name: "Sync now" })).toBeVisible()
+    await expect(page.getByRole("alertdialog")).toHaveCount(0)
+  })
+
   test("marks a parent category indeterminate when one child is off", async ({ page }) => {
     await connectedCalendar(page)
     await page.goto("/settings")
