@@ -1,32 +1,46 @@
-import type { CalSettings, CategoryItem } from "../_types"
+import { SHARPEN_THE_SAW_DIMENSIONS } from "@/lib/sharpen-the-saw-dimensions"
+import type { ApiRole } from "@/lib/api"
+import type { CategoryItem } from "../_types"
 
-const MOCK_ROLES = ["Student", "Programmer", "Designer", "Team Lead"]
-const SAW_DIMENSIONS = ["Physical", "Spiritual", "Mental", "Social / Emotional"]
+export const FIXED_ID = "fixed-appointments"
+export const STS_PARENT_ID = "sharpen-the-saw"
+export const ROLES_PARENT_ID = "role-tasks"
 
-/** Flat list of every exportable category — children carry a `parentId`. */
-export const CATEGORIES: CategoryItem[] = [
-  { id: "fixed-appointments", label: "Fixed Appointments" },
-  { id: "sharpen-the-saw", label: "Sharpen the Saw Activities" },
-  ...SAW_DIMENSIONS.map(d => ({
-    id: `saw-${d.toLowerCase().replace(/\s*\/\s*/g, "-").replace(/\s+/g, "-")}`,
-    label: d,
-    parentId: "sharpen-the-saw",
-  })),
-  { id: "role-tasks", label: "Role Tasks" },
-  ...MOCK_ROLES.map(r => ({
-    id: `role-${r.toLowerCase().replace(/\s+/g, "-")}`,
-    label: `${r} Tasks`,
-    parentId: "role-tasks",
-  })),
-]
+/** Top level in the order the card renders them; children hang off the two parents. */
+export const TOP_LEVEL_ORDER = [FIXED_ID, STS_PARENT_ID, ROLES_PARENT_ID]
 
-export const PARENT_IDS = new Set(CATEGORIES.filter(c => c.parentId).map(c => c.parentId!))
+export const dimensionCategoryId = (dimensionId: string) => `saw-${dimensionId}`
 
-const TOP_LEVEL_ORDER = ["fixed-appointments", "sharpen-the-saw", "role-tasks"]
-export const TOP_LEVEL = TOP_LEVEL_ORDER.map(id => CATEGORIES.find(c => c.id === id)!)
+/**
+ * Keyed on `role_id`, never on the name. A slug built from the name breaks the moment a role is
+ * renamed — which is precisely the thing this feature has to survive, since the saved preference
+ * outlives any particular spelling of a role.
+ */
+export const roleCategoryId = (roleId: number) => `role-${roleId}`
 
-/** Everything leaf-level is exported by default. */
-export const DEFAULT_CAL_SETTINGS: CalSettings = {
-  allowSync: true,
-  exportIds: new Set(CATEGORIES.filter(c => !PARENT_IDS.has(c.id)).map(c => c.id)),
+/**
+ * The tree, built from the user's real roles rather than a constant.
+ *
+ * This was hard-coded — four invented role names — and could not be, once the selection had to
+ * mean something to the server. Dimensions come from the same list the rest of the app renders
+ * from, so a child's id is now the canonical `saw-social` rather than a slug of the display label.
+ */
+export function buildCategories(roles: ApiRole[]): CategoryItem[] {
+  return [
+    { id: FIXED_ID, label: "Fixed Appointments" },
+    { id: STS_PARENT_ID, label: "Sharpen the Saw Activities" },
+    ...SHARPEN_THE_SAW_DIMENSIONS.map(d => ({
+      id: dimensionCategoryId(d.id),
+      label: d.label,
+      parentId: STS_PARENT_ID,
+      dimensionId: d.id,
+    })),
+    { id: ROLES_PARENT_ID, label: "Role Tasks" },
+    ...roles.map(role => ({
+      id: roleCategoryId(role.role_id),
+      label: `${role.name} Tasks`,
+      parentId: ROLES_PARENT_ID,
+      roleId: role.role_id,
+    })),
+  ]
 }
