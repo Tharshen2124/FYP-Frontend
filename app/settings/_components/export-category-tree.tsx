@@ -1,17 +1,20 @@
 "use client"
 
 import { ChevronDown, ChevronRight } from "lucide-react"
-import { PARENT_IDS, TOP_LEVEL } from "../_constants/categories"
-import { childrenOf, isChecked, isIndeterminate } from "../_utils/categories"
+import { TOP_LEVEL_ORDER } from "../_constants/categories"
+import { childrenOf, isChecked, isIndeterminate, parentIds, topLevel } from "../_utils/categories"
+import type { CategoryItem } from "../_types"
 
 interface Props {
+  categories: CategoryItem[]
   exportIds: Set<string>
   expanded: Set<string>
   onToggleCategory: (id: string) => void
   onToggleExpanded: (id: string) => void
 }
 
-export function ExportCategoryTree({ exportIds, expanded, onToggleCategory, onToggleExpanded }: Props) {
+export function ExportCategoryTree({ categories, exportIds, expanded, onToggleCategory, onToggleExpanded }: Props) {
+  const parents = parentIds(categories)
   return (
     <div className="p-6 rounded-2xl bg-card border-2 border-border">
       <h3 className="text-lg font-bold text-foreground mb-1">Export Categories</h3>
@@ -20,12 +23,12 @@ export function ExportCategoryTree({ exportIds, expanded, onToggleCategory, onTo
       </p>
 
       <div className="space-y-2">
-        {TOP_LEVEL.map(cat => {
-          const hasChildren = PARENT_IDS.has(cat.id)
+        {topLevel(categories, TOP_LEVEL_ORDER).map(cat => {
+          const hasChildren = parents.has(cat.id)
           const isOpen = expanded.has(cat.id)
-          const children = hasChildren ? childrenOf(cat.id) : []
-          const checked = isChecked(exportIds, cat.id)
-          const indeterminate = isIndeterminate(exportIds, cat.id)
+          const children = hasChildren ? childrenOf(categories, cat.id) : []
+          const checked = isChecked(categories, exportIds, cat.id)
+          const indeterminate = isIndeterminate(categories, exportIds, cat.id)
 
           return (
             <div key={cat.id}>
@@ -59,7 +62,15 @@ export function ExportCategoryTree({ exportIds, expanded, onToggleCategory, onTo
                 )}
               </div>
 
-              {hasChildren && isOpen && (
+              {hasChildren && isOpen && children.length === 0 && (
+                <div className="ml-8 mt-1 mb-2 border-l-2 border-border pl-4 py-2">
+                  <p className="text-sm text-muted-foreground font-serif">
+                    No roles yet — add one on the Roles page and its tasks will export automatically.
+                  </p>
+                </div>
+              )}
+
+              {hasChildren && isOpen && children.length > 0 && (
                 <div className="ml-8 mt-1 mb-2 space-y-1 border-l-2 border-border pl-4">
                   {children.map(child => {
                     const childChecked = exportIds.has(child.id)

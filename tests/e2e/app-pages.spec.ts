@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test"
+import { test, expect, type Page } from "@playwright/test"
 import {
   authenticateAsNewUser,
   completeOnboarding,
@@ -104,10 +104,44 @@ test.describe("settings", () => {
     await authenticateAsNewUser(page)
   })
 
-  test("shows the Save bar only after a change, and Discard clears it", async ({ page }) => {
+  /**
+   * Stands in for a linked Google account, so the export tree can be exercised without a real
+   * OAuth grant. Only the status read is intercepted -- the roles the tree is built from still
+   * come from the live API, which is why a fresh user sees the four Sharpen the Saw dimensions
+   * and no role children.
+   */
+  const connectedCalendar = (page: Page) =>
+    page.route("**/calendar", route =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          calendar: {
+            connected: true,
+            sync_enabled: true,
+            export_preference: {
+              fixed_appointments: true,
+              excluded_dimensions: [],
+              excluded_role_ids: [],
+            },
+            synced_at: null,
+          },
+        }),
+      })
+    )
+
+  test("offers to connect a calendar the account has not linked yet", async ({ page }) => {
     await page.goto("/settings")
 
-    await page.getByRole("button", { name: "Connect Google Calendar" }).click()
+    // A fresh account holds no Google grant, and this is the real API answering.
+    await expect(page.getByRole("button", { name: "Connect Google Calendar" })).toBeVisible()
+    await expect(page.getByText("Export Categories")).toHaveCount(0)
+  })
+
+  test("shows the Save bar only after a change, and Discard clears it", async ({ page }) => {
+    await connectedCalendar(page)
+    await page.goto("/settings")
+
     await expect(page.getByText("Google Calendar connected")).toBeVisible()
     await expect(page.getByText("You have unsaved changes.")).toHaveCount(0)
 
@@ -118,9 +152,93 @@ test.describe("settings", () => {
     await expect(page.getByText("You have unsaved changes.")).toHaveCount(0)
   })
 
-  test("marks a parent category indeterminate when one child is off", async ({ page }) => {
+  /**
+   * The switch is the one control on this page that saves itself. It used to sit behind the Save
+   * bar with the export tree, which read as broken: it flipped, nothing happened, and the bar it
+   * was really waiting on is further down beside a different control. Auto-sync then silently
+   * never ran, because the server had never been told.
+   */
+  test("the sync switch saves itself, without the Save bar", async ({ page }) => {
+    await connectedCalendar(page)
+
+    const patches: unknown[] = []
+    await page.route("**/calendar/settings", route => {
+      patches.push(JSON.parse(route.request().postData() ?? "{}"))
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          calendar: {
+            connected: true,
+            sync_enabled: false,
+            export_preference: {
+              fixed_appointments: true,
+              excluded_dimensions: [],
+              excluded_role_ids: [],
+            },
+            synced_at: null,
+          },
+        }),
+      })
+    })
+
     await page.goto("/settings")
-    await page.getByRole("button", { name: "Connect Google Calendar" }).click()
+
+    const toggle = page.getByRole("switch", { name: "Allow Sync Changes" })
+    await expect(toggle).toHaveAttribute("aria-checked", "true")
+    await toggle.click()
+
+    await expect(page.getByText(/Automatic sync off/)).toBeVisible()
+    await expect(toggle).toHaveAttribute("aria-checked", "false")
+    expect(patches).toEqual([
+      expect.objectContaining({ sync_enabled: false }),
+    ])
+
+    // And it is not left waiting on a Save the user has no reason to press.
+    await expect(page.getByText("You have unsaved changes.")).toHaveCount(0)
+  })
+
+  // Flipping the switch must not quietly commit category edits that are still pending.
+  test("the sync switch does not carry unsaved category edits with it", async ({ page }) => {
+    await connectedCalendar(page)
+
+    const patches: { export_preference?: { fixed_appointments?: boolean } }[] = []
+    await page.route("**/calendar/settings", route => {
+      patches.push(JSON.parse(route.request().postData() ?? "{}"))
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          calendar: {
+            connected: true,
+            sync_enabled: false,
+            export_preference: {
+              fixed_appointments: true,
+              excluded_dimensions: [],
+              excluded_role_ids: [],
+            },
+            synced_at: null,
+          },
+        }),
+      })
+    })
+
+    await page.goto("/settings")
+
+    await page.getByRole("checkbox", { name: "Fixed Appointments" }).click()
+    await expect(page.getByText("You have unsaved changes.")).toBeVisible()
+
+    await page.getByRole("switch", { name: "Allow Sync Changes" }).click()
+    await expect(page.getByText(/Automatic sync off/)).toBeVisible()
+
+    expect(patches[0].export_preference?.fixed_appointments).toBe(true)
+    // The tree edit is still pending, waiting on its own Save.
+    await expect(page.getByText("You have unsaved changes.")).toBeVisible()
+  })
+
+  test("marks a parent category indeterminate when one child is off", async ({ page }) => {
+    await connectedCalendar(page)
+    await page.goto("/settings")
 
     const parent = page.getByRole("checkbox", { name: "Sharpen the Saw Activities" })
     await expect(parent).toHaveAttribute("aria-checked", "true")

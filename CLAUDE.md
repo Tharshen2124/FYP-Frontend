@@ -187,9 +187,27 @@ one — planning the week ahead leaves all seven columns open.
   Nothing writes as you go: edits sit in local state until the sticky **Save bar**, which appears
   only while `useWeekSchedule().isDirty` (the same shape `/settings` uses). Back to Dashboard with
   changes outstanding asks first, since it is the one gesture that can silently throw them away.
-- `/settings` — End-of-Day check-in time (API-backed, `users.eod_time`) and Google Calendar settings
-  (connect/disconnect, sync toggle, export category tree with indeterminate parents, sticky
-  Discard/Save bar shown only while dirty).
+- `/settings` — End-of-Day check-in time (`users.eod_time`) and Google Calendar, both API-backed.
+  The calendar card connects through a **second, separate OAuth grant** from the one that signs a
+  user in: `fetchCalendarConnectUrl()` returns the consent URL and the page navigates to it, because
+  a browser redirect cannot carry the bearer token that says which account is connecting. The
+  outcome comes back as `#calendar=connected` / `#calendar_error=` on the URL, which
+  `_utils/use-calendar-settings.ts` reads and clears on mount — the same fragment convention
+  `/login` uses for sign-in, and for the same reason: a fragment never reaches a server.
+  Beside Disconnect (which deletes the HabitFlow calendar outright, so it confirms first) is a
+  **Sync now** button that runs inline and reports what it wrote.
+  **The Allow Sync switch saves itself; the Save bar governs the export tree alone.** It used to sit
+  behind that bar with the tree, and it read as broken — a switch that flips and then does nothing
+  is indistinguishable from one that does not work, and the bar it was waiting on is further down
+  the page beside a different control. The consequence was worse than cosmetic: the server was
+  never told, so automatic sync silently never ran. It sends the *saved* export preference rather
+  than the edited one, so flipping it cannot commit category edits still waiting on Save.
+  **The export category tree is built from the user's real roles**, keyed on `role_id` rather than a
+  slug of the name, and the checkboxes are converted to the server's *exclusion* shape only at the
+  boundary (`toApiPreference` / `fromApiPreference`) — so the tri-state parent logic stays in terms
+  of what is ticked, and a role added later arrives ticked. Everything in `_utils/categories.ts`
+  therefore takes the category list as its first argument: with real roles there is no module-level
+  constant left to close over.
 - `/evening-reflections` — API-backed. Week list sidebar (a `n/7` badge per week, a date jump, and
   "Load older weeks"), the AI weekly summary, and a 7-day reflection grid. Every day of the week you
   are standing in is writable in any order — filling in Monday on Thursday, or Sunday early, are both
@@ -316,8 +334,16 @@ the Rails API through `lib/api.ts`. Auth is the one exception — a JWT in a coo
 store (`stores/auth-store.ts` + `lib/cookie-storage.ts`).
 
 Every route that persists anything is API-backed: `/login`, all four data-writing onboarding steps,
-`/dashboard`, `/sharpen-the-saw`, `/roles`, `/evening-reflections`, `/history`, `/analytics`, all
-three `/weekly-plan/*` steps and `/weekly-plan/edit`. Nothing is mock-backed any more.
+`/dashboard`, `/sharpen-the-saw`, `/roles`, `/settings`, `/evening-reflections`, `/history`,
+`/analytics`, all three `/weekly-plan/*` steps and `/weekly-plan/edit`. Nothing is mock-backed any
+more — `/settings`' Google Calendar card was the last holdout, and its `MOCK_ROLES` are gone.
+
+**Every request carries an `X-Time-Zone` header**, set once in `request()` in `lib/api.ts` from
+`Intl.DateTimeFormat().resolvedOptions().timeZone`. A Google Calendar event needs a zone, and the
+server stores none — for the same reason it never derives "the current week". So the browser sends
+it per request exactly as it sends `week_start`, as a header rather than a body field because the
+endpoints that need it are about tasks, goals and roles: the zone is request metadata, not part of
+what is being saved.
 
 **"Has this week passed?" is a client decision**, like every other date in this app — the server
 stores no timezone and keeps only a loose backstop that can never fire for a real user. It lives in

@@ -3,6 +3,27 @@ import { useAuthStore } from "@/stores/auth-store"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL
 
+/**
+ * The browser's IANA zone, sent on every request.
+ *
+ * A Google Calendar event needs one — an RFC3339 time without an offset is rejected unless a zone
+ * travels beside it — and the server deliberately stores none, for the same reason it never
+ * derives "the current week" itself. So the client supplies it per request, exactly as it supplies
+ * `week_start`. A header rather than a body field because the endpoints that need it are about
+ * tasks, goals and roles: the zone is request metadata like the bearer token, not part of what is
+ * being saved.
+ *
+ * Falls back to UTC on the server render and in the rare browser with no Intl — the backend skips
+ * the sync rather than filing a week at the wrong hour, which is the failure worth having.
+ */
+function timeZone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"
+  } catch {
+    return "UTC"
+  }
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = useAuthStore.getState().token
   const res = await fetch(`${API_URL}${path}`, {
@@ -10,6 +31,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      "X-Time-Zone": timeZone(),
       ...options.headers,
     },
   })
@@ -44,6 +66,26 @@ function weekScoped(path: string, weekStart: string = localWeekStartParam()) {
  * Roles are standing; goals belong to exactly one week. A role carried into a new week comes back
  * with an empty `goals` array, so these shapes are always read against a particular `week_start`.
  */
+/**
+ * Which parts of a week reach Google Calendar, stored as *exclusions*.
+ *
+ * Keyed by `role_id` rather than by name so a rename keeps its setting, and recorded as what the
+ * user switched *off* so a role created later exports by default — an inclusion list would leave
+ * every new role silently absent from the calendar with nothing on screen to explain it.
+ */
+export interface ApiExportPreference {
+  fixed_appointments: boolean
+  excluded_dimensions: string[]
+  excluded_role_ids: number[]
+}
+
+export interface ApiCalendarSettings {
+  connected: boolean
+  sync_enabled: boolean
+  export_preference: ApiExportPreference
+  synced_at: string | null
+}
+
 /** Whether a night's check-in was saved or dismissed. */
 export type CheckInStatus = "completed" | "skipped"
 
@@ -290,9 +332,14 @@ export const api = {
       "/sharpen-the-saw-activities",
       { method: "POST", body: JSON.stringify(data) }
     ),
+  /**
+   * Renaming a standing activity. The `week_start` is not what is being edited — an activity is a
+   * standing library entry, not a week's — it is there so the calendar sync knows which week to
+   * start from: the activity's text is on the event of every task scheduled against it.
+   */
   updateSharpenTheSawActivity: (id: number, data: { dimension?: string; activity_description?: string }) =>
     request<{ activity: { sharpen_the_saw_activity_id: number; dimension: string; activity_description: string } }>(
-      `/sharpen-the-saw-activities/${id}`,
+      weekScoped(`/sharpen-the-saw-activities/${id}`),
       { method: "PATCH", body: JSON.stringify(data) }
     ),
   deleteSharpenTheSawActivity: (id: number) =>
@@ -555,4 +602,34 @@ export const api = {
   fetchAnalytics: (from: string, to: string) =>
     request<{ weeks: ApiAnalyticsWeek[] }>(`/analytics?from=${from}&to=${to}`),
   googleLoginHref: () => `${API_URL}/login`,
+  /**
+   * The Google Calendar connection and what it exports. `connected` means we hold a refresh token
+   * and a calendar to write into — deliberately not "the access token is still valid", which
+   * expires hourly and is renewed on demand.
+   */
+  fetchCalendarSettings: () => request<{ calendar: ApiCalendarSettings }>("/calendar"),
+  /**
+   * The consent screen's URL, not a redirect to it. A redirect would have to be followed by the
+   * browser, and the browser cannot send the bearer token that says which account is connecting —
+   * so this is a normal authenticated call and the caller navigates to what it returns. Unlike
+   * `googleLoginHref`, which needs no token and so can be a bare string.
+   */
+  fetchCalendarConnectUrl: () => request<{ url: string }>("/calendar/connect"),
+  updateCalendarSettings: (data: { sync_enabled: boolean; export_preference: ApiExportPreference }, weekStart?: string) =>
+    request<{ calendar: ApiCalendarSettings }>("/calendar/settings", {
+      method: "PATCH",
+      body: JSON.stringify(withWeekStart(data, weekStart)),
+    }),
+  /**
+   * The Sync button. Runs inline rather than in the background, because the point of a button is
+   * being able to say what happened: 429 when Google is throttling, 502 when it is unreachable,
+   * 422 when the grant has been revoked and the only fix is reconnecting.
+   */
+  syncCalendar: (weekStart?: string) =>
+    request<{ weeks: number; written: number; deleted: number; calendar: ApiCalendarSettings }>(
+      "/calendar/sync",
+      { method: "POST", body: JSON.stringify(withWeekStart({}, weekStart)) }
+    ),
+  /** Deletes the HabitFlow calendar, taking its events with it, and revokes the grant. */
+  disconnectCalendar: () => request<{ calendar: ApiCalendarSettings }>("/calendar", { method: "DELETE" }),
 }
