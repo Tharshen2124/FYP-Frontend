@@ -207,6 +207,11 @@ one — planning the week ahead leaves all seven columns open.
   and then changes nothing watches a blank calendar and concludes the feature is broken. It is an
   offer rather than an automatic sync because the export categories sit right below it, unread. The
   fragment is cleared as it is read, so the offer belongs to the visit that connected.
+  **Automatic sync is the paid half of this card**, and the only paid thing on it: Connect,
+  Disconnect, **Sync now** and the export tree all work on Free. A free account gets the switch
+  disabled and drawn **off** rather than as stored — the column keeps whatever was last set, so
+  upgrading brings automatic sync back untouched, but a switch reading "on" while nothing syncs is
+  exactly the failure recorded next.
   **The Allow Sync switch saves itself; the Save bar governs the export tree alone.** It used to sit
   behind that bar with the tree, and it read as broken — a switch that flips and then does nothing
   is indistinguishable from one that does not work, and the bar it was waiting on is further down
@@ -225,8 +230,19 @@ one — planning the week ahead leaves all seven columns open.
   normal. Once a week has passed its entries can be viewed but not changed. The summary is generated
   **once per week and never regenerated**, and unlocks only when all 7 reflections are written; a
   past week can still be summarised, since read-only applies to the reflections, not to this.
+  It is also **Premium only**, and `isPremium` is deliberately kept apart from `canGenerate` rather
+  than folded into it: that predicate's false branch is the "write all 7 reflections" line, which
+  would be simply wrong for someone who has written all seven and just has not paid. A summary
+  already written stays readable if a subscription lapses — it is a record of a week that happened,
+  not a feature being used, and only generating a new one is gated.
 - `/history` — API-backed. Past weeks only: the strip starts at *last* Monday, since the live week
-  belongs to `/dashboard` and a goal in an unfinished week has no outcome yet. Week list sidebar
+  belongs to `/dashboard` and a goal in an unfinished week has no outcome yet.
+  **A free account sees the 3 most recent finished weeks** (`FREE_TIER_LIMITS.historyWeeks`): the
+  strip stops there, the date picker gains a `min` to match its `max`, and "Load older weeks" is
+  replaced by the upgrade offer — the server genuinely will not return the rest, so listing rows it
+  could never fill would be listing rows that do nothing. `premium` starts `null` and the strip is
+  capped until it lands, so the answer arriving can only ever *add* weeks, never take one back. An
+  out-of-window `?week_start=` is clamped exactly as a future one already was. Week list sidebar
   (a tasks-done badge per week, a date jump, and "Load older weeks"), a stats row of ratios
   (goals achieved, tasks done, Sharpen the Saw activities, fixed appointments), role goals marked with how
   each resolved, Sharpen the Saw activities, and a schedule grid whose every chip names the role or
@@ -241,7 +257,11 @@ one — planning the week ahead leaves all seven columns open.
   reads a week **as it was recorded**: goals under a since-archived role, goals since dropped and
   activities since deleted all still appear, flagged — which is why it has its own endpoints rather
   than composing `/roles` and `/sharpen-the-saw-activities`, both of which filter to `.active`.
-- `/analytics` — API-backed. 2×2 grid: sharpen-the-saw radar, role task table, daily priority bar
+- `/analytics` — API-backed, and **Premium only**: the server answers 402 to a free account, and
+  `_utils/use-analytics.ts` turns that into `isLocked` rather than an error toast, so the page keeps
+  its own heading and renders `<PremiumLock>` where the grid would be instead of bouncing anywhere.
+  It is the one gated surface with no `premium` flag to read, because its only request is the one
+  being refused. 2×2 grid: sharpen-the-saw radar, role task table, daily priority bar
   chart, weekly goal completion trend. Like `/history` it reads **finished weeks only**, so the
   newest week it knows about is last week and the completion card's corner figure is labelled "last
   week"; the week in progress belongs to `/dashboard`. The whole window — up to 52 finished weeks —
@@ -369,6 +389,19 @@ it per request exactly as it sends `week_start`, as a header rather than a body 
 endpoints that need it are about tasks, goals and roles: the zone is request metadata, not part of
 what is being saved.
 
+**A failed request throws an `ApiError`, which carries `res.status`.** It used to be a bare `Error`
+with the server's sentence and nothing else, which made **402 Payment Required** — how the API says
+"this is a Premium feature" — indistinguishable from a 422. Nothing else in this app answers 402, so
+`isPaymentRequired(error)` is all a page needs to render an upgrade offer instead of a red line.
+Additive: an `ApiError` is still an `Error`, so every caller reading `.message` is unchanged.
+
+**Which tier the account is on rides on the response each gated page already waits for** — a
+top-level `premium` on `fetchEveningReflections`, every calendar response, and `fetchHistoryWeeks`.
+There is no store for it and no `GET /me`: the backend keeps `premium?` out of the JWT deliberately
+(a 7-day cookie claim cannot be revoked when a plan lapses in minutes), and an answer that arrives
+with the data cannot draw a control unlocked and then take it back. `/analytics` is the exception,
+reading the 402 itself.
+
 **"Has this week passed?" is a client decision**, like every other date in this app — the server
 stores no timezone and keeps only a loose backstop that can never fire for a real user. It lives in
 `lib/date.ts` (`isPastWeek`/`isFutureWeek`/`isEditableWeek`, alongside `weekStartsBack`, which
@@ -432,6 +465,11 @@ every roles/goals request carries a `week_start`. Nothing is hard-deleted — se
   `<Link>`; otherwise a disabled or `onNext`-callback button.
 - `components/sidebar.tsx` — Fixed left nav for dashboard-area pages; highlights the active route via
   `usePathname()`.
+- `components/premium-lock.tsx` — The one way this app says "you have not paid for this". Props:
+  `title`, `description`, `variant` ("card" for a whole surface, "inline" for a control that sits
+  inside one that still works). Upgrading is a **link to `/subscription`**, never a checkout call:
+  that page owns the Stripe handoff and reads the real price, so four copies of
+  `createCheckoutSession` would be four places for the figure on screen to drift from the card form.
 - `components/plan-comparison.tsx` — The Free vs Premium comparison. App-wide rather than route-private
   because `/subscription` and `/onboarding/complete` are in different flows and neither may import the
   other's `_*` folder. Props: `currentPlan`, `plan` (the price, from the API), `onUpgrade`, `isBusy`.

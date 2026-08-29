@@ -6,6 +6,8 @@ import type {
   ApiHistoryTask,
   ApiHistoryWeek,
 } from "@/lib/api"
+import { shiftWeekStart } from "@/lib/date"
+import { FREE_TIER_LIMITS } from "@/lib/plans"
 import { getColor } from "@/lib/role-colors"
 import { SHARPEN_THE_SAW_DIMENSIONS } from "@/lib/sharpen-the-saw-dimensions"
 import { FIXED_COLOR, UNLINKED_COLOR } from "../_constants/history"
@@ -243,4 +245,17 @@ export function weekStats(week: HistoryWeek): HistoryStats {
 /** `12/18` as a percentage, rounded, or null when there was nothing to complete. */
 export function completionPercent(done: number, total: number): number | null {
   return total === 0 ? null : Math.round((done / total) * 100)
+}
+
+/**
+ * The oldest week a free account may open: the `FREE_TIER_LIMITS.historyWeeks`-th week back,
+ * counting `newest` itself as the first.
+ *
+ * The server computes the same Monday from its own clock (`PremiumGated#free_history_floor`) and
+ * lands a shade earlier, because it works from UTC with a day of slack while this works from the
+ * browser's own week. That asymmetry is deliberate: the boundary the user is shown is never one
+ * the server would refuse.
+ */
+export function freeHistoryFloor(newest: string): string {
+  return shiftWeekStart(newest, -(FREE_TIER_LIMITS.historyWeeks - 1))
 }

@@ -26,6 +26,8 @@ export default function HistoryPage() {
           onJumpToDate={history.jumpToDate}
           onLoadOlder={history.loadOlderWeeks}
           maxDate={history.newest}
+          minDate={history.oldest}
+          isPremium={history.isPremium}
         />
 
         <main className="flex-1 overflow-y-auto px-8 py-8">

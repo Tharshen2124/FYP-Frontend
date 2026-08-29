@@ -51,6 +51,10 @@ export function useReflections() {
   const [slots, setSlots] = useState<(DayReflection | undefined)[]>(toDaySlots([]))
   const [summary, setSummary] = useState<WeekSummary | null>(null)
   const [planned, setPlanned] = useState(true)
+  /* Starts locked and unlocks when the week's own response says so, rather than the other way
+     round: it arrives with the reflections the card is already waiting for, so the button is never
+     drawn enabled and then taken away. */
+  const [isPremium, setIsPremium] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isGenerating, setIsGenerating] = useState(false)
   const [summaryError, setSummaryError] = useState<string | null>(null)
@@ -97,9 +101,10 @@ export function useReflections() {
 
     api
       .fetchEveningReflections(weekStart)
-      .then(({ planned, reflections, summary }) => {
+      .then(({ planned, reflections, summary, premium }) => {
         if (cancelled) return
         setPlanned(planned)
+        setIsPremium(premium)
         setSlots(toDaySlots(reflections.map(fromApiReflection)))
         setSummary(summary && fromApiSummary(summary))
       })
@@ -217,6 +222,11 @@ export function useReflections() {
     isLoading,
     saveReflection,
     summary,
+    /* Deliberately kept apart from canGenerate rather than folded into it. That predicate's false
+       branch is the card's "write all 7 reflections" copy, which would be simply wrong for someone
+       who has written all seven and just has not paid. Two different reasons a button is not
+       available are two different sentences. */
+    isPremium,
     canGenerate: canGenerateSummary({ planned, reflectionCount, summary }),
     isGenerating,
     summaryError,

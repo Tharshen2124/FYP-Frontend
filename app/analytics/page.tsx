@@ -2,6 +2,7 @@
 
 import { Loader2 } from "lucide-react"
 import Link from "next/link"
+import { PremiumLock } from "@/components/premium-lock"
 import { Sidebar } from "@/components/sidebar"
 import { useRequireAuth } from "@/hooks/use-require-auth"
 import { SharpenSawChart } from "./_components/sharpen-saw-chart"
@@ -43,6 +44,13 @@ export default function AnalyticsPage() {
             <Loader2 className="w-4 h-4 animate-spin" />
             Loading your analytics…
           </div>
+        ) : analytics.isLocked ? (
+          /* The heading above stays, and so does the sidebar: this is the page, saying what it
+             would show, not a bounce to somewhere else. */
+          <PremiumLock
+            title="Analytics"
+            description="See your patterns over time rather than one week at a time — how evenly you sharpen the saw, which roles your tasks actually go to, which days your priorities land on, and how your goal completion moves week to week."
+          />
         ) : !analytics.hasWeeks ? (
           /* One message for the whole page rather than four empty charts. Analytics only reads
              weeks that have finished, so a new user has nothing here until their first week ends. */

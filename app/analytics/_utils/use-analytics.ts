@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
-import { api } from "@/lib/api"
+import { api, isPaymentRequired } from "@/lib/api"
 import { latestPastWeekStart, parseLocalDate, shiftWeekStart } from "@/lib/date"
 import { DEFAULT_RANGE_WEEKS, WEEKS_FETCHED } from "../_constants/analytics"
 import {
@@ -51,6 +51,11 @@ export function useAnalytics(isReady: boolean) {
      two together is what lets "still loading" be derived below, the same reason use-history.ts
      does it: a flag set inside the effect only flips after the first paint. */
   const [loaded, setLoaded] = useState<{ newest: string; weeks: AnalyticsWeek[] } | null>(null)
+  /* The whole page is paid for, so unlike the other three gated surfaces there is no flag to ride
+     in on a payload — the only request this page makes is the one being refused. A 402 *is* the
+     answer, which is why lib/api.ts carries the status: it lands in the same place a real failure
+     would, and the two must not read alike. */
+  const [isLocked, setIsLocked] = useState(false)
 
   const [sharpenFrom, setSharpenFrom] = useState<DateSelection>(() =>
     toSelection(shiftWeekStart(newest, -(DEFAULT_RANGE_WEEKS - 1)))
@@ -74,11 +79,14 @@ export function useAnalytics(isReady: boolean) {
         if (cancelled) return
         setLoaded({ newest, weeks: weeks.map(toAnalyticsWeek) })
       })
-      .catch(() => {
+      .catch(error => {
         if (cancelled) return
         // Recorded as loaded-with-nothing rather than left pending, or a failed request would spin
         // forever instead of saying so.
         setLoaded({ newest, weeks: [] })
+        // No toast for a locked page: nothing went wrong, and a red banner over an upgrade offer
+        // would say something did.
+        if (isPaymentRequired(error)) return setIsLocked(true)
         toast.error("Couldn't load your analytics — please refresh.")
       })
 
@@ -94,6 +102,7 @@ export function useAnalytics(isReady: boolean) {
 
   return {
     isLoading,
+    isLocked,
     hasWeeks: weeks.length > 0,
     years,
     sharpen: {

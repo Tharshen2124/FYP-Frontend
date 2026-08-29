@@ -1,5 +1,11 @@
 import { test, expect, type Page } from "@playwright/test"
-import { authenticateAsNewUser, seedWeeklyPlan } from "./helpers"
+import {
+  authenticateAsNewUser,
+  grantPremium,
+  loginAsPremium,
+  seedThisWeekPlanViaApi,
+  seedWeeklyPlan,
+} from "./helpers"
 
 /**
  * Evening reflections against the live Rails backend.
@@ -44,8 +50,21 @@ async function writeReflection(page: Page, dayIndex: number, text: string) {
   await expect(page.getByRole("button", { name: `Edit ${DAYS[dayIndex]} reflection` })).toBeVisible()
 }
 
+/**
+ * The whole week written, leaving alone any day that already is.
+ *
+ * The skip matters for the summary test alone, and only because the account it runs as is the
+ * seeded premium one — the same reuse that makes "generated once per week and never again"
+ * testable at all also means a second run this week finds Monday written and no Create to press.
+ */
 async function writeWholeWeek(page: Page, texts: string[] = PLANTED_WEEK) {
-  for (let day = 0; day < 7; day++) await writeReflection(page, day, texts[day])
+  for (let day = 0; day < 7; day++) {
+    if (await page.getByRole("button", { name: `Create ${DAYS[day]} reflection` }).count()) {
+      await writeReflection(page, day, texts[day])
+    } else {
+      await expect(page.getByRole("button", { name: `Edit ${DAYS[day]} reflection` })).toBeVisible()
+    }
+  }
 }
 
 
@@ -75,7 +94,9 @@ test.describe("evening reflections", () => {
 
     await expect(page.getByRole("button", { name: "Edit Sunday reflection" })).toBeVisible()
     await expect(page.getByRole("button", { name: "Create Tuesday reflection" })).toBeVisible()
-    await expect(page.getByText("3 of 7 written")).toBeVisible()
+    // Read off the sidebar badge rather than the summary card's "3 of 7 written", which now sits
+    // behind the paid gate and is not shown to a free account at all.
+    await expect(page.locator("aside li button").first()).toContainText("3/7")
   })
 
   // A reflection hangs off a weekly plan, and writing one deliberately does not create that plan:
@@ -138,9 +159,26 @@ test.describe("evening reflections", () => {
     await expect(dialog.getByRole("button", { name: "Close reflection" })).toBeVisible()
   })
 
+  // The AI summary is a paid feature, so a free account is offered the upgrade where the button
+  // would be — not the "write all 7 reflections" line, which would be simply wrong for someone who
+  // has written all seven and just has not paid.
+  test("offers the upgrade in place of the summary button for a free account", async ({ page }) => {
+    await authenticateAsNewUser(page)
+    await seedWeeklyPlan(page)
+    await page.goto("/evening-reflections")
+
+    await expect(page.getByRole("heading", { name: "Weekly Summary" })).toBeVisible()
+    await expect(page.getByRole("button", { name: "Generate Summary" })).toHaveCount(0)
+    await expect(page.getByText(/Read your seven reflections back as one picture/)).toBeVisible()
+    await expect(page.getByText(/Write all 7 daily reflections/)).toHaveCount(0)
+  })
+
   // The summary reads the whole week, so a partial week has nothing coherent to summarise.
   test("unlocks the AI summary only once all seven reflections are written", async ({ page }) => {
     await authenticateAsNewUser(page)
+    // The reflections, the counts and the unlock are all the live backend's; only the tier flag
+    // riding on that same response is changed, since no account this suite can sign up is paid.
+    await grantPremium(page, "**/weekly-plans/evening-reflections*")
     await seedWeeklyPlan(page)
     await page.goto("/evening-reflections")
 
@@ -163,12 +201,19 @@ test.describe("evening reflections", () => {
   test("generates the AI summary from the seven reflections, once and only once", async ({ page }) => {
     test.slow()
 
-    await authenticateAsNewUser(page)
-    await seedWeeklyPlan(page)
+    // The one test that needs a genuinely paid account against the real backend: generating is a
+    // POST the server refuses for a free account, and flipping a flag on a *read* cannot change
+    // that. The seeded account carries state between runs, which is exactly what "once per week"
+    // means — so the first run in a given week does the real Gemini call and later runs assert the
+    // stored answer is still there and still unrepeatable.
+    await loginAsPremium(page)
+    await page.goto("/dashboard")
+    await seedThisWeekPlanViaApi(page)
     await page.goto("/evening-reflections")
     await writeWholeWeek(page)
 
-    await page.getByRole("button", { name: "Generate Summary" }).click()
+    const generate = page.getByRole("button", { name: "Generate Summary" })
+    if (await generate.count()) await generate.click()
 
     const summary = page.locator("[data-weekly-summary]")
     await expect(summary).toBeVisible({ timeout: 90_000 })

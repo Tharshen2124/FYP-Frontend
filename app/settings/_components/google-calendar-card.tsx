@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
+import { PremiumLock } from "@/components/premium-lock"
 import { TOP_LEVEL_ORDER } from "../_constants/categories"
 import { useCalendarSettings } from "../_utils/use-calendar-settings"
 import { ExportCategoryTree } from "./export-category-tree"
@@ -110,7 +111,10 @@ export function GoogleCalendarCard() {
             </div>
           </div>
 
-          {/* Sync toggle */}
+          {/* Sync toggle. Only the *automatic* half is paid for — Sync now above it, connecting,
+              disconnecting and the export tree below are all free, which is the line the pricing
+              page draws between "Push your schedule to Google Calendar" and "Sync calendar edits
+              automatically". */}
           <div className="p-6 rounded-2xl bg-card border-2 border-border">
             <div className="flex items-center justify-between gap-4">
               <div>
@@ -121,14 +125,28 @@ export function GoogleCalendarCard() {
                   Automatically push updates to Google Calendar whenever you edit your schedule in HabitFlow.
                 </p>
               </div>
+              {/* Shown off rather than as stored. The column keeps whatever the user last set, so
+                  upgrading brings automatic sync back without them hunting for this switch — but a
+                  switch reading "on" while nothing syncs is the exact failure this card had once
+                  before, and it is indistinguishable from one that does not work. */}
               <Switch
                 id="allow-sync"
-                checked={cal.current.allowSync}
+                checked={cal.isPremium && cal.current.allowSync}
                 onCheckedChange={cal.setAllowSync}
-                disabled={cal.isBusy}
+                disabled={cal.isBusy || !cal.isPremium}
                 className="shrink-0"
               />
             </div>
+
+            {!cal.isPremium && (
+              <div className="mt-4">
+                <PremiumLock
+                  variant="inline"
+                  title="Automatic sync"
+                  description="Every edit reaches Google Calendar on its own. Sync now above still pushes your schedule whenever you ask it to."
+                />
+              </div>
+            )}
           </div>
 
           <ExportCategoryTree

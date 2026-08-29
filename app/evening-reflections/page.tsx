@@ -121,6 +121,7 @@ export default function EveningReflectionsPage() {
                 <WeeklySummaryCard
                   summary={week.summary}
                   reflectionCount={week.reflectionCount}
+                  isPremium={week.isPremium}
                   canGenerate={week.canGenerate}
                   generating={week.isGenerating}
                   error={week.summaryError}

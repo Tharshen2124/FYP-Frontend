@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest"
 import type { ApiHistoryActivity, ApiHistoryGoal, ApiHistoryTask } from "@/lib/api"
 import {
   completionPercent,
+  freeHistoryFloor,
   goalOutcome,
   ordinal,
   toHistoryActivity,
@@ -12,6 +13,8 @@ import {
   weekStats,
 } from "@/app/history/_utils/history"
 import { strToMins } from "@/app/history/_utils/time"
+import { weekStartsBack } from "@/lib/date"
+import { FREE_TIER_LIMITS } from "@/lib/plans"
 import type { HistoryWeek, LegendGroup } from "@/app/history/_types"
 
 const task = (over: Partial<ApiHistoryTask> = {}): ApiHistoryTask => ({
@@ -337,5 +340,31 @@ describe("completionPercent", () => {
 
   it("is null when there was nothing to complete, rather than 0% or NaN", () => {
     expect(completionPercent(0, 0)).toBeNull()
+  })
+})
+
+describe("freeHistoryFloor", () => {
+  it("counts the newest week as the first of the three", () => {
+    // 24 Aug is the newest past week, so the three on offer are 24, 17 and 10 August.
+    expect(freeHistoryFloor("2026-08-24")).toBe("2026-08-10")
+  })
+
+  it("returns a Monday", () => {
+    expect(new Date(`${freeHistoryFloor("2026-08-24")}T00:00:00`).getDay()).toBe(1)
+  })
+
+  it("crosses a month and a year boundary without drifting off Monday", () => {
+    expect(freeHistoryFloor("2026-01-11")).toBe("2025-12-28")
+    expect(new Date(`${freeHistoryFloor("2026-03-02")}T00:00:00`).getDay()).toBe(1)
+  })
+
+  // The window is three weeks wide inclusive of both ends: the floor is the oldest week the
+  // account may open, not the first one it may not. This is the strip the sidebar actually draws.
+  it("is the last of the three weeks weekStartsBack lists", () => {
+    const newest = "2026-08-24"
+    const strip = weekStartsBack(newest, FREE_TIER_LIMITS.historyWeeks)
+
+    expect(strip).toEqual(["2026-08-24", "2026-08-17", "2026-08-10"])
+    expect(freeHistoryFloor(newest)).toBe(strip[strip.length - 1])
   })
 })

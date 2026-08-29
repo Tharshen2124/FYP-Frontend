@@ -2,12 +2,15 @@
 
 import { Loader2, Sparkles, Wand2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { PremiumLock } from "@/components/premium-lock"
 import { REQUIRED_DAYS } from "../_constants/reflections"
 import type { WeekSummary } from "../_types"
 
 interface Props {
   summary: WeekSummary | null
   reflectionCount: number
+  /** Whether the account may generate at all. Kept apart from `canGenerate`, which is about the week. */
+  isPremium: boolean
   canGenerate: boolean
   generating: boolean
   error: string | null
@@ -21,6 +24,7 @@ function formatGeneratedAt(iso: string) {
 export function WeeklySummaryCard({
   summary,
   reflectionCount,
+  isPremium,
   canGenerate,
   generating,
   error,
@@ -36,7 +40,7 @@ export function WeeklySummaryCard({
           again, so once one exists this card carries no action at all — and after a failure
           nothing was stored, which makes pressing again a first attempt, not a second one.
         */}
-        {!summary && (
+        {!summary && isPremium && (
           <Button
             onClick={onGenerate}
             disabled={generating || !canGenerate}
@@ -57,6 +61,9 @@ export function WeeklySummaryCard({
         )}
       </div>
 
+      {/* A summary already written stays readable after a subscription lapses. It is a record of a
+          week that happened, not a feature being used — taking it back would be taking away
+          something already paid for. Only generating a *new* one is gated. */}
       {summary ? (
         <>
           <p data-weekly-summary className="text-muted-foreground font-serif leading-relaxed whitespace-pre-wrap">
@@ -67,6 +74,12 @@ export function WeeklySummaryCard({
             Generated {formatGeneratedAt(summary.generatedAt)}
           </p>
         </>
+      ) : !isPremium ? (
+        <PremiumLock
+          variant="inline"
+          title="The AI weekly summary"
+          description="Read your seven reflections back as one picture of the week — what recurred, what shifted, and what you kept putting off."
+        />
       ) : (
         <p className="text-muted-foreground font-serif text-sm italic">
           {canGenerate

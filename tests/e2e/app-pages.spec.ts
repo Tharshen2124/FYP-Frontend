@@ -2,6 +2,7 @@ import { test, expect, type Page } from "@playwright/test"
 import {
   authenticateAsNewUser,
   completeOnboarding,
+  grantPremium,
   seedWeeklyPlan,
   seedPastWeek,
 } from "./helpers"
@@ -110,7 +111,7 @@ test.describe("settings", () => {
    * come from the live API, which is why a fresh user sees the four Sharpen the Saw dimensions
    * and no role children.
    */
-  const connectedCalendar = (page: Page) =>
+  const connectedCalendar = (page: Page, premium = true) =>
     page.route("**/calendar", route =>
       route.fulfill({
         status: 200,
@@ -126,6 +127,9 @@ test.describe("settings", () => {
             },
             synced_at: null,
           },
+          // Automatic sync is the paid half of this card. Every test below is about the switch
+          // itself, so they run as a paid account; the free tier has its own two tests at the end.
+          premium,
         }),
       })
     )
@@ -178,6 +182,7 @@ test.describe("settings", () => {
             },
             synced_at: null,
           },
+          premium: true,
         }),
       })
     })
@@ -233,6 +238,7 @@ test.describe("settings", () => {
             },
             synced_at: null,
           },
+          premium: true,
         }),
       })
     })
@@ -248,6 +254,53 @@ test.describe("settings", () => {
     expect(patches[0].export_preference?.fixed_appointments).toBe(true)
     // The tree edit is still pending, waiting on its own Save.
     await expect(page.getByText("You have unsaved changes.")).toBeVisible()
+  })
+
+  /**
+   * Automatic sync is the paid half of this card, and the free half has to keep working around it
+   * -- pushing a schedule to Google by hand is a Free feature the pricing page promises outright.
+   */
+  test("a free account gets the switch locked, and Sync now left alone", async ({ page }) => {
+    await connectedCalendar(page, false)
+    await page.goto("/settings")
+
+    const toggle = page.getByRole("switch", { name: "Allow Sync Changes" })
+    await expect(toggle).toBeDisabled()
+    // Shown off rather than as stored: a switch reading "on" while nothing syncs is the failure
+    // this card already had once.
+    await expect(toggle).toHaveAttribute("aria-checked", "false")
+
+    await expect(page.getByText(/Every edit reaches Google Calendar on its own/)).toBeVisible()
+    await expect(page.getByRole("button", { name: "Sync now" })).toBeEnabled()
+    await expect(page.getByRole("button", { name: "Disconnect" })).toBeEnabled()
+  })
+
+  test("a free account can still push by hand", async ({ page }) => {
+    await connectedCalendar(page, false)
+
+    await page.route("**/calendar/sync", route =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          weeks: 1,
+          written: 3,
+          deleted: 0,
+          calendar: {
+            connected: true,
+            sync_enabled: true,
+            export_preference: { fixed_appointments: true, excluded_dimensions: [], excluded_role_ids: [] },
+            synced_at: "2026-08-25T07:03:10Z",
+          },
+          premium: false,
+        }),
+      })
+    )
+
+    await page.goto("/settings")
+    await page.getByRole("button", { name: "Sync now" }).click()
+
+    await expect(page.getByText("Synced 3 events")).toBeVisible()
   })
 
   /**
@@ -274,6 +327,7 @@ test.describe("settings", () => {
             export_preference: { fixed_appointments: true, excluded_dimensions: [], excluded_role_ids: [] },
             synced_at: "2026-08-25T07:03:10Z",
           },
+          premium: true,
         }),
       })
     })
@@ -402,32 +456,141 @@ test.describe("history and analytics", () => {
       await expect(page).not.toHaveURL(new RegExp(`week_start=${thisMonday}`))
     })
 
-    test("load older weeks widens the strip", async ({ page }) => {
+    // The free tier's window is the three most recent finished weeks, and the strip stops there:
+    // the server will not return the rest, so rows it could never fill would be rows that do
+    // nothing. The button that widens the strip says what widens it instead.
+    test("a free account sees three weeks and an offer instead of Load older", async ({ page }) => {
+      await expect(page.locator("aside li button")).toHaveCount(3)
+      await expect(page.getByRole("button", { name: "Load older weeks" })).toHaveCount(0)
+      await expect(page.getByText("Free shows your last 3 weeks.")).toBeVisible()
+      await expect(page.locator("aside").getByRole("link", { name: "Upgrade" })).toBeVisible()
+    })
+
+    test("a free account's date picker cannot reach behind the window", async ({ page }) => {
+      const picker = page.locator("#jump-to-week")
+      // Derived from the picker's own `max` rather than from the URL, which is stamped in by a
+      // `router.replace` that may not have run yet when the test first looks.
+      await expect(picker).toHaveAttribute("max", /\d{4}-\d{2}-\d{2}/)
+      const newest = (await picker.getAttribute("max"))!
+
+      // Three weeks inclusive of both ends, so the floor is two weeks back from the newest — the
+      // same Monday the strip's last row shows, not one week further.
+      const floor = await page.evaluate((iso: string) => {
+        const d = new Date(`${iso}T00:00:00`)
+        d.setDate(d.getDate() - 14)
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+      }, newest)
+
+      await expect(picker).toHaveAttribute("min", floor)
+    })
+
+    // A hand-edited URL naming a week behind the window is clamped rather than left on a page the
+    // server refuses -- the same treatment the live week already gets, and for the same reason.
+    test("a free account's out-of-window URL is clamped, not left in error", async ({ page }) => {
+      const behind = await page.evaluate(() => {
+        const d = new Date()
+        d.setDate(d.getDate() + (d.getDay() === 0 ? -6 : 1 - d.getDay()) - 7 * 8)
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+      })
+
+      await page.goto(`/history?week_start=${behind}`)
+
+      await expect(page).not.toHaveURL(new RegExp(`week_start=${behind}`))
+      await expect(page.getByRole("heading", { name: /Week of/ })).toBeVisible()
+    })
+
+    // The one history test that reads a real finished week end to end: the strip, its counts and
+    // the widening all come from the live backend, with only the tier flipped on the way past.
+    test("a paid account sees real counts and can load older weeks", async ({ page }) => {
+      await seedPastWeek(page)
+      await grantPremium(page, "**/history/weeks*")
+      await page.goto("/history")
+
       const rows = page.locator("aside li button")
       await expect(rows).toHaveCount(8)
+      // The seeded week is last week, so it heads the strip, and its badge is a real ratio rather
+      // than the em dash an unplanned week shows.
+      await expect(rows.first()).not.toContainText("—")
 
       await page.getByRole("button", { name: "Load older weeks" }).click()
       await expect(rows).toHaveCount(16)
     })
   })
 
-  // /analytics reads the live backend now, and it only reads weeks that have *finished* -- so a
-  // fresh user is the case worth pinning: it has to say there is nothing yet rather than draw four
-  // empty charts.
+  /**
+   * The whole page is paid for, and the refusal is a 402 with no body — so unlike the other three
+   * gated surfaces there is no flag on a real response to flip on the way past. The lock itself is
+   * tested against the live backend below; the cards are tested against a stand-in week in the
+   * shape `GET /analytics` returns, which is what the four cards actually derive from. That the
+   * backend counts a week correctly is `test/controllers/analytics_controller_test.rb`'s job.
+   */
   test.describe("analytics", () => {
     test.beforeEach(async ({ page }) => {
       await authenticateAsNewUser(page)
       await page.goto("/analytics")
     })
 
-    test("says so for a user with no finished week, rather than charting zeroes", async ({ page }) => {
+    /** Last Monday, from the browser's clock — every week_start in this app is a local date. */
+    const lastMonday = (page: Page) =>
+      page.evaluate(() => {
+        const d = new Date()
+        d.setDate(d.getDate() + (d.getDay() === 0 ? -6 : 1 - d.getDay()) - 7)
+        const iso = (x: Date) =>
+          `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`
+        const end = new Date(d)
+        end.setDate(end.getDate() + 6)
+        return { week_start: iso(d), end_date: iso(end) }
+      })
+
+    /**
+     * Stands in for a paid account. `weeks` is exactly what the endpoint returns, so the page does
+     * all of its own arithmetic — the percentages below are the client's, not the fixture's.
+     */
+    const paidAnalytics = async (page: Page, weeks: unknown[]) =>
+      // Anchored on the API origin: `**/analytics*` would also match the page's own URL, and the
+      // navigation would be answered with JSON instead of the app.
+      page.route(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000"}/analytics*`, route =>
+        route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ weeks }),
+        })
+      )
+
+    /** The same shape `seedPastWeek` produces: two physical renewals done, one mental, one
+        spiritual scheduled and missed, and two goals of which one was achieved. */
+    const seededWeek = (week: { week_start: string; end_date: string }) => ({
+      ...week,
+      dimensions: [
+        { dimension: "physical", completed: 2, total: 2 },
+        { dimension: "mental", completed: 1, total: 1 },
+        { dimension: "spiritual", completed: 0, total: 1 },
+      ],
+      roles: [{ role_id: 1, name: "Professional", color_id: "purple", completed: 1, total: 2 }],
+      daily_priorities: [{ day_of_week: 2, completed: 1, total: 1 }],
+      goals: { achieved: 1, total: 2, dropped: 0 },
+    })
+
+    test("a free account is offered the upgrade in place, keeping the page's heading", async ({ page }) => {
+      // No mock: this is the live backend refusing, which is the thing worth pinning.
+      await expect(page.getByRole("heading", { name: /Your Analytics/ })).toBeVisible()
+      await expect(page.getByRole("heading", { name: "Analytics is a Premium feature" })).toBeVisible()
+      await expect(page.getByRole("link", { name: "Upgrade to Premium" })).toBeVisible()
+      // A locked page is not a broken one.
+      await expect(page.getByText(/Couldn't load your analytics/)).toHaveCount(0)
+    })
+
+    test("says so for a paid user with no finished week, rather than charting zeroes", async ({ page }) => {
+      await paidAnalytics(page, [])
+      await page.goto("/analytics")
+
       await expect(page.getByRole("heading", { name: /Your Analytics/ })).toBeVisible()
       await expect(page.getByRole("heading", { name: "Nothing to analyse yet" })).toBeVisible()
       await expect(page.getByRole("link", { name: "Plan a week" })).toBeVisible()
     })
 
     test("renders all four cards once a finished week exists", async ({ page }) => {
-      await seedPastWeek(page)
+      await paidAnalytics(page, [ seededWeek(await lastMonday(page)) ])
       await page.goto("/analytics")
 
       for (const heading of [
@@ -459,7 +622,7 @@ test.describe("history and analytics", () => {
     })
 
     test("explains what it measures behind a toggle on every card", async ({ page }) => {
-      await seedPastWeek(page)
+      await paidAnalytics(page, [ seededWeek(await lastMonday(page)) ])
       await page.goto("/analytics")
 
       await expect(page.getByRole("button", { name: "How does this work?" })).toHaveCount(4)

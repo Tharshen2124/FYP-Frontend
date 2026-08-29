@@ -378,3 +378,98 @@ export async function completeOnboarding(page: Page) {
   await page.getByRole("button", { name: "Next", exact: true }).click()
   await page.waitForURL(/\/dashboard$/)
 }
+
+/**
+ * The seeded paid account (`db/seeds.rb`), for the one thing `grantPremium` cannot cover.
+ *
+ * Reused rather than freshly signed up, because signing up is the only way this app makes an
+ * account and every account it makes is Free. So this one carries state between runs — which is
+ * fine for the summary test it exists for, whose whole subject is that a summary is written once
+ * per week and never again.
+ */
+export async function loginAsPremium(page: Page) {
+  await loginAs(page, "e2e-premium@example.com", "password123")
+  // Out of the way of the check-in dialog, whose overlay swallows pointer events.
+  await setEodTime(page, "23:59")
+}
+
+/**
+ * Plans the current week through the API: a role if the account has none yet, then one goal, which
+ * is what files the `weekly_plans` row everything else hangs off.
+ *
+ * `seedWeeklyPlan` cannot do this for the seeded premium account — it walks onboarding step 1, and
+ * that account is already onboarded, so the layout guard sends it to /dashboard. This is the same
+ * set of requests the wizard makes, in the same order, and it is idempotent across runs.
+ */
+export async function seedThisWeekPlanViaApi(page: Page) {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000"
+
+  await page.evaluate(async (apiUrl: string) => {
+    const cookie = document.cookie.match(/(?:^|; )habitflow-auth=([^;]*)/)
+    const token = JSON.parse(decodeURIComponent(cookie![1])).state.token
+
+    const monday = new Date()
+    monday.setDate(monday.getDate() + (monday.getDay() === 0 ? -6 : 1 - monday.getDay()))
+    const weekStart = [
+      monday.getFullYear(),
+      String(monday.getMonth() + 1).padStart(2, "0"),
+      String(monday.getDate()).padStart(2, "0"),
+    ].join("-")
+
+    const call = async (method: string, path: string, body?: unknown) => {
+      const res = await fetch(`${apiUrl}${path}`, {
+        method,
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      })
+      if (!res.ok) throw new Error(`${method} ${path} \u2192 ${res.status} ${await res.text()}`)
+      return res.json()
+    }
+
+    const { roles } = await call("GET", `/roles?week_start=${weekStart}`)
+    const role =
+      roles[0] ??
+      (
+        await call("POST", `/roles?week_start=${weekStart}`, {
+          role_name: "Professional",
+          color_id: "purple",
+          icon_id: "briefcase",
+        })
+      ).role
+
+    if (!(role.goals ?? []).length) {
+      await call("POST", `/goals?week_start=${weekStart}`, {
+        role_id: role.role_id,
+        description: "Keep the week moving",
+      })
+    }
+  }, apiUrl)
+}
+
+/**
+ * Flips the `premium` flag on a real response on its way past, leaving everything else in it alone.
+ *
+ * Every account this suite can make is Free: signing one up through the UI is all the real backend
+ * offers, and making one Premium means going through Stripe. So the paid path is tested by changing
+ * the one field that says which tier this is — every week, figure and role in the response is still
+ * the live backend's own, which is the difference between this and mocking the endpoint.
+ *
+ * Only for the three endpoints that *carry* the flag. `/analytics` refuses outright with a 402 and
+ * has no body to amend, so it is mocked explicitly where it is needed.
+ */
+export async function grantPremium(page: Page, urlPattern: string) {
+  await page.route(urlPattern, async route => {
+    try {
+      const response = await route.fetch()
+      await route.fulfill({
+        response,
+        contentType: "application/json",
+        body: JSON.stringify({ ...(await response.json()), premium: true }),
+      })
+    } catch {
+      // A request still in flight when the test ends: the page is gone, so there is nothing left
+      // to answer and nothing has gone wrong. Without this it surfaces as an error attached to no
+      // test at all, which reads as a failure of whichever test happened to be last.
+    }
+  })
+}

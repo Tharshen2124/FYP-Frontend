@@ -24,6 +24,31 @@ function timeZone(): string {
   }
 }
 
+/**
+ * A failed request, carrying the status alongside the server's own sentence.
+ *
+ * The status matters for exactly one thing: **402 Payment Required** is how the API says "this is
+ * a Premium feature", and a page that can tell it from a 422 renders an upgrade offer instead of a
+ * red error line. Every other caller reads `.message` and is unaffected — an Error subclass still
+ * is an Error, so nothing that already catches one has to change.
+ */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number
+  ) {
+    super(message)
+    this.name = "ApiError"
+  }
+}
+
+/** The API's way of saying a feature belongs to the paid tier. */
+export const PAYMENT_REQUIRED = 402
+
+export function isPaymentRequired(error: unknown): boolean {
+  return error instanceof ApiError && error.status === PAYMENT_REQUIRED
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = useAuthStore.getState().token
   const res = await fetch(`${API_URL}${path}`, {
@@ -37,8 +62,9 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   })
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
-    throw new Error(
-      body.error ?? body.errors?.join(", ") ?? `Request failed (${res.status})`
+    throw new ApiError(
+      body.error ?? body.errors?.join(", ") ?? `Request failed (${res.status})`,
+      res.status
     )
   }
   return res.status === 204 ? (undefined as T) : res.json()
@@ -81,9 +107,24 @@ export interface ApiExportPreference {
 
 export interface ApiCalendarSettings {
   connected: boolean
+  /**
+   * As stored, which for a free account is not the same as what happens: automatic sync is a paid
+   * feature, and the server withholds it while leaving the preference the user set alone. Read
+   * `premium` beside this to know which of the two the switch should show.
+   */
   sync_enabled: boolean
   export_preference: ApiExportPreference
   synced_at: string | null
+}
+
+/**
+ * `premium` sits beside the calendar rather than inside it: it is a fact about the account, not
+ * about the calendar. Every calendar endpoint returns it, so a write cannot leave the page holding
+ * a staler answer than the read that preceded it.
+ */
+export interface ApiCalendarResponse {
+  calendar: ApiCalendarSettings
+  premium: boolean
 }
 
 /** Whether a night's check-in was saved or dismissed. */
@@ -569,6 +610,8 @@ export const api = {
       planned: boolean
       reflections: ApiEveningReflection[]
       summary: ApiWeeklySummary | null
+      /** Whether the AI summary is unlocked. Sent here so the button knows before it is pressed. */
+      premium: boolean
     }>(weekScoped("/weekly-plans/evening-reflections", weekStart)),
   /**
    * Writes one evening. Create and edit are the same call: there is exactly one slot per day, so
@@ -620,7 +663,9 @@ export const api = {
    * absent, so the caller fills the gaps itself rather than the server inventing rows.
    */
   fetchHistoryWeeks: (from: string, to: string) =>
-    request<{ weeks: ApiHistoryWeekMeta[] }>(`/history/weeks?from=${from}&to=${to}`),
+    request<{ weeks: ApiHistoryWeekMeta[]; premium: boolean }>(
+      `/history/weeks?from=${from}&to=${to}`
+    ),
   /**
    * The figures behind /analytics, one row per planned week across a range. Weeks the user never
    * planned are absent, and the range is capped at 52 weeks server-side.
@@ -633,7 +678,7 @@ export const api = {
    * and a calendar to write into — deliberately not "the access token is still valid", which
    * expires hourly and is renewed on demand.
    */
-  fetchCalendarSettings: () => request<{ calendar: ApiCalendarSettings }>("/calendar"),
+  fetchCalendarSettings: () => request<ApiCalendarResponse>("/calendar"),
   /**
    * The consent screen's URL, not a redirect to it. A redirect would have to be followed by the
    * browser, and the browser cannot send the bearer token that says which account is connecting —
@@ -642,7 +687,7 @@ export const api = {
    */
   fetchCalendarConnectUrl: () => request<{ url: string }>("/calendar/connect"),
   updateCalendarSettings: (data: { sync_enabled: boolean; export_preference: ApiExportPreference }, weekStart?: string) =>
-    request<{ calendar: ApiCalendarSettings }>("/calendar/settings", {
+    request<ApiCalendarResponse>("/calendar/settings", {
       method: "PATCH",
       body: JSON.stringify(withWeekStart(data, weekStart)),
     }),
@@ -652,12 +697,12 @@ export const api = {
    * 422 when the grant has been revoked and the only fix is reconnecting.
    */
   syncCalendar: (weekStart?: string) =>
-    request<{ weeks: number; written: number; deleted: number; calendar: ApiCalendarSettings }>(
+    request<{ weeks: number; written: number; deleted: number } & ApiCalendarResponse>(
       "/calendar/sync",
       { method: "POST", body: JSON.stringify(withWeekStart({}, weekStart)) }
     ),
   /** Deletes the HabitFlow calendar, taking its events with it, and revokes the grant. */
-  disconnectCalendar: () => request<{ calendar: ApiCalendarSettings }>("/calendar", { method: "DELETE" }),
+  disconnectCalendar: () => request<ApiCalendarResponse>("/calendar", { method: "DELETE" }),
 
   // --- subscription & billing ---
   /**

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { toast } from "sonner"
-import { api, type ApiCalendarSettings, type ApiRole } from "@/lib/api"
+import { api, type ApiCalendarResponse, type ApiRole } from "@/lib/api"
 import { buildCategories } from "../_constants/categories"
 import { fromApiPreference, settingsEqual, toApiPreference, toggleCategoryIds } from "../_utils/categories"
 import type { CalSettings, CategoryItem } from "../_types"
@@ -33,17 +33,24 @@ export function useCalendarSettings() {
   const [saved, setSaved] = useState<CalSettings>(empty)
   const [current, setCurrent] = useState<CalSettings>(empty)
   const [isLoading, setIsLoading] = useState(true)
+  /* Starts locked and unlocks when the server says so. The whole card waits on `isLoading`, so the
+     switch is never drawn live and then disabled — it simply arrives in the state it belongs in. */
+  const [isPremium, setIsPremium] = useState(false)
   const [isBusy, setIsBusy] = useState(false)
   // Set only by the connect redirect, so the offer to push is made once, on the visit that
   // connected. A reload has already cleared the fragment and will not ask again.
   const [justConnected, setJustConnected] = useState(false)
 
-  const applyCalendar = useCallback((calendar: ApiCalendarSettings, cats: CategoryItem[]) => {
+  /* Takes the whole response rather than its `calendar` half, because `premium` travels beside it
+     on every calendar endpoint: a write that came back saying the tier had changed would otherwise
+     be dropped on the floor, leaving the switch reading from the load that preceded it. */
+  const applyCalendar = useCallback(({ calendar, premium }: ApiCalendarResponse, cats: CategoryItem[]) => {
     const ids = fromApiPreference(cats, calendar.export_preference)
     setSaved({ allowSync: calendar.sync_enabled, exportIds: ids })
     setCurrent({ allowSync: calendar.sync_enabled, exportIds: new Set(ids) })
     setConnected(calendar.connected)
     setSyncedAt(calendar.synced_at)
+    setIsPremium(premium)
   }, [])
 
   useEffect(() => {
@@ -67,11 +74,11 @@ export function useCalendarSettings() {
 
     // The roles are what the export tree is built from, so both have to land before it can render.
     Promise.all([api.fetchCalendarSettings(), api.fetchStandingRoles()])
-      .then(([{ calendar }, { roles }]: [{ calendar: ApiCalendarSettings }, { roles: ApiRole[] }]) => {
+      .then(([calendarResponse, { roles }]: [ApiCalendarResponse, { roles: ApiRole[] }]) => {
         if (cancelled) return
         const cats = buildCategories(roles)
         setCategories(cats)
-        applyCalendar(calendar, cats)
+        applyCalendar(calendarResponse, cats)
       })
       .catch(() => {
         if (!cancelled) toast.error("Couldn't load your Google Calendar settings — please refresh.")
@@ -109,13 +116,14 @@ export function useCalendarSettings() {
     setIsBusy(true)
 
     try {
-      const { calendar } = await api.updateCalendarSettings({
+      const { calendar, premium } = await api.updateCalendarSettings({
         sync_enabled: allowSync,
         export_preference: toApiPreference(categories, saved.exportIds),
       })
       setSaved(prev => ({ ...prev, allowSync: calendar.sync_enabled }))
       setCurrent(prev => ({ ...prev, allowSync: calendar.sync_enabled }))
       setSyncedAt(calendar.synced_at)
+      setIsPremium(premium)
       toast.success(
         calendar.sync_enabled
           ? "Automatic sync on — changes to your plan will reach Google Calendar"
@@ -148,8 +156,7 @@ export function useCalendarSettings() {
   const disconnect = async () => {
     setIsBusy(true)
     try {
-      const { calendar } = await api.disconnectCalendar()
-      applyCalendar(calendar, categories)
+      applyCalendar(await api.disconnectCalendar(), categories)
       toast.success("Google Calendar disconnected")
     } catch {
       toast.error("Couldn't disconnect Google Calendar — please try again.")
@@ -161,11 +168,11 @@ export function useCalendarSettings() {
   const save = async () => {
     setIsBusy(true)
     try {
-      const { calendar } = await api.updateCalendarSettings({
+      const response = await api.updateCalendarSettings({
         sync_enabled: current.allowSync,
         export_preference: toApiPreference(categories, current.exportIds),
       })
-      applyCalendar(calendar, categories)
+      applyCalendar(response, categories)
       toast.success("Google Calendar settings saved")
     } catch {
       toast.error("Couldn't save your Google Calendar settings — please try again.")
@@ -177,8 +184,8 @@ export function useCalendarSettings() {
   const syncNow = async () => {
     setIsBusy(true)
     try {
-      const { written, deleted, calendar } = await api.syncCalendar()
-      applyCalendar(calendar, categories)
+      const { written, deleted, ...calendarResponse } = await api.syncCalendar()
+      applyCalendar(calendarResponse, categories)
       // Nothing to do is a real answer, and the honest one: the reconcile writes only what changed.
       toast.success(
         written + deleted === 0
@@ -205,6 +212,7 @@ export function useCalendarSettings() {
     current,
     isDirty,
     isLoading,
+    isPremium,
     isBusy,
     toggleCategory,
     setAllowSync,

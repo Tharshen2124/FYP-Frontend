@@ -2,6 +2,8 @@
 
 import { CalendarDays } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { PremiumLock } from "@/components/premium-lock"
+import { FREE_TIER_LIMITS } from "@/lib/plans"
 import { formatWeekRange } from "@/lib/date"
 import type { HistoryWeekMeta } from "../_types"
 
@@ -12,6 +14,9 @@ interface Props {
   onJumpToDate: (date: string) => void
   onLoadOlder: () => void
   maxDate: string
+  /** The oldest week on offer, or null when there is no floor beyond the range cap. */
+  minDate: string | null
+  isPremium: boolean
 }
 
 export function WeekList({
@@ -21,6 +26,8 @@ export function WeekList({
   onJumpToDate,
   onLoadOlder,
   maxDate,
+  minDate,
+  isPremium,
 }: Props) {
   return (
     <aside className="w-64 shrink-0 border-r border-border flex flex-col overflow-y-auto bg-card/40">
@@ -36,12 +43,15 @@ export function WeekList({
           {/*
             Any date resolves to the week containing it, so the user picks a day rather than
             hunting for a Monday. `max` is the newest week this page shows — the one before the
-            current one — so the picker cannot offer a week that has not finished happening.
+            current one — so the picker cannot offer a week that has not finished happening, and
+            `min` is the oldest the account may open, so it cannot offer one behind the paywall
+            either. Both bounds are enforced again in the hook, since a date input is a suggestion.
           */}
           <Input
             id="jump-to-week"
             type="date"
             max={maxDate}
+            min={minDate ?? undefined}
             onChange={e => onJumpToDate(e.target.value)}
             className="h-9 bg-muted border-border text-foreground text-sm"
           />
@@ -78,13 +88,24 @@ export function WeekList({
         })}
       </ul>
 
+      {/* Older weeks are not listed and greyed for a free account — the server genuinely will not
+          return them, so rows it could never fill would be rows that do nothing. The button that
+          would have widened the strip says what widens it instead. */}
       <div className="px-4 py-4 border-t border-border">
-        <button
-          onClick={onLoadOlder}
-          className="w-full text-sm font-serif text-muted-foreground hover:text-foreground transition-colors"
-        >
-          Load older weeks
-        </button>
+        {isPremium ? (
+          <button
+            onClick={onLoadOlder}
+            className="w-full text-sm font-serif text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Load older weeks
+          </button>
+        ) : (
+          <PremiumLock
+            variant="inline"
+            title="Your full history"
+            description={`Free shows your last ${FREE_TIER_LIMITS.historyWeeks} weeks.`}
+          />
+        )}
       </div>
     </aside>
   )
