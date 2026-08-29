@@ -1,26 +1,70 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Moon, CheckCircle2 } from "lucide-react"
 import { toast } from "sonner"
 import { AppNav } from "@/components/app-nav"
 import { OnboardingStepper } from "@/components/onboarding-stepper"
-import { api } from "@/lib/api"
+import { PlanComparison } from "@/components/plan-comparison"
+import { api, type ApiPlan } from "@/lib/api"
 import { useAuthStore } from "@/stores/auth-store"
 
 export default function OnboardingCompletePage() {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [plan, setPlan] = useState<ApiPlan | null>(null)
+
+  // Only for the price on the Premium card. A failure is silent: this is the last screen of
+  // onboarding, and a toast about a pricing figure would be a poor note to end on.
+  useEffect(() => {
+    let cancelled = false
+    api
+      .fetchSubscription()
+      .then(({ plan: fetched }) => {
+        if (!cancelled) setPlan(fetched)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  /** Marks the account onboarded. Both ways off this page go through it, for the reason below. */
+  const finishOnboarding = async () => {
+    await api.completeOnboarding()
+    useAuthStore.getState().markOnboarded()
+  }
 
   const handleComplete = async () => {
     setIsSubmitting(true)
     try {
-      await api.completeOnboarding()
-      useAuthStore.getState().markOnboarded()
+      await finishOnboarding()
       router.push("/dashboard")
     } catch {
       toast.error("Couldn't finish onboarding — please try again.")
+      setIsSubmitting(false)
+    }
+  }
+
+  /*
+   * Onboarding is finished *before* the browser leaves for Stripe, and the order is load-bearing.
+   * Checkout navigates off the app entirely and comes back to /subscription, which sits outside the
+   * onboarding flow — so an account that left from here still un-onboarded would never be marked,
+   * and its next sign-in would drop the user back at step 1 with a week already planned.
+   *
+   * It is also why upgrading is a button here rather than a sixth step: `app/onboarding/layout.tsx`
+   * turns away anyone who arrives already onboarded, so a step placed after that flag is set would
+   * bounce straight to the dashboard.
+   */
+  const handleUpgrade = async () => {
+    setIsSubmitting(true)
+    try {
+      await finishOnboarding()
+      const { url } = await api.createCheckoutSession()
+      window.location.assign(url)
+    } catch {
+      toast.error("Couldn't start checkout — please try again.")
       setIsSubmitting(false)
     }
   }
@@ -89,9 +133,26 @@ export default function OnboardingCompletePage() {
             </div>
           </div>
 
+          {/* The upgrade offer sits here rather than interrupting the flow: onboarding is finished
+              either way, and Next remains the plain way on to the dashboard. */}
+          <section className="mb-10">
+            <h2 className="text-xl font-bold text-foreground mb-1">Choose your plan</h2>
+            <p className="text-muted-foreground font-serif mb-4">
+              Everything you have just set up works on the Free plan. Premium adds the parts that only
+              pay off over time.
+            </p>
+            <PlanComparison
+              currentPlan="free"
+              plan={plan}
+              onUpgrade={handleUpgrade}
+              isBusy={isSubmitting}
+            />
+          </section>
+
           <p className="text-center text-muted-foreground font-serif">
             Both features are always accessible from your dashboard. Click{" "}
-            <span className="font-bold text-foreground">Next</span> to get started.
+            <span className="font-bold text-foreground">Next</span> to start on the Free plan — you can
+            upgrade any time from <span className="text-primary">Subscription</span>.
           </p>
         </div>
       </main>

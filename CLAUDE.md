@@ -65,11 +65,11 @@ one would land on another. Each step is gated by an
 | 2 | `/onboarding/sharpen-the-saw` | every dimension has ≥1 activity |
 | 3 | `/onboarding/fixed-appointments` | ≥1 appointment exists |
 | 4 | `/onboarding/schedule-tasks` | ≥1 task exists |
-| 5 | `/onboarding/complete` | always (links to `/dashboard`) |
+| 5 | `/onboarding/complete` | always (links to `/dashboard`) — also carries the Premium offer |
 
 **3. App** — everything reachable from the dashboard `<Sidebar>`:
 `/dashboard`, `/roles`, `/sharpen-the-saw`, `/weekly-plan/goals`, `/settings`,
-`/evening-reflections`, `/history`, `/analytics`.
+`/evening-reflections`, `/history`, `/analytics`, `/subscription`.
 
 The weekly-plan sub-flow (`/weekly-plan/*`) is the repeatable version of onboarding steps 1–4:
 `/weekly-plan/goals` → `/weekly-plan/sharpen-the-saw` → `/weekly-plan/schedule` → `/dashboard`.
@@ -136,6 +136,12 @@ one — planning the week ahead leaves all seven columns open.
   inherit that colour; an optional "Daily Priority" star shows a badge on the card. Clash detection
   spans fixed appointments *and* tasks.
 - `/onboarding/complete` — Explains Evening Reflections and the End-of-Day check-in; links to `/dashboard`.
+  Also carries the Free/Premium comparison (`<PlanComparison>`, shared with `/subscription`).
+  **Upgrade finishes onboarding before it leaves for Stripe, and the order is load-bearing**: checkout
+  navigates off the app and returns to `/subscription`, outside the onboarding gate — so an account
+  that left un-onboarded would never be marked, and its next sign-in would drop the user back at step 1.
+  It is a button here rather than a sixth step for the same reason `layout.tsx` exists: a step placed
+  after `markOnboarded()` would be bounced straight to `/dashboard` by that guard.
 - `/dashboard` — Weekly timetable with today's column highlighted, a "now" indicator line, and
   a legend. A completed task is struck through with a check, the same mark `/history` uses.
   Every card is a button: clicking one opens a **detail dialog** carrying the full untruncated
@@ -260,6 +266,19 @@ one — planning the week ahead leaves all seven columns open.
   averaged, so a quiet week does not weigh as much as a busy one.
   The completion card counts **goals**, not tasks, which is what makes its "Removed" column mean
   something: dropped goals sit outside the ratio, the same rule `/history` follows.
+- `/subscription` — API-backed. The only surface that takes money, and the only one whose state this
+  app does not own. A current-plan card, then the same `<PlanComparison>` that ends onboarding.
+  **RM 25/month, MYR, through hosted Stripe Checkout** — the browser leaves for a page Stripe hosts,
+  so no Stripe package is installed here and no card field is ever rendered. The price is *not* a
+  constant in `lib/plans.ts`: it arrives on `GET /subscription` straight from Stripe, so the figure on
+  this page cannot disagree with the figure on the card form. Cancel, resume, card and invoices are
+  all the Stripe Billing Portal, offered only once `manageable` says there is a customer to show.
+  `_utils/use-subscription.ts` follows `/settings`' calendar hook — leave, come back with the outcome
+  on the URL, read it once and clear it with `replaceState` so a refresh is not a second toast —
+  **except that the outcome is a query param, not a fragment.** `/settings` uses `#calendar=connected`
+  because a fragment never reaches a server; Stripe substitutes the session id into the `success_url`
+  query only, and the page has to hand that id back to `POST /subscription/confirm`. That confirm is
+  why the page reads Premium the instant the browser is back rather than waiting on the webhook.
 
 ## Layout conventions
 
@@ -413,6 +432,12 @@ every roles/goals request carries a `week_start`. Nothing is hard-deleted — se
   `<Link>`; otherwise a disabled or `onNext`-callback button.
 - `components/sidebar.tsx` — Fixed left nav for dashboard-area pages; highlights the active route via
   `usePathname()`.
+- `components/plan-comparison.tsx` — The Free vs Premium comparison. App-wide rather than route-private
+  because `/subscription` and `/onboarding/complete` are in different flows and neither may import the
+  other's `_*` folder. Props: `currentPlan`, `plan` (the price, from the API), `onUpgrade`, `isBusy`.
+  Both tiers list the same rows in the same order so the columns read across; `tests/unit/plans.test.ts`
+  pins that. It emphasises Premium with `--primary`, and uses `bg-accent` for the upgrade button alone
+  — the CTA role the guidelines reserve yellow for, and deliberately not a second claim on it.
 - `components/onboarding-stepper.tsx` — 5-step progress indicator. Props: `currentStep` (1–5).
 - `components/clash-warning-modal.tsx` — Warning dialog for exactly 1 overlapping appointment.
   Props: `open`, `conflictingTitle`, `onProceed`, `onCancel`.

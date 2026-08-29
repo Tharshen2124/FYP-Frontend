@@ -11,6 +11,7 @@ const SIDEBAR_ROUTES: [string, string][] = [
   ["Evening Reflections", "/evening-reflections"],
   ["History", "/history"],
   ["Analytics", "/analytics"],
+  ["Subscription", "/subscription"],
 ]
 
 test.describe("app navigation", () => {
@@ -90,7 +91,7 @@ test.describe("app navigation", () => {
       "/onboarding/roles", "/onboarding/sharpen-the-saw", "/onboarding/fixed-appointments",
       "/onboarding/schedule-tasks", "/onboarding/complete",
       "/dashboard", "/roles", "/sharpen-the-saw", "/settings",
-      "/evening-reflections", "/history", "/analytics",
+      "/evening-reflections", "/history", "/analytics", "/subscription",
       "/weekly-plan/goals", "/weekly-plan/sharpen-the-saw", "/weekly-plan/schedule",
       "/weekly-plan/edit",
     ]

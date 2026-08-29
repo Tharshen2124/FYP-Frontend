@@ -288,6 +288,32 @@ export interface ApiHistoryWeek {
   tasks: ApiHistoryTask[]
 }
 
+/**
+ * The account's standing with Stripe, as `/subscription` reports it.
+ *
+ * `premium` is the server's answer rather than something derived here from `status`: a cancelled
+ * subscription keeps the status "active" until its period actually ends, and that rule belongs in
+ * one place. `manageable` is whether there is a Stripe customer for the Billing Portal to show —
+ * an account that has never checked out has nothing to manage.
+ */
+export interface ApiSubscription {
+  premium: boolean
+  status: string | null
+  period_end: string | null
+  manageable: boolean
+}
+
+/**
+ * What Premium costs, read from Stripe rather than held as a constant here, so the figure on the
+ * pricing page cannot disagree with the figure on the card form. Null when Stripe could not be
+ * reached — the page still knows which plan the user is on, so it renders without the price.
+ */
+export interface ApiPlan {
+  amount_cents: number
+  currency: string
+  interval: string | null
+}
+
 export const api = {
   signup: (data: { email: string; username: string; password: string }) =>
     request<{ user: { email: string; username: string } }>("/signup", {
@@ -632,4 +658,30 @@ export const api = {
     ),
   /** Deletes the HabitFlow calendar, taking its events with it, and revokes the grant. */
   disconnectCalendar: () => request<{ calendar: ApiCalendarSettings }>("/calendar", { method: "DELETE" }),
+
+  // --- subscription & billing ---
+  /**
+   * The account's plan, and what Premium costs. One call, because the pricing page needs both and
+   * neither is worth its own round trip.
+   */
+  fetchSubscription: () => request<{ subscription: ApiSubscription; plan: ApiPlan | null }>("/subscription"),
+  /**
+   * Stripe Checkout's URL, not a redirect to it — the same shape as `fetchCalendarConnectUrl` and
+   * for the same reason: a redirect would have to be followed by the browser, and the browser
+   * cannot send the bearer token that says whose subscription is being started. The caller
+   * navigates to what this returns.
+   */
+  createCheckoutSession: () => request<{ url: string }>("/subscription/checkout", { method: "POST" }),
+  /** The Billing Portal's URL. Stripe hosts cancel, resume, card changes and invoice history. */
+  createPortalSession: () => request<{ url: string }>("/subscription/portal", { method: "POST" }),
+  /**
+   * Applies the checkout the user has just come back from, so the page reads Premium immediately
+   * rather than waiting on the webhook. The webhook is still what this app believes — this writes
+   * the same state through the same code, so the two cannot disagree.
+   */
+  confirmCheckout: (sessionId: string) =>
+    request<{ subscription: ApiSubscription }>("/subscription/confirm", {
+      method: "POST",
+      body: JSON.stringify({ session_id: sessionId }),
+    }),
 }

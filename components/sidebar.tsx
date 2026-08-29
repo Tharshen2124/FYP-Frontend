@@ -12,6 +12,7 @@ import {
   Moon,
   Clock,
   BarChart2,
+  Crown,
   LogOut,
   LayoutDashboard,
 } from "lucide-react"
@@ -26,6 +27,7 @@ const NAV_ITEMS = [
   { label: "Evening Reflections",            href: "/evening-reflections",  icon: Moon },
   { label: "History",                        href: "/history",              icon: Clock },
   { label: "Analytics",                      href: "/analytics",            icon: BarChart2 },
+  { label: "Subscription",                   href: "/subscription",         icon: Crown },
 ]
 
 export function Sidebar() {
