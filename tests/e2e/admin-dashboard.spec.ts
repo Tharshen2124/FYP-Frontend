@@ -115,6 +115,30 @@ test.describe("admin dashboard", () => {
     await expect(users.getByText(/No account matches/)).toBeVisible()
   })
 
+  /* A thirteen-month axis has an August at each end. Recharts keys its category axis on the
+     XAxis dataKey, so keying it on the printed label made the two indistinguishable — hovering the
+     newer August resolved to the older one and reported its total, which was nothing. */
+  test("the revenue tooltip answers about the month actually hovered", async ({ page }) => {
+    await loginAsAdmin(page)
+    const chart = page.getByRole("region", { name: "Revenue by month" })
+    await chart.waitFor()
+
+    // The year is carried where the axis crosses into a new one, so the two Augusts read apart.
+    await expect(chart.getByText(/^Aug \d{2}$/)).toBeVisible()
+
+    const bars = chart.locator(".recharts-bar-rectangle")
+    if ((await bars.count()) === 0) test.skip(true, "no month in the window has revenue to hover")
+
+    await bars.last().hover()
+
+    /* The bar being hovered is the only one drawn, so it is the only month with money in it. The
+       tooltip must therefore name a year and report something other than nothing — reporting
+       "RM 0.00" over a bar is precisely the bug: it was answering about the other August. */
+    const tooltip = chart.locator(".recharts-tooltip-wrapper")
+    await expect(tooltip).toContainText(/\d{4}/)
+    await expect(tooltip).not.toContainText("RM 0.00")
+  })
+
   test("the payment filter narrows to failures and back", async ({ page }) => {
     await loginAsAdmin(page)
     await page.goto("/admin/dashboard")

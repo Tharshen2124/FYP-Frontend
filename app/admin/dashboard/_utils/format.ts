@@ -26,8 +26,7 @@ export function shortDate(iso: string | null): string {
 }
 
 /**
- * A `YYYY-MM` bucket as an axis tick: "Aug". The year is dropped because thirteen months fit on
- * one axis only if the ticks are three characters, and the chart's own subtitle names the span.
+ * A `YYYY-MM` bucket as an axis tick: "Aug".
  *
  * Parsed as `-01T00:00` local rather than handed to `new Date("2026-08")`, which is treated as UTC
  * and lands in July for anyone west of Greenwich.
@@ -35,6 +34,22 @@ export function shortDate(iso: string | null): string {
 export function monthLabel(month: string): string {
   const [year, monthIndex] = month.split("-").map(Number)
   return new Date(year, monthIndex - 1, 1).toLocaleDateString("en-GB", { month: "short" })
+}
+
+/**
+ * The same tick, carrying a two-digit year where the axis crosses into a new one.
+ *
+ * Thirteen months is a span with two Augusts on it — one at each end — and a row of bare month
+ * names gives a reader no way to tell which is which. The year is added at the first tick and at
+ * every January, the two places it actually changes; repeating it on all thirteen would be twelve
+ * restatements of something the reader already knows.
+ */
+export function monthTick(month: string, index: number): string {
+  const label = monthLabel(month)
+  const isJanuary = month.endsWith("-01")
+  if (index !== 0 && !isJanuary) return label
+
+  return `${label} ${month.slice(2, 4)}`
 }
 
 /** The same bucket in full, for a tooltip that has room: "August 2026". */

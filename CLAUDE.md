@@ -307,7 +307,11 @@ one — planning the week ahead leaves all seven columns open.
   admin is not for sale. **The restriction is client-side**: the user-facing API would still answer
   an admin's token, and nothing asks it to.
   Four stat tiles, a revenue-by-month bar chart, a subscription-state breakdown, then the two
-  tables. The user table's **Plan** column names a plan — Premium or Free, from the server's own
+  tables. **The revenue chart's `XAxis` is keyed on the `YYYY-MM` bucket, never on the printed
+  label** — thirteen months is a span with an August at each end, and Recharts keys its category
+  axis on that `dataKey`, so a duplicate label made the two indistinguishable and a hover over the
+  newer August resolved to the older one's (empty) row. `monthTick` prints the year at the first
+  tick and at each January, the two places it changes, so the axis reads apart as well. The user table's **Plan** column names a plan — Premium or Free, from the server's own
   `premium?` — with Stripe's status underneath only when it says something the plan word cannot
   (`Trialing` on a premium row, `Past due` or `Canceled` on a free one). "Active" is the state of a
   subscription, not the name of a plan, and beside a money column it reads as though the account is

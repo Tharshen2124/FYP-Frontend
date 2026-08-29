@@ -3,6 +3,7 @@ import {
   humanStatus,
   money,
   monthFull,
+  monthTick,
   planLabel,
   planNote,
   monthLabel,
@@ -53,6 +54,18 @@ describe("month labels", () => {
     expect(monthLabel("2026-01")).toBe("Jan")
     expect(monthLabel("2026-12")).toBe("Dec")
     expect(monthFull("2026-08")).toBe("August 2026")
+  })
+
+  /* A thirteen-month span has an August at each end. The axis has to distinguish them, or a reader
+     hovering the newer one has no way to know which August the tooltip is answering about. */
+  it("carries the year at the start of the axis and at each January", () => {
+    expect(monthTick("2025-08", 0)).toBe("Aug 25")
+    expect(monthTick("2026-01", 5)).toBe("Jan 26")
+  })
+
+  it("leaves every other tick bare, so the year is not restated twelve times", () => {
+    expect(monthTick("2025-09", 1)).toBe("Sept")
+    expect(monthTick("2026-08", 12)).toBe("Aug")
   })
 })
 

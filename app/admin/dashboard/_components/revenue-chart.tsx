@@ -2,12 +2,11 @@
 
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import { REVENUE_BAR } from "../_constants/admin"
-import { money, monthFull, monthLabel } from "../_utils/format"
+import { money, monthFull, monthTick } from "../_utils/format"
 import type { ApiAdminRevenue } from "@/lib/api"
 
 interface Datum {
   month: string
-  label: string
   cents: number
 }
 
@@ -45,10 +44,7 @@ function ChartTooltip({
  */
 export function RevenueChart({ revenue }: { revenue: ApiAdminRevenue }) {
   const currency = revenue.currency
-  const data: Datum[] = revenue.monthly.map(point => ({
-    ...point,
-    label: monthLabel(point.month),
-  }))
+  const data: Datum[] = revenue.monthly
   const hasRevenue = currency !== null && data.some(point => point.cents > 0)
 
   return (
@@ -75,8 +71,14 @@ export function RevenueChart({ revenue }: { revenue: ApiAdminRevenue }) {
       {hasRevenue ? (
         <ResponsiveContainer width="100%" height={220}>
           <BarChart data={data} barSize={22} margin={{ top: 8, right: 4, left: -8, bottom: 0 }}>
+            {/* Keyed on the `YYYY-MM` bucket, not on its printed label. A thirteen-month span has
+                two Augusts on it, and a category axis keyed on "Aug" cannot tell them apart — the
+                tooltip resolved a hover over the newer one to the older one's row, so the bar you
+                were pointing at reported the other August's total. The formatter does the printing;
+                the key stays unique. */}
             <XAxis
-              dataKey="label"
+              dataKey="month"
+              tickFormatter={monthTick}
               tick={{ fill: "#b8b8ff", fontSize: 11, fontFamily: "inherit" }}
               axisLine={false}
               tickLine={false}

@@ -71,7 +71,7 @@ export function PaymentTable({ list, filter, onFilterChange, failedCount }: Prop
           <thead>
             <tr className="text-xs uppercase tracking-wider text-muted-foreground">
               <th className="text-left pb-3 font-medium">Account</th>
-              <th className="text-left pb-3 font-medium">Invoice</th>
+              <th className="text-left pb-3 font-medium">Invoice ID</th>
               <th className="text-left pb-3 font-medium">Status</th>
               <th className="text-left pb-3 font-medium">Paid</th>
               <th className="text-right pb-3 font-medium pl-4">Amount</th>
