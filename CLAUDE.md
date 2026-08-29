@@ -71,6 +71,10 @@ one would land on another. Each step is gated by an
 `/dashboard`, `/roles`, `/sharpen-the-saw`, `/weekly-plan/goals`, `/settings`,
 `/evening-reflections`, `/history`, `/analytics`, `/subscription`.
 
+**4. Admin** — `/admin/dashboard`, alone. It is not in the sidebar and does not render one: an
+admin account runs no week, so all nine of those links lead somewhere `proxy.ts` turns it straight
+back from. See its entry under Current pages.
+
 The weekly-plan sub-flow (`/weekly-plan/*`) is the repeatable version of onboarding steps 1–4:
 `/weekly-plan/goals` → `/weekly-plan/sharpen-the-saw` → `/weekly-plan/schedule` → `/dashboard`.
 Unlike onboarding it *selects* from existing roles/goals and activities rather than creating them,
@@ -286,6 +290,40 @@ one — planning the week ahead leaves all seven columns open.
   averaged, so a quiet week does not weigh as much as a busy one.
   The completion card counts **goals**, not tasks, which is what makes its "Removed" column mean
   something: dropped goals sit outside the ratio, the same rule `/history` follows.
+- `/admin/dashboard` — API-backed, and the whole of the admin area: **an admin account has exactly
+  one page.** It reads other people's accounts, which nothing else in this app does.
+  It has **its own `<AdminHeader>` rather than the `<Sidebar>`**, and `proxy.ts` redirects an admin
+  away from every other route to here. An admin runs no week — no roles, no goals, no plan — so
+  `/dashboard` would draw an empty calendar and `/weekly-plan/goals` would invite it to plan a week
+  nobody will read; a nav of nine links that all bounce is worse than no nav.
+  The redirect lives in `proxy.ts` (Next 16's name for `middleware.ts`) rather than in
+  `useRequireAuth`, because `/roles`, `/settings` and `/sharpen-the-saw` never call that hook — a
+  guard there would have covered most of the app and silently missed three pages. It also runs
+  before render, so there is no frame of the dashboard before the bounce.
+  **The claim routes; the server authorises.** `isAdmin` comes off the JWT and decides only which
+  page to send a session to; the three `/admin/*` requests re-check `users.is_admin`, so a non-admin
+  who types the URL is deliberately let through to be refused — `<AdminDenied>` renders where the
+  grid would be, the same shape `/analytics` uses for its 402. It makes no upgrade offer, because
+  admin is not for sale. **The restriction is client-side**: the user-facing API would still answer
+  an admin's token, and nothing asks it to.
+  Four stat tiles, a revenue-by-month bar chart, a subscription-state breakdown, then the two
+  tables. The user table's **Plan** column names a plan — Premium or Free, from the server's own
+  `premium?` — with Stripe's status underneath only when it says something the plan word cannot
+  (`Trialing` on a premium row, `Past due` or `Canceled` on a free one). "Active" is the state of a
+  subscription, not the name of a plan, and beside a money column it reads as though the account is
+  active, which every account in the table is. **Both tables paginate on the server**, unlike `/analytics`, which fetches its window once
+  and slices it in the browser: a year of weekly counts has a ceiling and "every account that ever
+  signed up" does not. `_utils/use-paged-list.ts` is the one hook both use — the page turn, the
+  filter reset and the race guard are identical for users and for payments, and a second copy is a
+  second chance to get the race guard wrong. It derives `isLoading` from *which request the held
+  page answered* rather than keeping a flag, the same trick `use-analytics.ts` uses, and it is that
+  shape which lets rows survive a page turn: the table dims instead of emptying, so paging does not
+  collapse the card and bring it back.
+  Searching is debounced and the term is sent as a query param the server escapes — a `%` typed into
+  the box is a character, not a wildcard matching every account.
+  Every panel is a labelled `<section>`, so "Active" and "Premium" — words that legitimately appear
+  in a stat tile, a subscription state and a user's plan at once — are reachable unambiguously by a
+  screen reader and by `tests/e2e/admin-dashboard.spec.ts`.
 - `/subscription` — API-backed. The only surface that takes money, and the only one whose state this
   app does not own. A current-plan card, then the same `<PlanComparison>` that ends onboarding.
   **RM 25/month, MYR, through hosted Stripe Checkout** — the browser leaves for a page Stripe hosts,
@@ -302,6 +340,10 @@ one — planning the week ahead leaves all seven columns open.
 
 ## Layout conventions
 
+- `/admin/dashboard` is the one page in neither shape: a full-width `<AdminHeader>` above
+  `<main className="relative z-10 flex-1 overflow-y-auto px-8 py-8">`, inside a
+  `flex flex-col h-screen` column. It is not a dashboard-area page — an admin account is not a user
+  of this app — so it takes neither the sidebar nor `AppNav`.
 - Onboarding and weekly-plan **wizard** pages: `<AppNav>` → `<main className="relative z-10 px-6 py-8">` →
   `<div className="max-w-7xl mx-auto">`.
 - Dashboard and post-onboarding pages use a **sidebar layout**:
@@ -379,8 +421,9 @@ store (`stores/auth-store.ts` + `lib/cookie-storage.ts`).
 
 Every route that persists anything is API-backed: `/login`, all four data-writing onboarding steps,
 `/dashboard`, `/sharpen-the-saw`, `/roles`, `/settings`, `/evening-reflections`, `/history`,
-`/analytics`, all three `/weekly-plan/*` steps and `/weekly-plan/edit`. Nothing is mock-backed any
-more — `/settings`' Google Calendar card was the last holdout, and its `MOCK_ROLES` are gone.
+`/analytics`, `/admin/dashboard`, all three `/weekly-plan/*` steps and `/weekly-plan/edit`. Nothing
+is mock-backed any more — `/settings`' Google Calendar card was the last holdout, and its
+`MOCK_ROLES` are gone.
 
 **Every request carries an `X-Time-Zone` header**, set once in `request()` in `lib/api.ts` from
 `Intl.DateTimeFormat().resolvedOptions().timeZone`. A Google Calendar event needs a zone, and the
@@ -464,7 +507,8 @@ every roles/goals request carries a `week_start`. Nothing is hard-deleted — se
   `nextHref`, `nextEnabled`, `onNext`, `backHref`, `extra`. When `nextEnabled && nextHref` it renders a
   `<Link>`; otherwise a disabled or `onNext`-callback button.
 - `components/sidebar.tsx` — Fixed left nav for dashboard-area pages; highlights the active route via
-  `usePathname()`.
+  `usePathname()`. **No Admin item, deliberately** — an admin never reaches a page that renders this
+  sidebar, so the link would only ever be drawn for the accounts that cannot use it.
 - `components/premium-lock.tsx` — The one way this app says "you have not paid for this". Props:
   `title`, `description`, `variant` ("card" for a whole surface, "inline" for a control that sits
   inside one that still works). Upgrading is a **link to `/subscription`**, never a checkout call:

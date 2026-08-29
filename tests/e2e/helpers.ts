@@ -473,3 +473,22 @@ export async function grantPremium(page: Page, urlPattern: string) {
     }
   })
 }
+
+/**
+ * The seeded administrator (`db/seeds.rb`).
+ *
+ * Reused rather than signed up, for the same reason `loginAsPremium` is: signing up is the only
+ * way this app makes an account, and every account it makes is an ordinary one — there is
+ * deliberately no endpoint that grants `users.is_admin`, so a seeded row is the only way to have
+ * one at all.
+ */
+export async function loginAsAdmin(page: Page) {
+  await page.goto("/login")
+  await page.getByLabel("Email Address").fill("admin@example.com")
+  await page.getByLabel("Password", { exact: true }).fill("password123")
+  await page.locator("form").getByRole("button", { name: "Sign In", exact: true }).click()
+
+  /* Not `loginAs`, which waits for /dashboard or /onboarding/roles: an admin goes to neither. And
+     no `setEodTime` either — the End-of-Day check-in belongs to a dashboard an admin never sees. */
+  await page.waitForURL(/\/admin\/dashboard$/)
+}

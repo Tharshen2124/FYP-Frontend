@@ -15,6 +15,15 @@ export const ONBOARDING_HREF = "/onboarding/roles"
 export const DASHBOARD_HREF = "/dashboard"
 
 /**
+ * Where a successful login sends an administrator — checked before the other two, because an admin
+ * account does not run a week and `is_onboarded` says nothing about it.
+ *
+ * `middleware.ts` would turn a bounce to `/dashboard` back here anyway; sending them straight there
+ * saves the redirect, and more to the point saves them a frame of a dashboard that is not theirs.
+ */
+export const ADMIN_HREF = "/admin/dashboard"
+
+/**
  * The codes the backend's OAuth callback puts in `#error=`. Only `no_account` is a state the user
  * can do anything about — Google is a way into an existing account, so an address that has never
  * signed up needs the sign-up form, not a retry.

@@ -30,6 +30,11 @@ const NAV_ITEMS = [
   { label: "Subscription",                   href: "/subscription",         icon: Crown },
 ]
 
+
+/* No Admin item here, deliberately. An admin account never reaches a page that renders this
+   sidebar — `middleware.ts` sends it to /admin/dashboard — so a link to the admin page would only
+   ever be drawn for the accounts that cannot use it. */
+
 export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()

@@ -355,6 +355,110 @@ export interface ApiPlan {
   interval: string | null
 }
 
+/**
+ * One page of a list, and enough to draw the pager without a second request. `total` describes the
+ * whole filtered scope rather than the page, which is what lets the header say "1–25 of 340".
+ *
+ * The server clamps `page` to what exists, so asking for page 40 of 3 comes back as page 3 — the
+ * pager can therefore trust `page` as the page it is looking at rather than the page it asked for.
+ */
+export interface ApiPagination {
+  page: number
+  per_page: number
+  total: number
+  total_pages: number
+}
+
+/** One row of the admin user list. Deliberately carries no credential of any kind. */
+export interface ApiAdminUser {
+  user_id: number
+  username: string
+  email: string
+  created_at: string
+  is_onboarded: boolean
+  is_admin: boolean
+  /** The server's own `User#premium?`, not a re-reading of the two columns beside it. */
+  premium: boolean
+  subscription_status: string | null
+  subscription_period_end: string | null
+  calendar_connected: boolean
+  weekly_plans: number
+  /** The newest week this account has planned, or null if it has planned none. */
+  last_plan_week: string | null
+  /** Lifetime paid, in the minor units of `currency`. Zero — with a null currency — if never paid. */
+  paid_cents: number
+  currency: string | null
+}
+
+export interface ApiAdminPayment {
+  payment_id: number
+  stripe_invoice_id: string
+  amount_cents: number
+  currency: string
+  status: "paid" | "failed"
+  /** Null on a failure: there is no moment at which it was paid. */
+  paid_at: string | null
+  created_at: string
+  user: { user_id: number; username: string; email: string } | null
+}
+
+/**
+ * Money, in **one currency at a time**.
+ *
+ * `payments.currency` is per row, so the server reports the currency with the largest paid total
+ * and lists any others beside it rather than summing across them — a figure that has added MYR to
+ * USD is not one anybody can act on. `currency` is null when nothing has been paid at all, which
+ * is why `failed_count` sits outside that: a deployment whose every charge failed has no revenue
+ * and very much has payments.
+ */
+export interface ApiAdminRevenue {
+  currency: string | null
+  total_cents: number
+  recent_cents: number
+  paid_count: number
+  failed_count: number
+  /** Thirteen continuous months ending this one, oldest first, as `YYYY-MM`. */
+  monthly: { month: string; cents: number }[]
+  other_currencies: { currency: string; total_cents: number }[]
+}
+
+export interface ApiAdminOverview {
+  users: {
+    total: number
+    onboarded: number
+    /** Accounts opened in the last 30 days. */
+    new_recently: number
+    /** Accounts that ticked off or rescheduled a task in the last 30 days. */
+    active_recently: number
+    admins: number
+  }
+  subscriptions: {
+    premium: number
+    /** Raw Stripe statuses, so `past_due` and `unpaid` show up without being anticipated here. */
+    by_status: Record<string, number>
+    ever_subscribed: number
+  }
+  revenue: ApiAdminRevenue
+}
+
+/**
+ * The query string for the two paginated admin lists. Every value goes through
+ * `URLSearchParams`, which escapes them — a search for "%" has to reach the server as a character
+ * rather than as a broken percent-escape, and it is the exact term the server takes care to treat
+ * as a character rather than a SQL wildcard.
+ *
+ * Empty and undefined values are dropped rather than sent blank, so the server sees no `q` at all
+ * when the search box is empty and falls through to its unfiltered scope.
+ */
+function adminQuery(params: { page?: number; perPage?: number; query?: string; status?: string }) {
+  const search = new URLSearchParams()
+  if (params.page) search.set("page", String(params.page))
+  if (params.perPage) search.set("per_page", String(params.perPage))
+  if (params.query?.trim()) search.set("q", params.query.trim())
+  if (params.status) search.set("status", params.status)
+  return search.toString()
+}
+
 export const api = {
   signup: (data: { email: string; username: string; password: string }) =>
     request<{ user: { email: string; username: string } }>("/signup", {
@@ -729,4 +833,28 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ session_id: sessionId }),
     }),
+
+  // --- admin ---
+  /**
+   * The metric cards. One request, made once — nothing on it is paginated, and the four cards
+   * would otherwise be four round trips over the same three tables.
+   */
+  fetchAdminOverview: () => request<ApiAdminOverview>("/admin/overview"),
+  /**
+   * One page of accounts, newest first. Paginated on the **server** rather than fetched whole and
+   * sliced in the browser, which is what `/analytics` does — the difference is that a week of
+   * counts has a ceiling and "every account that ever signed up" does not.
+   *
+   * `query` is encoded rather than interpolated: "%" is a valid thing to type into a search box and
+   * an invalid escape in a URL.
+   */
+  fetchAdminUsers: (params: { page?: number; perPage?: number; query?: string } = {}) =>
+    request<{ users: ApiAdminUser[]; pagination: ApiPagination }>(
+      `/admin/users?${adminQuery(params)}`
+    ),
+  /** One page of invoices, newest first, optionally narrowed to a status. */
+  fetchAdminPayments: (params: { page?: number; perPage?: number; status?: "paid" | "failed" } = {}) =>
+    request<{ payments: ApiAdminPayment[]; pagination: ApiPagination }>(
+      `/admin/payments?${adminQuery(params)}`
+    ),
 }

@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { api } from "@/lib/api"
 import { useAuthStore } from "@/stores/auth-store"
-import { ONBOARDING_HREF, DASHBOARD_HREF } from "../_constants/auth"
+import { ONBOARDING_HREF, DASHBOARD_HREF, ADMIN_HREF } from "../_constants/auth"
 import { getPasswordStrength, isValidEmail } from "../_utils/password"
 import { AnimatedCheckmark } from "./animated-checkmark"
 import { PasswordStrengthMeter } from "./password-strength-meter"
@@ -42,7 +42,8 @@ export function AuthForm({ isLogin, onSignupSuccess }: Props) {
       if (isLogin) {
         const { token } = await api.login({ email, password })
         useAuthStore.getState().setAuthFromToken(token)
-        router.push(useAuthStore.getState().isOnboarded ? DASHBOARD_HREF : ONBOARDING_HREF)
+        const { isAdmin, isOnboarded } = useAuthStore.getState()
+        router.push(isAdmin ? ADMIN_HREF : isOnboarded ? DASHBOARD_HREF : ONBOARDING_HREF)
       } else {
         await api.signup({ email, username, password })
         toast.success("Account created — sign in to continue")

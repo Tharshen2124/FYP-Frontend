@@ -16,6 +16,7 @@ import { GoogleIcon } from "./_components/google-icon"
 import {
   ONBOARDING_HREF,
   DASHBOARD_HREF,
+  ADMIN_HREF,
   OAUTH_ERROR_MESSAGES,
   OAUTH_ERROR_FALLBACK,
 } from "./_constants/auth"
@@ -35,7 +36,8 @@ export default function LoginPage() {
     if (token) {
       useAuthStore.getState().setAuthFromToken(token)
       window.history.replaceState(null, "", window.location.pathname)
-      router.push(useAuthStore.getState().isOnboarded ? DASHBOARD_HREF : ONBOARDING_HREF)
+      const { isAdmin, isOnboarded } = useAuthStore.getState()
+      router.push(isAdmin ? ADMIN_HREF : isOnboarded ? DASHBOARD_HREF : ONBOARDING_HREF)
     } else if (error) {
       toast.error(OAUTH_ERROR_MESSAGES[error] ?? OAUTH_ERROR_FALLBACK)
       window.history.replaceState(null, "", window.location.pathname)
