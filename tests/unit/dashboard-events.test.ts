@@ -13,7 +13,6 @@ function task(overrides: Partial<ApiTask> = {}): ApiTask {
   return {
     task_id: 1,
     title: "Deep work",
-    description: null,
     day_of_week: 0,
     start_time: "09:00",
     end_time: "10:30",
@@ -140,12 +139,10 @@ describe("taskDetail", () => {
     expect(rows).toContainEqual({ label: "Dimension", value: "nonsense" })
   })
 
-  it("gives a fixed appointment its notes and no link rows", () => {
-    const { kind, rows } = taskDetail(
-      task({ is_fixed_appointment: true, description: "Room 4.02" })
-    )
+  it("gives a fixed appointment no link rows", () => {
+    const { kind, rows } = taskDetail(task({ is_fixed_appointment: true }))
     expect(kind).toBe("Fixed appointment")
-    expect(rows).toEqual([{ label: "Notes", value: "Room 4.02" }])
+    expect(rows).toEqual([])
   })
 
   /* A row is dropped rather than shown empty — "Goal: —" only invites the reader to wonder which
@@ -153,10 +150,6 @@ describe("taskDetail", () => {
   it("has no rows at all for a task linked to nothing", () => {
     expect(taskDetail(task()).rows).toEqual([])
     expect(taskDetail(task()).kind).toBe("Task")
-  })
-
-  it("ignores a description that is only whitespace", () => {
-    expect(taskDetail(task({ description: "   " })).rows).toEqual([])
   })
 
   it("carries the same colour the card is drawn in", () => {

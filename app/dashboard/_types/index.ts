@@ -22,7 +22,6 @@ export type CalItem = Pick<CalEvent, "id" | "dayIndex" | "startMins" | "endMins"
 export interface ApiTask {
   task_id: number
   title: string
-  description: string | null
   day_of_week: number
   start_time: string
   end_time: string

@@ -112,7 +112,6 @@ export function fromApiAppointment(apiAppt: ApiPlanAppointment): Appt {
     id: String(apiAppt.task_id),
     taskId: apiAppt.task_id,
     title: apiAppt.title,
-    description: apiAppt.description ?? "",
     dayIndex: apiAppt.day_of_week,
     startMins: strToMins(apiAppt.start_time),
     endMins: strToMins(apiAppt.end_time),
@@ -124,7 +123,6 @@ export function toAppointmentsPayload(appts: Appt[]) {
   return appts.map(a => ({
     ...(a.taskId === undefined ? {} : { task_id: a.taskId }),
     title: a.title,
-    description: a.description,
     day_of_week: a.dayIndex,
     start_time: minsToStr(a.startMins),
     end_time: minsToStr(a.endMins),

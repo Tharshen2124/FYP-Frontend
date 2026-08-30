@@ -40,5 +40,4 @@ export const EMPTY_APPT_MODAL: ApptModalState = {
   startTime: "09:00",
   endTime: "10:00",
   title: "",
-  description: "",
 }

@@ -4,7 +4,6 @@ import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import {
   Dialog,
   DialogContent,
@@ -51,11 +50,11 @@ export function FixedTab({ appts, setAppts, weekStart, pastDays = "block" }: Pro
     const raw   = CAL_START * 60 + (clickY / HR_PX) * 60
     const start = Math.max(CAL_START * 60, Math.min((CAL_END - 1) * 60, snapMins(raw)))
     const end   = Math.min(CAL_END * 60, start + 60)
-    setModal({ open: true, mode: "add", dayIndex, startTime: minsToStr(start), endTime: minsToStr(end), title: "", description: "" })
+    setModal({ open: true, mode: "add", dayIndex, startTime: minsToStr(start), endTime: minsToStr(end), title: "" })
   }
 
   const openEdit = (appt: Appt) =>
-    setModal({ open: true, mode: "edit", editId: appt.id, dayIndex: appt.dayIndex, startTime: minsToStr(appt.startMins), endTime: minsToStr(appt.endMins), title: appt.title, description: appt.description })
+    setModal({ open: true, mode: "edit", editId: appt.id, dayIndex: appt.dayIndex, startTime: minsToStr(appt.startMins), endTime: minsToStr(appt.endMins), title: appt.title })
 
   const handleColClick = (e: React.MouseEvent<HTMLDivElement>, dayIndex: number) => {
     if ((e.target as HTMLElement).closest("[data-appt]")) return
@@ -90,7 +89,6 @@ export function FixedTab({ appts, setAppts, weekStart, pastDays = "block" }: Pro
       // completion already recorded against it.
       taskId: existing?.taskId,
       title: modal.title.trim(),
-      description: modal.description.trim(),
       dayIndex: modal.dayIndex,
       startMins: s, endMins: e,
       isCompleted: existing?.isCompleted ?? false,
@@ -330,17 +328,6 @@ export function FixedTab({ appts, setAppts, weekStart, pastDays = "block" }: Pro
                   <p className="text-xs text-destructive font-serif">Must be after start time</p>
                 )}
               </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="appt-description" className="text-foreground font-bold">Description</Label>
-              <Textarea
-                id="appt-description"
-                placeholder="Optional notes about this appointment…"
-                value={modal.description}
-                onChange={e => setModal(m => ({ ...m, description: e.target.value }))}
-                className="bg-muted border-border text-foreground placeholder:text-muted-foreground min-h-20 resize-none font-serif"
-              />
             </div>
           </div>
 

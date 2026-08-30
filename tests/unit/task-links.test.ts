@@ -229,7 +229,6 @@ describe("isScheduleDirty", () => {
     id: "12",
     taskId: 12,
     title: "Team standup",
-    description: "",
     dayIndex: 0,
     startMins: 9 * 60,
     endMins: 9 * 60 + 30,

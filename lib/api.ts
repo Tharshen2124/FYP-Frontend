@@ -210,7 +210,6 @@ export interface ApiCarryForwardCandidate extends ApiRoleGoal {
 export interface ApiPlanAppointment {
   task_id: number
   title: string
-  description: string | null
   day_of_week: number
   start_time: string
   end_time: string
@@ -305,7 +304,6 @@ export interface ApiHistoryActivity {
 export interface ApiHistoryTask {
   task_id: number
   title: string
-  description: string | null
   day_of_week: number
   start_time: string
   end_time: string
@@ -516,7 +514,7 @@ export const api = {
   deleteSharpenTheSawActivity: (id: number) =>
     request<void>(`/sharpen-the-saw-activities/${id}`, { method: "DELETE" }),
   submitFixedAppointments: (data: {
-    appointments: { title: string; description: string; day_of_week: number; start_time: string; end_time: string }[]
+    appointments: { title: string; day_of_week: number; start_time: string; end_time: string }[]
   }) =>
     request<{ appointments: unknown[] }>("/onboarding/fixed-appointments", {
       method: "POST",
@@ -524,7 +522,7 @@ export const api = {
     }),
   fetchFixedAppointments: () =>
     request<{
-      appointments: { task_id: number; title: string; description: string; day_of_week: number; start_time: string; end_time: string }[]
+      appointments: { task_id: number; title: string; day_of_week: number; start_time: string; end_time: string }[]
     }>(weekScoped("/onboarding/fixed-appointments")),
   submitScheduleTasks: (data: {
     tasks: {
@@ -613,7 +611,6 @@ export const api = {
     appointments: {
       task_id?: number
       title: string
-      description: string
       day_of_week: number
       start_time: string
       end_time: string
@@ -668,7 +665,6 @@ export const api = {
         tasks: {
           task_id: number
           title: string
-          description: string | null
           day_of_week: number
           start_time: string
           end_time: string

@@ -15,7 +15,6 @@ export interface Appt {
   id: string
   taskId?: number
   title: string
-  description: string
   dayIndex: number
   startMins: number
   endMins: number
@@ -62,7 +61,6 @@ export interface ApptModalState {
   startTime: string
   endTime: string
   title: string
-  description: string
 }
 
 // Both tabs carry the whole record through the clash dialog rather than a field list, so adding

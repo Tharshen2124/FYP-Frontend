@@ -149,10 +149,12 @@ one — planning the week ahead leaves all seven columns open.
 - `/dashboard` — Weekly timetable with today's column highlighted, a "now" indicator line, and
   a legend. A completed task is struck through with a check, the same mark `/history` uses.
   Every card is a button: clicking one opens a **detail dialog** carrying the full untruncated
-  title, the day/time/duration, what the task serves (goal + role, or activity + dimension by its
-  display name) and a fixed appointment's notes — all of which the API already sends and the card
-  has no room for. Its footer toggles the task done, which is the only way besides the once-a-day
-  check-in to record one, and the only way at all to record a task on a day that is not today.
+  title, the day/time/duration and what the task serves (goal + role, or activity + dimension by
+  its display name) — all of which the API already sends and the card has no room for. A fixed
+  appointment serves nothing, so its dialog carries the header alone: the free-text notes it used
+  to show were the only reader of `tasks.description`, and that column is gone.
+  Its footer toggles the task done, which is the only way besides the once-a-day check-in to
+  record one, and the only way at all to record a task on a day that is not today.
   Any day of the week is tickable: a task done early can be ticked early. The dialog is the whole
   of the page's write surface — nothing here renames, reschedules or deletes.
   "Edit Weekly Plan" leads to `/weekly-plan/edit`, not to the planning flow's last step: that route

@@ -45,11 +45,6 @@ export function AppointmentCard({ appt, allAppts, onEdit, onDelete, onDragStart 
           {fmtTime(appt.startMins)} – {fmtTime(appt.endMins)}
         </p>
       )}
-      {height >= 56 && appt.description && (
-        <p className="text-[10px] text-muted-foreground font-serif leading-tight truncate mt-0.5">
-          {appt.description}
-        </p>
-      )}
 
       {/* edit / delete */}
       <div className="absolute top-0.5 right-0.5 hidden group-hover:flex gap-0.5 z-10">

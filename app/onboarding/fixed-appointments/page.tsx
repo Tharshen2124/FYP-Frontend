@@ -36,17 +36,16 @@ export default function FixedAppointmentsPage() {
     const raw   = CAL_START * 60 + (clickY / HR_PX) * 60
     const start = Math.max(CAL_START * 60, Math.min((CAL_END - 1) * 60, snapMins(raw)))
     const end   = Math.min(CAL_END * 60, start + 60)
-    setModal({ open: true, mode: "add", dayIndex, startTime: minsToStr(start), endTime: minsToStr(end), title: "", description: "" })
+    setModal({ open: true, mode: "add", dayIndex, startTime: minsToStr(start), endTime: minsToStr(end), title: "" })
   }
 
   const openEdit = (appt: Appt) =>
     setModal({
       open: true, mode: "edit", editId: appt.id,
-      dayIndex:    appt.dayIndex,
-      startTime:   minsToStr(appt.startMins),
-      endTime:     minsToStr(appt.endMins),
-      title:       appt.title,
-      description: appt.description,
+      dayIndex:  appt.dayIndex,
+      startTime: minsToStr(appt.startMins),
+      endTime:   minsToStr(appt.endMins),
+      title:     appt.title,
     })
 
   const handleColClick = (e: React.MouseEvent<HTMLDivElement>, dayIndex: number) => {
@@ -65,9 +64,9 @@ export default function FixedAppointmentsPage() {
   }
 
   // ── apply a confirmed edit save ──
-  const applySave = (editId: string, title: string, description: string, dayIndex: number, startMins: number, endMins: number) => {
+  const applySave = (editId: string, title: string, dayIndex: number, startMins: number, endMins: number) => {
     setAppts(prev => prev.map(a =>
-      a.id === editId ? { ...a, title, description, dayIndex, startMins, endMins } : a
+      a.id === editId ? { ...a, title, dayIndex, startMins, endMins } : a
     ))
   }
 
@@ -79,9 +78,8 @@ export default function FixedAppointmentsPage() {
     if (modal.mode === "add") {
       setAppts(prev => [...prev, {
         id: Date.now().toString(),
-        title:       modal.title.trim(),
-        description: modal.description.trim(),
-        dayIndex:    modal.dayIndex,
+        title:    modal.title.trim(),
+        dayIndex: modal.dayIndex,
         startMins: s, endMins: e,
       }])
       setModal(EMPTY_MODAL)
@@ -90,10 +88,10 @@ export default function FixedAppointmentsPage() {
 
     const overlapping = getOverlaps(appts, modal.dayIndex, s, e, modal.editId!)
     if (overlapping.length === 0) {
-      applySave(modal.editId!, modal.title.trim(), modal.description.trim(), modal.dayIndex, s, e)
+      applySave(modal.editId!, modal.title.trim(), modal.dayIndex, s, e)
       setModal(EMPTY_MODAL)
     } else if (overlapping.length === 1) {
-      setPendingAction({ type: "save", editId: modal.editId!, title: modal.title.trim(), description: modal.description.trim(), dayIndex: modal.dayIndex, startMins: s, endMins: e })
+      setPendingAction({ type: "save", editId: modal.editId!, title: modal.title.trim(), dayIndex: modal.dayIndex, startMins: s, endMins: e })
       setClashWarning({ open: true, conflictingTitle: overlapping[0].title })
       // keep modal open — it closes only on proceed or cancel
     } else {
@@ -152,7 +150,7 @@ export default function FixedAppointmentsPage() {
     if (pendingAction?.type === "drop") {
       applyDrop(pendingAction.draggedId, pendingAction.dayIndex, pendingAction.newStart)
     } else if (pendingAction?.type === "save") {
-      applySave(pendingAction.editId, pendingAction.title, pendingAction.description, pendingAction.dayIndex, pendingAction.startMins, pendingAction.endMins)
+      applySave(pendingAction.editId, pendingAction.title, pendingAction.dayIndex, pendingAction.startMins, pendingAction.endMins)
       setModal(EMPTY_MODAL)
     }
     setPendingAction(null)

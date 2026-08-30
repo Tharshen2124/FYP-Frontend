@@ -3,7 +3,6 @@
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import {
   Dialog,
   DialogContent,
@@ -110,17 +109,6 @@ export function AppointmentModal({ modal, onChange, onClose, onSave, todayIdx }:
                 <p className="text-xs text-destructive font-serif">Must be after start time</p>
               )}
             </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="appt-description" className="text-foreground font-bold">Description</Label>
-            <Textarea
-              id="appt-description"
-              placeholder="Optional notes about this appointment…"
-              value={modal.description}
-              onChange={e => onChange(m => ({ ...m, description: e.target.value }))}
-              className="bg-muted border-border text-foreground placeholder:text-muted-foreground min-h-20 resize-none font-serif"
-            />
           </div>
         </div>
 

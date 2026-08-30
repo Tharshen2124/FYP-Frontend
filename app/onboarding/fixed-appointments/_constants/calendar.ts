@@ -19,5 +19,4 @@ export const EMPTY_MODAL: ModalState = {
   startTime: "09:00",
   endTime: "10:00",
   title: "",
-  description: "",
 }

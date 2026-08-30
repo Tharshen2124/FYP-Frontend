@@ -75,10 +75,6 @@ export function taskDetail(task: ApiTask): TaskDetail {
     if (value) rows.push({ label: "Dimension", value })
   }
 
-  /* In practice only a fixed appointment carries one: `create_scheduled_tasks` does not permit the
-     field, while `create_fixed_appointments` does. */
-  if (task.description?.trim()) rows.push({ label: "Notes", value: task.description.trim() })
-
   return { kind: kindFor(task), color: colorFor(task), rows }
 }
 

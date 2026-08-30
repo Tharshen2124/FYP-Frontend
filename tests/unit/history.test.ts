@@ -20,7 +20,6 @@ import type { HistoryWeek, LegendGroup } from "@/app/history/_types"
 const task = (over: Partial<ApiHistoryTask> = {}): ApiHistoryTask => ({
   task_id: 1,
   title: "Draft chapter 3",
-  description: null,
   day_of_week: 1,
   start_time: "14:00",
   end_time: "15:30",

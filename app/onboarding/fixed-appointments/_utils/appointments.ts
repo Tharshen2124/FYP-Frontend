@@ -6,7 +6,6 @@ export function toFixedAppointmentsPayload(appts: Appt[]) {
   return {
     appointments: appts.map(a => ({
       title: a.title,
-      description: a.description,
       day_of_week: a.dayIndex,
       start_time: minsToStr(a.startMins),
       end_time: minsToStr(a.endMins),
