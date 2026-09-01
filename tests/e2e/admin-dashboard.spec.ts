@@ -77,6 +77,10 @@ test.describe("admin dashboard", () => {
        thousands of signups ahead of a seeded account. */
     const users = page.getByRole("region", { name: "Users" })
     await users.getByRole("searchbox", { name: /Search users/ }).fill("admin@example.com")
+    /* The pager, not the row, is what says the search has actually applied. The row alone is not
+       enough: the list is newest-first, so a freshly seeded admin is on page 1 *unfiltered* too,
+       and the assertions below would then run against every account on that page. */
+    await expect(users.getByText("1–1 of 1")).toBeVisible()
     await expect(users.getByText("admin@example.com")).toBeVisible()
     /* The Plan column names a plan. "Active" is the state of a subscription, and on a row whose
        next column is a money figure it reads as though the account is active. */
@@ -123,8 +127,14 @@ test.describe("admin dashboard", () => {
     const chart = page.getByRole("region", { name: "Revenue by month" })
     await chart.waitFor()
 
-    // The year is carried where the axis crosses into a new one, so the two Augusts read apart.
-    await expect(chart.getByText(/^Aug \d{2}$/)).toBeVisible()
+    /* The year is carried where the axis crosses into a new one, so two of the same month read
+       apart. Which month that first tick is depends on when the suite runs — hard-coding August
+       passed only during August, and read as a broken chart every other month of the year. */
+    const first = new Date()
+    first.setDate(1)
+    first.setMonth(first.getMonth() - 12)
+    const firstTick = `${first.toLocaleDateString("en-GB", { month: "short" })} ${String(first.getFullYear()).slice(2)}`
+    await expect(chart.getByText(firstTick, { exact: true })).toBeVisible()
 
     const bars = chart.locator(".recharts-bar-rectangle")
     if ((await bars.count()) === 0) test.skip(true, "no month in the window has revenue to hover")

@@ -58,6 +58,11 @@ async function writeReflection(page: Page, dayIndex: number, text: string) {
  * testable at all also means a second run this week finds Monday written and no Create to press.
  */
 async function writeWholeWeek(page: Page, texts: string[] = PLANTED_WEEK) {
+  /* The grid has to be on screen before `count()` below is meaningful — `count()` is the one
+     locator call that does not auto-wait. On a slow first paint every day reads as "no Create
+     button", and the else-branch then waits for an Edit that an unwritten day will never have. */
+  await expect(page.getByRole("button", { name: /(Create|Edit|View) Monday reflection/ })).toBeVisible()
+
   for (let day = 0; day < 7; day++) {
     if (await page.getByRole("button", { name: `Create ${DAYS[day]} reflection` }).count()) {
       await writeReflection(page, day, texts[day])

@@ -18,6 +18,14 @@ npm run test:e2e       # End-to-end tests (Playwright, boots the dev server itse
 npm run test:e2e:ui    # Playwright UI mode
 ```
 
+**The e2e suite needs the Rails API running on :3000 and its database seeded.** Most specs sign an
+account up through the real UI, but three fixtures cannot be made that way and come from
+`db/seeds.rb` in the backend repo — the admin account (nothing at runtime grants `is_admin`), the
+paid account (nothing grants a subscription outside Stripe's webhook), and its paid invoices (the
+`payments` table is written by that webhook and by nothing else). Without them 8 specs fail, and
+they fail late — at a login timeout or a strict-mode violation — rather than saying what is
+missing. Run `bin/rails db:seed` in `Habitflow-backend-v2` once; it is idempotent.
+
 Unit tests live in `tests/unit/`, e2e specs in `tests/e2e/`. Vitest only picks up
 `tests/unit/**/*.{test,spec}.{ts,tsx}`, so a Playwright spec can never be run by Vitest.
 
