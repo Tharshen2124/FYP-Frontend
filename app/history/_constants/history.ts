@@ -1,8 +1,9 @@
 /** Index is a task's `day_of_week`, so this is the label lookup, not the identity. */
 export const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
-/** The blue every calendar in this app paints a fixed appointment. */
-export const FIXED_COLOR = "#3b82f6"
+/* Re-exported rather than repeated: the blue every calendar paints a fixed appointment, defined
+   beside the role palette because no role and no dimension may take it. */
+export { FIXED_COLOR } from "@/lib/role-colors"
 
 /**
  * A scheduled task with no goal and no activity behind it.

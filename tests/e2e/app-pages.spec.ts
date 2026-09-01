@@ -659,7 +659,7 @@ test.describe("dashboard", () => {
 
     // Nothing to edit or read a legend for while there is no plan.
     await expect(page.getByRole("button", { name: /Edit Weekly Plan/ })).toHaveCount(0)
-    await expect(page.getByText("Daily Priority", { exact: true })).toHaveCount(0)
+    await expect(page.getByRole("region", { name: "Calendar legend" })).toHaveCount(0)
   })
 
   test("the create button leads into the weekly plan flow", async ({ page }) => {
@@ -675,9 +675,16 @@ test.describe("dashboard", () => {
     await completeOnboarding(page)
 
     await expect(page.getByRole("heading", { name: /Schedule for this Week/ })).toBeVisible()
-    await expect(page.getByText("Fixed Appointments", { exact: true })).toBeVisible()
-    await expect(page.getByText("Your Tasks", { exact: true })).toBeVisible()
-    await expect(page.getByText("Daily Priority", { exact: true })).toBeVisible()
+
+    /* The legend names the week's own categories rather than claiming every task is one purple:
+       onboarding leaves exactly one role-linked task ("Deep work", under "Professional") and one
+       fixed appointment, and neither a weekly nor a daily priority — so those rows stay away. */
+    const legend = page.getByRole("region", { name: "Calendar legend" })
+    await expect(legend.getByText("Role goals", { exact: true })).toBeVisible()
+    await expect(legend.getByText("Professional", { exact: true })).toBeVisible()
+    await expect(legend.getByText("Fixed appointments", { exact: true })).toBeVisible()
+    await expect(legend.getByText("Sharpen the Saw", { exact: true })).toHaveCount(0)
+    await expect(legend.getByText("Daily priority", { exact: true })).toHaveCount(0)
 
     // Both of the items created in onboarding, read back from the backend.
     await expect(page.getByText("Team standup").first()).toBeVisible()

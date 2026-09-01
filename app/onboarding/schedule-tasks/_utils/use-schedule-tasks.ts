@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { toast } from "sonner"
 import { api } from "@/lib/api"
+import { getColor } from "@/lib/role-colors"
 import { strToMins } from "./time"
 import { fromApiTask, toScheduleTasksPayload } from "./tasks"
 import type { ApiActivity, ApiRole, FixedAppt, Task } from "../_types"
@@ -52,6 +53,7 @@ export function useScheduleTasks(): ScheduleTasksData {
       const mappedRoles: ApiRole[] = rolesRes.roles.map(r => ({
         id: String(r.role_id),
         name: r.name,
+        color: getColor(r.color_id ?? ""),
         goals: r.goals.map(g => ({
           id: String(g.goal_id),
           text: g.text,

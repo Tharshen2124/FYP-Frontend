@@ -1,11 +1,10 @@
-import { Flame, Brain, Users, Sparkles } from "lucide-react"
+import { SHARPEN_THE_SAW_DIMENSIONS } from "@/lib/sharpen-the-saw-dimensions"
 import type { DimensionMeta } from "../_types"
 
-/** The four fixed Sharpen the Saw dimensions — same set as `../sharpen-the-saw`. Real
- *  activities for each are fetched, not hardcoded here. */
-export const DIMENSION_META: DimensionMeta[] = [
-  { id: "physical", label: "Physical", icon: Flame },
-  { id: "spiritual", label: "Spiritual", icon: Sparkles },
-  { id: "mental", label: "Mental", icon: Brain },
-  { id: "social", label: "Social", icon: Users },
-]
+/** The four fixed Sharpen the Saw dimensions, taken from the app-wide definition rather than
+ *  restated: the calendar tints a task by its dimension, and a second copy of those colours is a
+ *  second place the palette can drift out of step with the role palette it must stay clear of.
+ *  Real activities for each are fetched, not hardcoded here. */
+export const DIMENSION_META: DimensionMeta[] = SHARPEN_THE_SAW_DIMENSIONS.map(
+  ({ id, label, icon, color }) => ({ id, label, icon, color })
+)

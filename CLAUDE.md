@@ -126,8 +126,10 @@ one — planning the week ahead leaves all seven columns open.
   opened one way — email, username and password — and Google links to it on first use, so an address
   with no account behind it comes back as `#error=no_account` and is told to sign up first
   (`OAUTH_ERROR_MESSAGES` in `_constants/auth.ts`).
-- `/onboarding/roles` — Role & goal management: add/edit roles (icon + colour), inline goal edit,
-  weekly-priority star, warning dialog past `MAX_RECOMMENDED_GOALS` (10).
+- `/onboarding/roles` — Role & goal management: add/edit roles (icon + colour, the same palette and
+  the same swatch picker `/roles` offers), inline goal edit, weekly-priority star, warning dialog
+  past `MAX_RECOMMENDED_GOALS` (10). The colour is submitted as `color_id` with the role, so the
+  choice made here is the one every calendar and every later page draws with.
 - `/onboarding/sharpen-the-saw` — Four dimension cards (Physical, Spiritual, Mental, Social/Emotional),
   each with add / inline-edit / delete activities.
 - `/onboarding/fixed-appointments` — Google Calendar-style weekly view (Mon–Sun, 6 AM–10 PM); click a
@@ -138,7 +140,8 @@ one — planning the week ahead leaves all seven columns open.
 - `/onboarding/schedule-tasks` — Same calendar. Fixed appointments render blue (`#3b82f6`) with a lock
   icon and are non-interactive. Tasks must link to either a role goal or a sharpen-the-saw activity and
   inherit that colour; an optional "Daily Priority" star shows a badge on the card. Clash detection
-  spans fixed appointments *and* tasks.
+  spans fixed appointments *and* tasks. The legend above it is the shared `<CalendarLegend>` — see
+  **Task colour** below.
 - `/onboarding/complete` — Explains Evening Reflections and the End-of-Day check-in; links to `/dashboard`.
   Also carries the Free/Premium comparison (`<PlanComparison>`, shared with `/subscription`).
   **Upgrade finishes onboarding before it leaves for Stripe, and the order is load-bearing**: checkout
@@ -147,7 +150,9 @@ one — planning the week ahead leaves all seven columns open.
   It is a button here rather than a sixth step for the same reason `layout.tsx` exists: a step placed
   after `markOnboarded()` would be bounced straight to `/dashboard` by that guard.
 - `/dashboard` — Weekly timetable with today's column highlighted, a "now" indicator line, and
-  a legend. A completed task is struck through with a check, the same mark `/history` uses.
+  a legend (the shared `<CalendarLegend>`, naming the week's own roles and dimensions — see
+  **Task colour** below). A completed task is struck through with a check, the same mark
+  `/history` uses.
   Every card is a button: clicking one opens a **detail dialog** carrying the full untruncated
   title, the day/time/duration and what the task serves (goal + role, or activity + dimension by
   its display name) — all of which the API already sends and the card has no room for. A fixed
@@ -179,7 +184,11 @@ one — planning the week ahead leaves all seven columns open.
   delete confirmation.
 - `/weekly-plan/goals` — API-backed. Carry forward the unfinished goals of the last week that was
   actually planned (each pick creates a fresh goal plus a `goal_carryovers` link) and stage
-  brand-new ones. Everything commits on Next.
+  brand-new ones. Everything commits on Next. Every row on a role's card is drawn in that role's
+  colour, so the card reads as one thing and matches what the calendar will paint two steps later;
+  a staged goal is the same colour but dashed, since what separates it from a committed one is
+  whether it has been sent, not which role it belongs to. Roles are not *created* here, so there is
+  no colour picker — that lives on `/roles` and `/onboarding/roles`.
 - `/weekly-plan/sharpen-the-saw` — API-backed. Pick which Sharpen the Saw activities to commit to the week;
   `PUT /weekly-plans/sharpen-the-saw` replaces the week's set on Next, and revisiting prefills it.
 - `/weekly-plan/schedule` — API-backed. Tabbed calendar: "Fixed Appointments" and "Scheduled Tasks"
@@ -406,9 +415,11 @@ Rules:
    `/weekly-plan/edit` needed the same calendar; hoisting it is rule 3 working as intended, and is
    why `schedule/` is now a bare `page.tsx`.
 4. **Genuinely app-wide UI lives in `components/`**, not in a route folder — `AppNav`, `Sidebar`,
-   `OnboardingStepper`, the clash modals, and the shadcn primitives in `components/ui/`. Shared
-   non-UI domain constants go in `lib/` — `lib/sharpen-the-saw-dimensions.ts` and
-   `lib/role-colors.ts` (the role palette, needed by both `/roles` and `/weekly-plan/goals`).
+   `OnboardingStepper`, the clash modals, `CalendarLegend` (drawn by all three calendars), and the
+   shadcn primitives in `components/ui/`. Shared non-UI domain constants go in `lib/` —
+   `lib/sharpen-the-saw-dimensions.ts` and `lib/role-colors.ts` (the role palette, the reserved
+   yellow and the fixed-appointment blue; needed by `/roles`, `/weekly-plan/*`, `/dashboard`,
+   `/history`, `/analytics` and both onboarding calendars).
 5. **Derived/filtered data belongs in `_utils`, raw data in `_constants`.** `/analytics` is the model:
    `_constants/analytics.ts` holds the window sizes and label lists, `_utils/analytics.ts` holds the
    pure derivations (`getSharpenData`, `getRoleStats`, `getDailyPriority`) and `_utils/use-analytics.ts`
@@ -572,3 +583,37 @@ The two onboarding steps and the dashboard each keep their own `_constants/calen
   blocked, which is already what `isPastDayIndex` answers for a week that is not the current one.
   `"open"` also drops the dimming, since greying out a column the calendar will happily accept a
   drop on would be a lie. Today's pill is drawn either way.
+
+### Task colour
+
+**One rule, every calendar: a block is drawn in the colour of the thing it belongs to.**
+A task takes its role's colour or its Sharpen the Saw dimension's; a fixed appointment takes
+`FIXED_COLOR`; a task with no link left resolving takes the unlinked grey. `/onboarding/schedule-tasks`,
+`/weekly-plan/schedule`, `/weekly-plan/edit`, `/dashboard` and `/history` all do this. They used to
+disagree — the two planning calendars tinted by role while onboarding and the dashboard painted one
+flat purple — and the legend went on naming that purple on all four.
+
+**`WEEKLY_PRIORITY_COLOR` (`#FFCC00`) overrides it, and is applied at paint time, not baked in.**
+A task serving a goal the user named a weekly priority is drawn yellow whatever role it belongs to,
+so a glance across the week finds what matters most first. But the *category* colour is what every
+model keeps (`CalEvent.color`, `HistoryEvent.color`, `LegendCategory.color`), and the card applies
+the override itself — otherwise the legend would file a weekly-priority task under "yellow" instead
+of under its role, which is the one place its role is still named. A fixed appointment is exempt and
+stays blue: it belongs to no goal, so it can never really be a weekly priority.
+A *daily* priority is a star, never a colour — see the palette's own comments for why.
+
+**The four palettes are disjoint by rule** — role colours, dimension colours, the reserved yellow,
+and the fixed-appointment blue. They share one grid, so a colour that could be two of them makes the
+legend under it wrong. Four of the five role colours were byte-identical to the four dimension
+colours until this was written down; `tests/unit/roles.test.ts` now holds all four apart, and
+`lib/role-colors.ts` is where the yellow and the blue live so there is one place to break.
+
+**`components/calendar-legend.tsx` is the legend all three calendars draw.** Callers pass one
+`LegendCategory` per block on the grid — duplicates expected — and it folds them by `kind:label`
+into rows: *Role goals*, *Sharpen the Saw*, *Priority* (the yellow swatch and the star, which cut
+across the other rows), and *Other* (fixed appointments, unlinked tasks, and the dashboard's "Now"
+rule). Only the rows the week actually uses are drawn, the rule `/history`'s footer legend already
+followed: explaining a swatch that is nowhere on the grid invites exactly the question a legend
+exists to answer. It renders a `<section aria-label="Calendar legend">`, which is also how the e2e
+specs address it. `/history` keeps its own legend rather than sharing this one — its chips carry
+category icons and its rows are per-week outcomes, not a live grid's key.

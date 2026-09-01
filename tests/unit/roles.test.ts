@@ -6,7 +6,7 @@ import {
   countGoals,
 } from "@/app/roles/_utils/roles"
 import { ROLE_COLORS, ROLE_ICONS, MAX_RECOMMENDED_GOALS } from "@/app/roles/_constants/roles"
-import { WEEKLY_PRIORITY_COLOR } from "@/lib/role-colors"
+import { FIXED_COLOR, WEEKLY_PRIORITY_COLOR } from "@/lib/role-colors"
 import { SHARPEN_THE_SAW_DIMENSIONS } from "@/lib/sharpen-the-saw-dimensions"
 import type { Role } from "@/app/roles/_types"
 
@@ -66,6 +66,34 @@ describe("the reserved yellow", () => {
 
   it("is used by no Sharpen the Saw dimension", () => {
     expect(SHARPEN_THE_SAW_DIMENSIONS.map(d => d.color)).not.toContain(WEEKLY_PRIORITY_COLOR)
+  })
+})
+
+/**
+ * Every calendar in the app draws role goals, Sharpen the Saw activities and fixed appointments on
+ * one grid, and tints each block by what it belongs to. The legend under it names those categories
+ * — so a colour that could be two of them is a legend the reader can check and find wrong.
+ *
+ * Four of the five role colours were byte-identical to the four dimension colours until this rule
+ * was written down, which is exactly why it is checked here rather than left to whoever edits a
+ * palette next.
+ */
+describe("the role and dimension palettes", () => {
+  const dimensionColors = SHARPEN_THE_SAW_DIMENSIONS.map(d => d.color)
+
+  it("share no colour with each other", () => {
+    const shared = ROLE_COLORS.map(c => c.value).filter(v => dimensionColors.includes(v))
+    expect(shared).toEqual([])
+  })
+
+  it("leave the fixed-appointment blue to fixed appointments", () => {
+    expect(ROLE_COLORS.map(c => c.value)).not.toContain(FIXED_COLOR)
+    expect(dimensionColors).not.toContain(FIXED_COLOR)
+  })
+
+  it("each offer distinct colours within themselves", () => {
+    expect(new Set(ROLE_COLORS.map(c => c.value)).size).toBe(ROLE_COLORS.length)
+    expect(new Set(dimensionColors).size).toBe(dimensionColors.length)
   })
 })
 

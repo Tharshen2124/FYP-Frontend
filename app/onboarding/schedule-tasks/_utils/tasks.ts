@@ -1,12 +1,15 @@
-import type { ApiActivity, ApiRole, LinkType, ModalState, Task } from "../_types"
+import type { LegendCategory } from "@/components/calendar-legend"
+import type { ActivitiesByDimension, ApiRole, FixedAppt, LinkType, ModalState, Task } from "../_types"
 import { DIMENSION_META } from "../_constants/dimensions"
+import { FIXED_COLOR, TASK_COLOR } from "../_constants/calendar"
 import { minsToStr, strToMins } from "./time"
-
-type ActivitiesByDimension = Record<string, ApiActivity[]>
 
 export interface LinkMeta {
   id: string
   label: string
+  /** The role's or the dimension's own colour. Like `isWeeklyPriority` it rides on the link, since
+   *  that is where the fact lives — a task's colour is never its own. */
+  color: string
   /** True only for a goal the user named a weekly priority — a Sharpen the Saw activity is never
    *  one. It rides on the link because that is where the fact lives: the task inherits it. */
   isWeeklyPriority: boolean
@@ -21,13 +24,18 @@ export function getLinkMeta(
     const role = roles.find(r => r.id === modal.selectedRoleId)
     const goal = role?.goals.find(g => g.id === modal.selectedGoalId)
     if (!role || !goal) return null
-    return { id: goal.id, label: `${role.name} — ${goal.text}`, isWeeklyPriority: goal.isWeeklyPriority }
+    return {
+      id: goal.id,
+      label: `${role.name} — ${goal.text}`,
+      color: role.color,
+      isWeeklyPriority: goal.isWeeklyPriority,
+    }
   }
 
   const dim = DIMENSION_META.find(d => d.id === modal.selectedDimensionId)
   const act = (activitiesByDimension[modal.selectedDimensionId] ?? []).find(a => a.id === modal.selectedActivityId)
   if (!dim || !act) return null
-  return { id: act.id, label: `${dim.label} — ${act.text}`, isWeeklyPriority: false }
+  return { id: act.id, label: `${dim.label} — ${act.text}`, color: dim.color, isWeeklyPriority: false }
 }
 
 /**
@@ -71,27 +79,30 @@ export function toEditModalState(
   }
 }
 
-/** The label and the priority together, because both are read off the same lookup: a saved task
- *  carries only the id it links to, and its colour is the linked goal's business, not its own. */
+/** The label, the colour and the priority together, because all three are read off the same
+ *  lookup: a saved task carries only the id it links to, and its colour is the linked goal's
+ *  business, not its own. */
 function resolveLink(
   linkType: LinkType,
   linkId: string,
   roles: ApiRole[],
   activitiesByDimension: ActivitiesByDimension
-): { label: string; isWeeklyPriority: boolean } {
+): { label: string; color: string; isWeeklyPriority: boolean } {
   if (linkType === "role-goal") {
     for (const role of roles) {
       const goal = role.goals.find(g => g.id === linkId)
-      if (goal) return { label: `${role.name} — ${goal.text}`, isWeeklyPriority: goal.isWeeklyPriority }
+      if (goal) {
+        return { label: `${role.name} — ${goal.text}`, color: role.color, isWeeklyPriority: goal.isWeeklyPriority }
+      }
     }
-    return { label: "Unknown goal", isWeeklyPriority: false }
+    return { label: "Unknown goal", color: TASK_COLOR, isWeeklyPriority: false }
   }
 
   for (const dim of DIMENSION_META) {
     const act = (activitiesByDimension[dim.id] ?? []).find(a => a.id === linkId)
-    if (act) return { label: `${dim.label} — ${act.text}`, isWeeklyPriority: false }
+    if (act) return { label: `${dim.label} — ${act.text}`, color: dim.color, isWeeklyPriority: false }
   }
-  return { label: "Unknown activity", isWeeklyPriority: false }
+  return { label: "Unknown activity", color: TASK_COLOR, isWeeklyPriority: false }
 }
 
 export interface ApiTask {
@@ -119,9 +130,46 @@ export function fromApiTask(apiTask: ApiTask, roles: ApiRole[], activitiesByDime
     linkType,
     linkId,
     linkLabel: link.label,
+    color: link.color,
     isWeeklyPriority: link.isWeeklyPriority,
     isDailyPriority: apiTask.is_daily_priority,
   }
+}
+
+/**
+ * What each block on the calendar belongs to, for the legend to fold into its rows.
+ *
+ * `Task.color` is already the category's own rather than the painted one, so a weekly-priority
+ * task appears in the legend under its role instead of renaming that role to yellow. The yellow
+ * has a row of its own.
+ */
+export function taskCategories(
+  tasks: Task[],
+  fixedAppts: FixedAppt[],
+  roles: ApiRole[],
+  activitiesByDimension: ActivitiesByDimension
+): LegendCategory[] {
+  const categories: LegendCategory[] = tasks.map(task => {
+    if (task.linkType === "role-goal") {
+      const role = roles.find(r => r.goals.some(g => g.id === task.linkId))
+      return role
+        ? { kind: "goal", label: role.name, color: role.color }
+        : { kind: "none", label: "Unknown goal", color: TASK_COLOR }
+    }
+
+    const dim = DIMENSION_META.find(d =>
+      (activitiesByDimension[d.id] ?? []).some(a => a.id === task.linkId)
+    )
+    return dim
+      ? { kind: "activity", label: dim.label, color: dim.color }
+      : { kind: "none", label: "Unknown activity", color: TASK_COLOR }
+  })
+
+  if (fixedAppts.length > 0) {
+    categories.push({ kind: "fixed", label: "Fixed appointments", color: FIXED_COLOR })
+  }
+
+  return categories
 }
 
 /** Shapes local task state into the snake_case payload the backend expects. */

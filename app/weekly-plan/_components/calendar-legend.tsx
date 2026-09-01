@@ -1,34 +1,29 @@
-import { Star } from "lucide-react"
-import { FIXED_COLOR, WEEKLY_PRIORITY_COLOR } from "../_constants/calendar"
+import { CalendarLegend as SharedCalendarLegend } from "@/components/calendar-legend"
+import { hasWeeklyPriority, taskCategories } from "../_utils/tasks"
+import type { Appt, Task } from "../_types/calendar"
+import type { PlanDimension, PlanRole } from "../_types"
 
-export function CalendarLegend() {
+interface Props {
+  tasks: Task[]
+  appts: Appt[]
+  roles: PlanRole[]
+  dimensions: PlanDimension[]
+}
+
+/**
+ * What the colours on this week's calendar mean, for the week actually on screen.
+ *
+ * It named a single purple "Your Tasks" until now, which was true while every task was drawn
+ * alike. It stopped being true once a card took the colour of the role or Sharpen the Saw
+ * dimension behind it, and the legend was then the one claim on the page a reader could check
+ * against the grid in front of them and find wrong.
+ */
+export function CalendarLegend({ tasks, appts, roles, dimensions }: Props) {
   return (
-    <div className="flex items-center gap-4 mb-4">
-      <div className="flex items-center gap-2">
-        <div
-          className="w-3 h-3 rounded-sm"
-          style={{ backgroundColor: `${FIXED_COLOR}40`, borderLeft: `3px solid ${FIXED_COLOR}` }}
-        />
-        <span className="text-xs text-muted-foreground font-serif">Fixed Appointments</span>
-      </div>
-      <div className="flex items-center gap-2">
-        <div className="w-3 h-3 rounded-sm bg-primary/25" style={{ borderLeft: "3px solid #B13BFF" }} />
-        <span className="text-xs text-muted-foreground font-serif">Your Tasks</span>
-      </div>
-      {/* The swatch and the star are two different claims, so they are two entries. A yellow card
-          is work on a weekly-priority goal; a star is a task picked out for its day, whatever
-          colour the card underneath it is. */}
-      <div className="flex items-center gap-2">
-        <div
-          className="w-3 h-3 rounded-sm"
-          style={{ backgroundColor: `${WEEKLY_PRIORITY_COLOR}40`, borderLeft: `3px solid ${WEEKLY_PRIORITY_COLOR}` }}
-        />
-        <span className="text-xs text-muted-foreground font-serif">Weekly Priority</span>
-      </div>
-      <div className="flex items-center gap-1">
-        <Star className="w-3 h-3" style={{ color: WEEKLY_PRIORITY_COLOR, fill: WEEKLY_PRIORITY_COLOR }} />
-        <span className="text-xs text-muted-foreground font-serif">Daily Priority</span>
-      </div>
-    </div>
+    <SharedCalendarLegend
+      categories={taskCategories(tasks, appts, roles, dimensions)}
+      hasWeeklyPriority={hasWeeklyPriority(tasks)}
+      hasDailyPriority={tasks.some(t => t.isDailyPriority)}
+    />
   )
 }

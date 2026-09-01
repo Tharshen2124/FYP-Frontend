@@ -114,9 +114,9 @@ describe("toHistoryActivity", () => {
   it("resolves the display label the frontend owns, not the stored string", () => {
     const resolved = toHistoryActivity(activity())
     expect(resolved.dimensionLabel).toBe("Social / Emotional")
-    /* Rose, not the yellow it used to be: that colour is reserved for a weekly-priority task, so
-       a Social / Emotional chip may not also claim it. */
-    expect(resolved.dimensionColor).toBe("#f43f5e")
+    /* Pink — having been yellow, then rose. Yellow is reserved for a weekly-priority task and rose
+       is a role colour, and this chip sits on the same grid as both. */
+    expect(resolved.dimensionColor).toBe("#f472b6")
   })
 
   it("flags an activity deleted since rather than dropping it", () => {
@@ -142,7 +142,7 @@ describe("toHistoryEvent", () => {
     )
     expect(event.categoryKind).toBe("activity")
     expect(event.categoryLabel).toBe("Physical")
-    expect(event.color).toBe("#f97316")
+    expect(event.color).toBe("#22c55e")
   })
 
   it("captions a fixed appointment, which carries no link at all", () => {

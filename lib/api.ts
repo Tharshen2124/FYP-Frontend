@@ -481,7 +481,7 @@ export const api = {
     }),
   fetchRoles: (weekStart?: string) =>
     request<{
-      roles: { role_id: number; name: string; icon_id: string; goals: { goal_id: number; text: string; is_weekly_priority: boolean }[] }[]
+      roles: { role_id: number; name: string; icon_id: string; color_id: string | null; goals: { goal_id: number; text: string; is_weekly_priority: boolean }[] }[]
     }>(weekScoped("/onboarding/roles", weekStart)),
   submitSharpenTheSaw: (data: { activities: { dimension: string; activity_description: string }[] }) =>
     request<{ activities: unknown[] }>("/onboarding/sharpen-the-saw", {
@@ -675,6 +675,7 @@ export const api = {
           link_kind: "goal" | "activity" | null
           link_text: string | null
           role_name: string | null
+          role_color_id: string | null
           dimension: string | null
         }[]
         check_ins: ApiCheckIn[]

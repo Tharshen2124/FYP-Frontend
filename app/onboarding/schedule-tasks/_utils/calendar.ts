@@ -1,4 +1,4 @@
-import type { CalItem } from "../_types"
+import type { CalItem, FixedAppt, Task } from "../_types"
 
 export function getOverlaps(
   all: CalItem[],
@@ -27,4 +27,16 @@ export function getPositionStyle(item: CalItem, allItems: CalItem[]): React.CSSP
   return col === 0
     ? { left: "2px",              width: "calc(50% - 3px)", right: "auto" }
     : { left: "calc(50% + 1px)", width: "calc(50% - 3px)", right: "auto" }
+}
+
+/**
+ * Every block on the grid as one list, which is what a clash check and an overlap layout both
+ * need: a task may land on a fixed appointment as readily as on another task, and neither is
+ * special to the geometry.
+ */
+export function toCalItems(fixedAppts: FixedAppt[], tasks: Task[]): CalItem[] {
+  return [
+    ...fixedAppts,
+    ...tasks.map(t => ({ id: t.id, dayIndex: t.dayIndex, startMins: t.startMins, endMins: t.endMins })),
+  ]
 }

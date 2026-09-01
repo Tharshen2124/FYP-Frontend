@@ -192,7 +192,7 @@ export default function DashboardPage() {
 
         {loadState === "ready" && plan && (
           <>
-            <TimetableLegend />
+            <TimetableLegend events={events} />
             <WeeklyTimetable events={events} onSelectEvent={setSelectedTaskId} />
           </>
         )}

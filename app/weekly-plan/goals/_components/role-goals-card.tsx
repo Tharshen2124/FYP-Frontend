@@ -4,6 +4,7 @@ import Link from "next/link"
 import { Plus, X, Check, ArrowUpRight, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { WEEKLY_PRIORITY_COLOR } from "@/lib/role-colors"
 import type { Candidate, StagedGoal, WeekRole } from "../_types"
 
 interface Props {
@@ -47,16 +48,31 @@ export function RoleGoalsCard({
         </Link>
       </div>
 
-      {/* Already committed to this week — edited on /roles, shown here for context. */}
+      {/* Already committed to this week — edited on /roles, shown here for context. Drawn in the
+          role's own colour rather than one flat magenta, so a card reads as one thing: the header
+          above it and the rows under it belong to the same role, and that is what the colour of a
+          task on the calendar will say too. */}
       {role.goals.length > 0 && (
         <div className="space-y-2 mb-4">
           {role.goals.map(goal => (
-            <div key={goal.id} className="flex items-center gap-3 p-3 rounded-xl bg-primary/10 border-2 border-primary">
-              <div className="w-5 h-5 rounded-full bg-primary border-primary border-2 flex items-center justify-center flex-shrink-0">
-                <Check className="w-3 h-3 text-primary-foreground" />
+            <div
+              key={goal.id}
+              className="flex items-center gap-3 p-3 rounded-xl border-2"
+              style={{ backgroundColor: `${role.color}1a`, borderColor: role.color }}
+            >
+              <div
+                className="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0"
+                style={{ backgroundColor: role.color, borderColor: role.color }}
+              >
+                <Check className="w-3 h-3 text-background" />
               </div>
               <span className="font-serif text-foreground text-sm flex-1">{goal.text}</span>
-              <span className="text-xs font-medium bg-primary/20 text-primary rounded-full px-2 py-0.5 whitespace-nowrap">Added</span>
+              <span
+                className="text-xs font-medium rounded-full px-2 py-0.5 whitespace-nowrap"
+                style={{ backgroundColor: `${role.color}33`, color: role.color }}
+              >
+                Added
+              </span>
             </div>
           ))}
         </div>
@@ -75,13 +91,17 @@ export function RoleGoalsCard({
                   key={candidate.id}
                   onClick={() => onToggleCandidate(candidate.id)}
                   className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
-                    isSelected ? "bg-primary/10 border-primary" : "bg-muted border-border"
+                    isSelected ? "" : "bg-muted border-border"
                   }`}
+                  style={isSelected ? { backgroundColor: `${role.color}1a`, borderColor: role.color } : undefined}
                 >
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${
-                    isSelected ? "bg-primary border-primary" : "border-muted-foreground"
-                  }`}>
-                    {isSelected && <Check className="w-3 h-3 text-primary-foreground" />}
+                  <div
+                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                      isSelected ? "" : "border-muted-foreground"
+                    }`}
+                    style={isSelected ? { backgroundColor: role.color, borderColor: role.color } : undefined}
+                  >
+                    {isSelected && <Check className="w-3 h-3 text-background" />}
                   </div>
                   <span className="font-serif text-foreground text-sm">{candidate.text}</span>
                 </button>
@@ -91,27 +111,42 @@ export function RoleGoalsCard({
         </div>
       )}
 
-      {/* Typed in but not yet sent — the page commits everything on Next. */}
+      {/* Typed in but not yet sent — the page commits everything on Next.
+          The role's colour like the rows above, but dashed: the difference between a staged goal
+          and a committed one is whether it has been sent, not which role it belongs to. It used to
+          be drawn in `accent`, which is the reserved weekly-priority yellow — so an ordinary new
+          goal was painted the one colour that is supposed to mean "priority", beside a star that
+          actually meant it. */}
       {stagedGoals.length > 0 && (
         <div className="space-y-2 mb-4">
           {stagedGoals.map(goal => (
             <div
               key={goal.id}
-              className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-colors ${
-                goal.isPriority ? "bg-accent/10 border-accent" : "bg-accent/5 border-accent/30"
-              }`}
+              className="flex items-center gap-3 p-3 rounded-xl border-2 border-dashed transition-colors"
+              style={{ backgroundColor: `${role.color}0d`, borderColor: `${role.color}80` }}
             >
-              <div className="w-5 h-5 rounded-full bg-accent border-accent border-2 flex items-center justify-center flex-shrink-0">
-                <Check className="w-3 h-3 text-background" />
+              <div
+                className="w-5 h-5 rounded-full border-2 border-dashed flex items-center justify-center flex-shrink-0"
+                style={{ borderColor: role.color }}
+              >
+                <Check className="w-3 h-3" style={{ color: role.color }} />
               </div>
               <span className="font-serif text-foreground text-sm flex-1">{goal.text}</span>
-              <span className="text-xs font-medium bg-accent/20 text-accent rounded-full px-2 py-0.5 whitespace-nowrap">New</span>
+              <span
+                className="text-xs font-medium rounded-full px-2 py-0.5 whitespace-nowrap"
+                style={{ backgroundColor: `${role.color}26`, color: role.color }}
+              >
+                New
+              </span>
+              {/* The star keeps the reserved yellow whatever colour the row is, exactly as it does
+                  on every calendar: a weekly priority is one claim with one colour. */}
               <button
                 onClick={() => onToggleStagedPriority(goal.id)}
                 aria-label={goal.isPriority ? `Remove priority from ${goal.text}` : `Mark ${goal.text} as weekly priority`}
-                className={`flex-shrink-0 p-1 rounded-lg transition-colors ${goal.isPriority ? "text-accent" : "text-muted-foreground hover:text-accent"}`}
+                className="flex-shrink-0 p-1 rounded-lg transition-colors text-muted-foreground hover:opacity-80"
+                style={goal.isPriority ? { color: WEEKLY_PRIORITY_COLOR } : undefined}
               >
-                <Star className={`w-4 h-4 ${goal.isPriority ? "fill-accent" : ""}`} />
+                <Star className={`w-4 h-4 ${goal.isPriority ? "fill-current" : ""}`} />
               </button>
               <Button
                 variant="ghost"

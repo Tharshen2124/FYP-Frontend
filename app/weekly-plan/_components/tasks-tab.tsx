@@ -195,7 +195,7 @@ export function TasksTab({ appts, tasks, setTasks, roles, dimensions, weekStart,
 
   return (
     <>
-      <CalendarLegend />
+      <CalendarLegend tasks={tasks} appts={appts} roles={roles} dimensions={dimensions} />
 
       <div className="bg-card border-2 border-border rounded-md overflow-hidden">
         <CalendarDayHeader week={week} pastDays={pastDays} />

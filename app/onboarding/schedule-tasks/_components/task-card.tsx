@@ -1,6 +1,6 @@
 import { Pencil, X, Star } from "lucide-react"
 import type { Task, CalItem } from "../_types"
-import { HR_PX, CAL_START, TASK_COLOR, WEEKLY_PRIORITY_COLOR } from "../_constants/calendar"
+import { HR_PX, CAL_START, WEEKLY_PRIORITY_COLOR } from "../_constants/calendar"
 import { getPositionStyle } from "../_utils/calendar"
 import { fmtTime } from "../_utils/time"
 
@@ -16,9 +16,10 @@ export function TaskCard({ task, allCalItems, onEdit, onDelete, onDragStart }: P
   const top      = (task.startMins - CAL_START * 60) * (HR_PX / 60)
   const height   = Math.max((task.endMins - task.startMins) * (HR_PX / 60), 22)
   const posStyle = getPositionStyle(task, allCalItems)
-  /* Yellow is reserved for work on a weekly-priority goal. A daily priority used to take it and
-     no longer does — it is the star below, which reads the same on a card of either colour. */
-  const color    = task.isWeeklyPriority ? WEEKLY_PRIORITY_COLOR : TASK_COLOR
+  /* Yellow is reserved for work on a weekly-priority goal, and overrides the colour of the role
+     or dimension behind the task. A daily priority used to take it and no longer does — it is the
+     star below, which reads the same on a card of either colour. */
+  const color    = task.isWeeklyPriority ? WEEKLY_PRIORITY_COLOR : task.color
 
   return (
     <div

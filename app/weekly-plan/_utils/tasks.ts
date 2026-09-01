@@ -1,3 +1,4 @@
+import type { LegendCategory } from "@/components/calendar-legend"
 import type { ApiPlanAppointment, ApiPlanTask } from "@/lib/api"
 import { FIXED_COLOR, WEEKLY_PRIORITY_COLOR } from "../_constants/calendar"
 import { minsToStr, strToMins } from "./time"
@@ -22,6 +23,10 @@ export interface LinkMeta {
  * scanning the week, the goals the user said matter most this week are the ones that stand out,
  * and which role they belong to is the caption's job rather than the tint's.
  */
+/** A scheduled task whose goal or activity no longer resolves. The card stays on the grid rather
+ *  than being thrown away — dropping it client-side would delete it on the next save. */
+const UNLINKED_COLOR = "#94a3b8"
+
 function goalColor(goal: PlanGoal, role: PlanRole): string {
   return goal.isWeeklyPriority ? WEEKLY_PRIORITY_COLOR : role.color
 }
@@ -98,7 +103,9 @@ export function fromApiTask(
     dayIndex: apiTask.day_of_week,
     startMins: strToMins(apiTask.start_time),
     endMins: strToMins(apiTask.end_time),
-    color: goal && role ? goalColor(goal, role) : dim?.color ?? FIXED_COLOR,
+    // The unresolved case takes the unlinked grey, not the fixed-appointment blue it used to: an
+    // orphaned task must not read on the grid as a commitment the user cannot move.
+    color: goal && role ? goalColor(goal, role) : dim?.color ?? UNLINKED_COLOR,
     linkType: isGoal ? "role-goal" : "sharpen-the-saw",
     linkId,
     linkLabel: label,
@@ -117,6 +124,50 @@ export function fromApiAppointment(apiAppt: ApiPlanAppointment): Appt {
     endMins: strToMins(apiAppt.end_time),
     isCompleted: apiAppt.is_completed,
   }
+}
+
+/**
+ * What each block on the calendar belongs to, for the legend to fold into its rows.
+ *
+ * Read back off the roles and dimensions rather than off `Task.color`, because that field already
+ * has the reserved yellow baked into it: a weekly-priority task has to appear in the legend under
+ * its own role, not rename that role to yellow. The yellow has a row of its own.
+ *
+ * A link whose owner has gone — a goal dropped from the week, an activity uncommitted — is
+ * reported as unlinked rather than dropped, matching the card, which stays on the grid so the next
+ * save cannot delete it.
+ */
+export function taskCategories(
+  tasks: Task[],
+  appts: Appt[],
+  roles: PlanRole[],
+  dimensions: PlanDimension[]
+): LegendCategory[] {
+  const categories: LegendCategory[] = tasks.map(task => {
+    if (task.linkType === "role-goal") {
+      const role = roles.find(r => r.goals.some(g => g.id === task.linkId))
+      return role
+        ? { kind: "goal", label: role.name, color: role.color }
+        : { kind: "none", label: "No longer available", color: UNLINKED_COLOR }
+    }
+
+    const dim = dimensions.find(d => d.activities.some(a => a.id === task.linkId))
+    return dim
+      ? { kind: "activity", label: dim.label, color: dim.color }
+      : { kind: "none", label: "No longer available", color: UNLINKED_COLOR }
+  })
+
+  if (appts.length > 0) {
+    categories.push({ kind: "fixed", label: "Fixed appointments", color: FIXED_COLOR })
+  }
+
+  return categories
+}
+
+/** Whether any task on the grid is drawn in the reserved yellow — i.e. serves a weekly-priority
+ *  goal. Read off the painted colour, which is the one place that rule is applied. */
+export function hasWeeklyPriority(tasks: Task[]): boolean {
+  return tasks.some(t => t.color === WEEKLY_PRIORITY_COLOR)
 }
 
 export function toAppointmentsPayload(appts: Appt[]) {

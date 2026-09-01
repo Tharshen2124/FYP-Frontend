@@ -10,7 +10,7 @@ export const HR_PX     = 64   // pixels per hour → 1 min = HR_PX/60 px
 
 // Fixed appointments are one kind of thing, so they read as one colour — the same blue the
 // later scheduling screens use for them.
-export const FIXED_COLOR = "#3b82f6"
+export { FIXED_COLOR } from "@/lib/role-colors"
 
 export const EMPTY_MODAL: ModalState = {
   open: false,

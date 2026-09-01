@@ -1,7 +1,13 @@
+import type { LegendCategory } from "@/components/calendar-legend"
+import { getColor } from "@/lib/role-colors"
 import { SHARPEN_THE_SAW_DIMENSIONS } from "@/lib/sharpen-the-saw-dimensions"
-import { FIXED_COLOR, TASK_COLOR, WEEKLY_PRIORITY_COLOR } from "../_constants/calendar"
+import { FIXED_COLOR, WEEKLY_PRIORITY_COLOR } from "../_constants/calendar"
 import { strToMins } from "./time"
 import type { ApiTask, CalEvent, DetailRow, TaskDetail } from "../_types"
+
+/** A scheduled task with no goal and no activity behind it. The planning UI never creates one, but
+ *  the schema permits it, so it is named rather than left as an untinted block. */
+const UNLINKED_COLOR = "#94a3b8"
 
 /**
  * The dimension a task renews, or undefined for an id the frontend does not know. The two callers
@@ -31,17 +37,49 @@ export function linkLabel(task: ApiTask): string | undefined {
 }
 
 /**
- * What a task is drawn in.
+ * What a task belongs to: the colour it is drawn in and the name the legend gives that colour.
  *
- * Yellow is reserved, and this is what earns it: the task serves a goal the user named a weekly
- * priority. A *daily* priority used to take the colour and no longer does — it is a star on the
- * card instead. The two say different things, and one of them has to be the one a glance across
- * the week answers: which of these is work on what matters most this week.
+ * The role's own colour rather than one flat purple for every task, matching the calendars that
+ * plan the week and the one that reads it back. It is the answer to the question a week at a
+ * glance is actually asked — which roles is this week going to, and which are getting nothing —
+ * and the whole reason /roles offers a palette at all.
+ *
+ * Deliberately *not* the reserved yellow, even for a weekly priority. That override is applied at
+ * paint time by {@link EventCard}, so the legend can keep naming the role: a yellow card is still
+ * a card belonging to a role, and folding the two here would rename the role to "yellow".
  */
-function colorFor(task: ApiTask): string {
-  if (task.is_fixed_appointment) return FIXED_COLOR
-  if (task.is_weekly_priority) return WEEKLY_PRIORITY_COLOR
-  return TASK_COLOR
+function category(task: ApiTask): LegendCategory {
+  if (task.is_fixed_appointment) {
+    return { kind: "fixed", label: "Fixed appointments", color: FIXED_COLOR }
+  }
+
+  if (task.link_kind === "goal") {
+    return { kind: "goal", label: task.role_name ?? "Goal", color: getColor(task.role_color_id ?? "") }
+  }
+
+  if (task.link_kind === "activity") {
+    const dimension = dimensionMeta(task.dimension)
+    return {
+      kind: "activity",
+      label: dimension?.label ?? task.dimension ?? "Sharpen the Saw",
+      color: dimension?.color ?? UNLINKED_COLOR,
+    }
+  }
+
+  return { kind: "none", label: "Unlinked", color: UNLINKED_COLOR }
+}
+
+/**
+ * What a card actually paints, which is the category's colour unless the reserved yellow overrides
+ * it. Yellow is what a weekly-priority goal earns: scanning the week, the goals the user said
+ * matter most are the ones that stand out, and which role they belong to is the caption's job.
+ *
+ * A fixed appointment is exempt and stays blue. It belongs to no goal, so it can never really be a
+ * weekly priority — the guard is there so a server that ever said otherwise could not repaint the
+ * one block on the grid whose colour means "this is not yours to move".
+ */
+export function paintedColor(event: Pick<CalEvent, "color" | "isWeeklyPriority" | "isFixed">): string {
+  return event.isWeeklyPriority && !event.isFixed ? WEEKLY_PRIORITY_COLOR : event.color
 }
 
 function kindFor(task: ApiTask): string {
@@ -75,22 +113,41 @@ export function taskDetail(task: ApiTask): TaskDetail {
     if (value) rows.push({ label: "Dimension", value })
   }
 
-  return { kind: kindFor(task), color: colorFor(task), rows }
+  return {
+    kind: kindFor(task),
+    // The dot matches the grid, so it takes the override the card takes.
+    color: paintedColor({
+      color: category(task).color,
+      isWeeklyPriority: task.is_weekly_priority,
+      isFixed: task.is_fixed_appointment,
+    }),
+    rows,
+  }
 }
 
 /** Turns the week's tasks into the shape the timetable draws. */
 export function toCalEvents(tasks: ApiTask[]): CalEvent[] {
-  return tasks.map(task => ({
+  return tasks.map(task => {
+    const { kind, label, color } = category(task)
+    return {
     id: String(task.task_id),
     title: task.title,
     dayIndex: task.day_of_week,
     startMins: strToMins(task.start_time),
     endMins: strToMins(task.end_time),
-    color: colorFor(task),
+    color,
+    categoryKind: kind,
+    categoryLabel: label,
     isFixed: task.is_fixed_appointment,
     isDailyPriority: task.is_daily_priority,
     isWeeklyPriority: task.is_weekly_priority,
     isCompleted: task.is_completed,
     linkLabel: linkLabel(task),
-  }))
+    }
+  })
+}
+
+/** The week's categories, one entry per drawn block — the legend folds them into its rows. */
+export function eventCategories(events: CalEvent[]): LegendCategory[] {
+  return events.map(e => ({ kind: e.categoryKind, label: e.categoryLabel, color: e.color }))
 }

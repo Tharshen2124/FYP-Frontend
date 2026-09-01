@@ -8,13 +8,10 @@ export const CAL_END    = 22
 export const TOTAL_HRS  = CAL_END - CAL_START
 export const HR_PX      = 64
 
-// Fixed appointments are one kind of thing, so they read as one colour on every calendar that
-// shows them — this tab, the tasks tab, and onboarding.
-export const FIXED_COLOR  = "#3b82f6"
-
-/* Re-exported rather than repeated: the reserved yellow is one fact about the whole app, and the
-   role palette is where it is defined precisely because no role may take it. */
-export { WEEKLY_PRIORITY_COLOR } from "@/lib/role-colors"
+/* Re-exported rather than repeated: the reserved yellow and the fixed-appointment blue are facts
+   about the whole app, and the role palette is where they are defined precisely because no role
+   and no Sharpen the Saw dimension may take either. */
+export { FIXED_COLOR, WEEKLY_PRIORITY_COLOR } from "@/lib/role-colors"
 
 export const EMPTY_TASK_MODAL: ModalState = {
   open: false,

@@ -14,11 +14,11 @@ import { CalendarLegend } from "./_components/calendar-legend"
 import { WeekCalendar } from "./_components/week-calendar"
 import { TaskModal } from "./_components/task-modal"
 import { CAL_START, CAL_END, HR_PX, EMPTY_MODAL } from "./_constants/calendar"
-import { getOverlaps } from "./_utils/calendar"
+import { getOverlaps, toCalItems } from "./_utils/calendar"
 import { minsToStr, strToMins, snapMins } from "./_utils/time"
 import { getLinkMeta, toEditModalState } from "./_utils/tasks"
 import { useScheduleTasks } from "./_utils/use-schedule-tasks"
-import type { CalItem, ModalState, PendingAction, Task } from "./_types"
+import type { ModalState, PendingAction, Task } from "./_types"
 
 export default function ScheduleTasksPage() {
   const router = useRouter()
@@ -37,10 +37,7 @@ export default function ScheduleTasksPage() {
   const dragInfo = useRef<{ id: string; offsetMins: number } | null>(null)
   const colRefs  = useRef<(HTMLDivElement | null)[]>(Array(7).fill(null))
 
-  const allCalItems: CalItem[] = [
-    ...fixedAppts,
-    ...tasks.map(t => ({ id: t.id, dayIndex: t.dayIndex, startMins: t.startMins, endMins: t.endMins })),
-  ]
+  const allCalItems = toCalItems(fixedAppts, tasks)
 
   function findTitle(id: string) {
     return tasks.find(t => t.id === id)?.title ?? fixedAppts.find(f => f.id === id)?.title ?? "Unknown"
@@ -92,6 +89,7 @@ export default function ScheduleTasksPage() {
       linkType: modal.linkType,
       linkId: meta.id,
       linkLabel: meta.label,
+      color: meta.color,
       // Inherited from the goal, not chosen here: /roles is where a weekly priority is set.
       isWeeklyPriority: meta.isWeeklyPriority,
       isDailyPriority: modal.isDailyPriority,
@@ -212,7 +210,7 @@ export default function ScheduleTasksPage() {
             <>
               <PastDaysNotice todayIdx={week?.todayIdx ?? null} creates="tasks" />
 
-              <CalendarLegend />
+              <CalendarLegend tasks={tasks} fixedAppts={fixedAppts} roles={roles} activitiesByDimension={activitiesByDimension} />
 
               <WeekCalendar
                 fixedAppts={fixedAppts}

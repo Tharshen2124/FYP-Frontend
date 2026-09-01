@@ -3,7 +3,9 @@ import {
   findLinkSelection,
   fromApiTask,
   getLinkMeta,
+  hasWeeklyPriority,
   isScheduleDirty,
+  taskCategories,
   toTasksPayload,
 } from "@/app/weekly-plan/_utils/tasks"
 import type { PlanDimension, PlanRole } from "@/app/weekly-plan/_types"
@@ -144,6 +146,82 @@ describe("fromApiTask", () => {
     const task = fromApiTask(apiTask({ goal_id: 404 }), ROLES, DIMENSIONS)
     expect(task.linkId).toBe("404")
     expect(task.linkLabel).toBe("No longer available")
+  })
+
+  /* Blue is the fixed-appointment colour, and an orphaned task is the opposite of one: it is the
+     block on the grid the user most needs to be able to fix. */
+  it("draws a task whose link is gone in the unlinked grey, not the fixed-appointment blue", () => {
+    expect(fromApiTask(apiTask({ goal_id: 404 }), ROLES, DIMENSIONS).color).toBe("#94a3b8")
+  })
+})
+
+/**
+ * What the calendar's legend is built from. It names the week's real roles and dimensions rather
+ * than claiming every task is one purple — a claim that stopped being true the moment a card took
+ * the colour of the role behind it, and that the legend went on making anyway.
+ */
+describe("taskCategories", () => {
+  const task = (over: Partial<Task>): Task => ({
+    id: "t", title: "x", dayIndex: 0, startMins: 540, endMins: 600,
+    color: "#B13BFF", linkType: "role-goal", linkId: "1", linkLabel: "",
+    isDailyPriority: false, isCompleted: false,
+    ...over,
+  })
+
+  it("reports one entry per drawn block, for the legend to fold", () => {
+    const categories = taskCategories(
+      [ task({ id: "a", linkId: "1" }), task({ id: "b", linkId: "3" }), task({ id: "c", linkId: "2" }) ],
+      [],
+      ROLES,
+      DIMENSIONS
+    )
+    expect(categories).toEqual([
+      { kind: "goal", label: "Professional", color: "#B13BFF" },
+      { kind: "goal", label: "Professional", color: "#B13BFF" },
+      { kind: "goal", label: "Health", color: "#14b8a6" },
+    ])
+  })
+
+  /* Goal 3 is a weekly priority, so its card is drawn in the reserved yellow. The legend still has
+     to file it under "Professional": naming a row "yellow" would lose the role it belongs to, and
+     the yellow already has a row of its own. */
+  it("files a weekly-priority task under its role, not under the reserved yellow", () => {
+    const [category] = taskCategories([ task({ linkId: "3", color: "#FFCC00" }) ], [], ROLES, DIMENSIONS)
+    expect(category).toEqual({ kind: "goal", label: "Professional", color: "#B13BFF" })
+  })
+
+  it("names a Sharpen the Saw task by its dimension", () => {
+    const [category] = taskCategories(
+      [ task({ linkType: "sharpen-the-saw", linkId: "7" }) ], [], ROLES, DIMENSIONS
+    )
+    expect(category).toEqual({ kind: "activity", label: "Physical", color: "#f97316" })
+  })
+
+  it("reports a task whose link is gone rather than dropping it from the legend", () => {
+    const [category] = taskCategories([ task({ linkId: "404" }) ], [], ROLES, DIMENSIONS)
+    expect(category).toEqual({ kind: "none", label: "No longer available", color: "#94a3b8" })
+  })
+
+  /* One entry however many appointments there are: they are one category, not one each. And none
+     at all on a week with no appointments, so the legend never explains an absent swatch. */
+  it("adds a single fixed-appointment entry, and only when the week has one", () => {
+    const appt: Appt = { id: "a", title: "Standup", dayIndex: 0, startMins: 540, endMins: 570, isCompleted: false }
+    expect(taskCategories([], [ appt, { ...appt, id: "b" } ], ROLES, DIMENSIONS))
+      .toEqual([ { kind: "fixed", label: "Fixed appointments", color: "#3b82f6" } ])
+    expect(taskCategories([], [], ROLES, DIMENSIONS)).toEqual([])
+  })
+})
+
+describe("hasWeeklyPriority", () => {
+  const task = (color: string): Task => ({
+    id: "t", title: "x", dayIndex: 0, startMins: 540, endMins: 600, color,
+    linkType: "role-goal", linkId: "1", linkLabel: "", isDailyPriority: false, isCompleted: false,
+  })
+
+  it("is true only when some card on the grid is drawn in the reserved yellow", () => {
+    expect(hasWeeklyPriority([ task("#B13BFF"), task("#FFCC00") ])).toBe(true)
+    expect(hasWeeklyPriority([ task("#B13BFF") ])).toBe(false)
+    expect(hasWeeklyPriority([])).toBe(false)
   })
 })
 

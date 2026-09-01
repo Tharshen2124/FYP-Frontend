@@ -7,6 +7,11 @@
  *
  * Yellow is deliberately absent. It is {@link WEEKLY_PRIORITY_COLOR}, and a role that could claim
  * it would make a yellow card on a calendar mean two different things.
+ *
+ * For the same reason it shares no value with the four Sharpen the Saw dimension colours
+ * (`lib/sharpen-the-saw-dimensions.ts`) or the fixed-appointment blue (#3b82f6): every calendar in
+ * the app draws roles, dimensions and fixed appointments on one grid, so a colour has to decode to
+ * exactly one of them. `tests/unit/roles.test.ts` holds all three palettes apart.
  */
 export const ROLE_COLORS = [
   { id: "primary", value: "#B13BFF", label: "Magenta" },
@@ -28,6 +33,16 @@ export const DEFAULT_COLOR_ID = "primary"
  * task can be either, both or neither.
  */
 export const WEEKLY_PRIORITY_COLOR = "#FFCC00"
+
+/**
+ * The blue every calendar in this app paints a fixed appointment.
+ *
+ * It lives beside the other reserved colours rather than in each calendar's own `_constants`,
+ * because what makes it work is the same fact: no role and no Sharpen the Saw dimension may take
+ * it. Four routes had their own copy of the literal, which is three too many places for that rule
+ * to be broken quietly.
+ */
+export const FIXED_COLOR = "#3b82f6"
 
 /**
  * A role's colour from its stored id.

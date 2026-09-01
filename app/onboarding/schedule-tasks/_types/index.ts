@@ -11,6 +11,10 @@ export interface Task {
   linkType: LinkType
   linkId: string
   linkLabel: string
+  /** The colour of the role or the dimension behind this task — its *category's*, never the
+   *  reserved yellow a weekly priority paints over it. Kept apart so the legend can go on naming
+   *  the role: a yellow card still belongs to one. */
+  color: string
   /** Whether the goal behind this task is one of the week's priorities. Derived from the link, not
    *  chosen here — the calendar reserves one colour for it. */
   isWeeklyPriority: boolean
@@ -61,6 +65,8 @@ export interface ApiGoal {
 export interface ApiRole {
   id: string
   name: string
+  /** Resolved from the stored id against the palette in `lib/role-colors`. */
+  color: string
   goals: ApiGoal[]
 }
 
@@ -70,8 +76,12 @@ export interface ApiActivity {
   dimension: string
 }
 
+/** The standing activity library, bucketed by the dimension each activity renews. */
+export type ActivitiesByDimension = Record<string, ApiActivity[]>
+
 export interface DimensionMeta {
   id: string
   label: string
   icon: ElementType
+  color: string
 }
