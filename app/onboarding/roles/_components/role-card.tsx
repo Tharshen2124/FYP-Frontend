@@ -3,7 +3,7 @@
 import { Plus, Trash2, X, Star, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { FALLBACK_ROLE_ICON, ROLE_ICON_BY_ID } from "../_utils/roles"
+import { FALLBACK_ROLE_ICON, getColor, ROLE_ICON_BY_ID } from "../_utils/roles"
 import type { EditingGoal, Role } from "../_types"
 
 interface Props {
@@ -38,13 +38,14 @@ export function RoleCard({
   onCancelEditGoal,
 }: Props) {
   const IconComponent = ROLE_ICON_BY_ID[role.iconId] ?? FALLBACK_ROLE_ICON
+  const color = getColor(role.colorId)
 
   return (
     <div className="p-6 rounded-2xl bg-card border-2 border-border hover:border-primary/30 transition-colors">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-primary/20">
-            <IconComponent className="w-6 h-6 text-primary" />
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${color}20` }}>
+            <IconComponent className="w-6 h-6" style={{ color }} />
           </div>
           <div>
             <h2 className="text-xl font-bold text-foreground">{role.name}</h2>
@@ -63,7 +64,7 @@ export function RoleCard({
         {role.goals.map(goal => (
           <div key={goal.id} className={`flex items-center justify-between p-3 rounded-xl group transition-colors ${goal.isWeeklyPriority ? "bg-accent/10 border border-accent/30" : "bg-muted/50"}`}>
             <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div className="w-2 h-2 rounded-full shrink-0 bg-primary" />
+              <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
               {editingGoal?.goalId === goal.id ? (
                 <>
                   <input

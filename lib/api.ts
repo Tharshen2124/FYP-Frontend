@@ -473,7 +473,7 @@ export const api = {
       method: "PATCH",
     }),
   submitRoles: (data: {
-    roles: { name: string; icon_id: string; goals: { text: string; is_weekly_priority: boolean }[] }[]
+    roles: { name: string; icon_id: string; color_id: string; goals: { text: string; is_weekly_priority: boolean }[] }[]
   }) =>
     request<{ roles: unknown[] }>("/onboarding/roles", {
       method: "POST",

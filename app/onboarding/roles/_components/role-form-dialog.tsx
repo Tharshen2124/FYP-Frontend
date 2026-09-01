@@ -11,16 +11,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { ROLE_ICONS } from "../_constants/roles"
+import { ROLE_COLORS, ROLE_ICONS } from "../_constants/roles"
 
 interface Props {
   open: boolean
   mode: "add" | "edit"
   name: string
   iconId: string
+  colorId: string
   onOpenChange: (open: boolean) => void
   onNameChange: (name: string) => void
   onIconChange: (iconId: string) => void
+  onColorChange: (colorId: string) => void
   onCancel: () => void
   onSubmit: () => void
 }
@@ -30,9 +32,11 @@ export function RoleFormDialog({
   mode,
   name,
   iconId,
+  colorId,
   onOpenChange,
   onNameChange,
   onIconChange,
+  onColorChange,
   onCancel,
   onSubmit,
 }: Props) {
@@ -76,6 +80,20 @@ export function RoleFormDialog({
                   </button>
                 )
               })}
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-foreground">Choose a Color</Label>
+            <div className="flex gap-2">
+              {ROLE_COLORS.map(color => (
+                <button
+                  key={color.id}
+                  onClick={() => onColorChange(color.id)}
+                  aria-label={color.label}
+                  className={`w-10 h-10 rounded-full transition-all ${colorId === color.id ? "ring-2 ring-offset-2 ring-offset-card ring-foreground scale-110" : "hover:scale-105"}`}
+                  style={{ backgroundColor: color.value }}
+                />
+              ))}
             </div>
           </div>
         </div>

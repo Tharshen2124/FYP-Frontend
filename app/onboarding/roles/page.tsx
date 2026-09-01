@@ -2,12 +2,11 @@
 
 import { useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { AlertTriangle } from "lucide-react"
 import { toast } from "sonner"
 import { AppNav } from "@/components/app-nav"
 import { OnboardingStepper } from "@/components/onboarding-stepper"
 import { api } from "@/lib/api"
-import { DEFAULT_ICON_ID, MAX_RECOMMENDED_GOALS } from "./_constants/roles"
+import { DEFAULT_COLOR_ID, DEFAULT_ICON_ID, MAX_RECOMMENDED_GOALS } from "./_constants/roles"
 import { INITIAL_ROLES } from "./_constants/mock-data"
 import { countGoals, toRolesPayload } from "./_utils/roles"
 import { RoleCard } from "./_components/role-card"
@@ -15,6 +14,7 @@ import { RoleFormDialog } from "./_components/role-form-dialog"
 import { DeleteGoalDialog } from "./_components/delete-goal-dialog"
 import { GoalLimitDialog } from "./_components/goal-limit-dialog"
 import { GoalCountBadge } from "./_components/goal-count-badge"
+import { GoalLimitBanner } from "./_components/goal-limit-banner"
 import { AddRoleTile } from "./_components/add-role-tile"
 import type { EditingGoal, Goal, PendingGoal, Role } from "./_types"
 
@@ -27,6 +27,7 @@ export default function OnboardingRolesPage() {
   const [editingRole, setEditingRole] = useState<Role | null>(null)
   const [newRoleName, setNewRoleName] = useState("")
   const [selectedIcon, setSelectedIcon] = useState(DEFAULT_ICON_ID)
+  const [selectedColor, setSelectedColor] = useState(DEFAULT_COLOR_ID)
   const [goalInputs, setGoalInputs] = useState<Record<string, string>>({})
   const [showGoalWarning, setShowGoalWarning] = useState(false)
   const [pendingGoal, setPendingGoal] = useState<PendingGoal | null>(null)
@@ -43,6 +44,7 @@ export default function OnboardingRolesPage() {
   const resetRoleForm = () => {
     setNewRoleName("")
     setSelectedIcon(DEFAULT_ICON_ID)
+    setSelectedColor(DEFAULT_COLOR_ID)
     setEditingRole(null)
     setRoleDialogMode(null)
   }
@@ -53,6 +55,7 @@ export default function OnboardingRolesPage() {
       id: Date.now().toString(),
       name: newRoleName.trim(),
       iconId: selectedIcon,
+      colorId: selectedColor,
       goals: [],
     }])
     resetRoleForm()
@@ -66,6 +69,7 @@ export default function OnboardingRolesPage() {
     setEditingRole(role)
     setNewRoleName(role.name)
     setSelectedIcon(role.iconId)
+    setSelectedColor(role.colorId)
     setRoleDialogMode("edit")
   }
 
@@ -73,7 +77,7 @@ export default function OnboardingRolesPage() {
     if (!editingRole || !newRoleName.trim()) return
     setRoles(roles.map(r =>
       r.id === editingRole.id
-        ? { ...r, name: newRoleName.trim(), iconId: selectedIcon }
+        ? { ...r, name: newRoleName.trim(), iconId: selectedIcon, colorId: selectedColor }
         : r
     ))
     resetRoleForm()
@@ -180,18 +184,7 @@ export default function OnboardingRolesPage() {
             </p>
           </div>
 
-          {totalGoals > MAX_RECOMMENDED_GOALS && (
-            <div className="mb-6 p-4 rounded-2xl bg-accent/10 border-2 border-accent/30 flex items-start gap-3">
-              <AlertTriangle className="w-6 h-6 text-accent flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="font-bold text-foreground">You have {totalGoals} goals this week</p>
-                <p className="text-sm text-muted-foreground font-serif">
-                  Consider focusing on fewer goals to increase your chances of success.
-                  Research shows that limiting yourself to 7-10 weekly goals leads to better outcomes.
-                </p>
-              </div>
-            </div>
-          )}
+          <GoalLimitBanner totalGoals={totalGoals} />
 
           <div className="grid gap-6">
             {roles.map(role => (
@@ -223,9 +216,11 @@ export default function OnboardingRolesPage() {
         mode={roleDialogMode ?? "add"}
         name={newRoleName}
         iconId={selectedIcon}
+        colorId={selectedColor}
         onOpenChange={open => { if (!open) resetRoleForm() }}
         onNameChange={setNewRoleName}
         onIconChange={setSelectedIcon}
+        onColorChange={setSelectedColor}
         onCancel={resetRoleForm}
         onSubmit={roleDialogMode === "edit" ? handleUpdateRole : handleAddRole}
       />
