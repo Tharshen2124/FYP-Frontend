@@ -144,11 +144,6 @@ export function AuthForm({ isLogin, onSignupSuccess }: Props) {
       >
         <div className="flex items-center justify-between">
           <Label htmlFor="password" className="text-foreground font-bold">Password</Label>
-          {isLogin && (
-            <button type="button" className="text-sm text-primary hover:text-primary/80 font-medium transition-colors">
-              Forgot password?
-            </button>
-          )}
         </div>
         <div className="relative">
           <motion.div
