@@ -8,7 +8,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { api } from "@/lib/api"
+import { api, banNotice, type BanNotice } from "@/lib/api"
 import { useAuthStore } from "@/stores/auth-store"
 import { ONBOARDING_HREF, DASHBOARD_HREF, ADMIN_HREF } from "../_constants/auth"
 import { getPasswordStrength, isValidEmail } from "../_utils/password"
@@ -22,9 +22,11 @@ const IDLE_COLOR = "#b8b8ff"
 interface Props {
   isLogin: boolean
   onSignupSuccess?: () => void
+  /** Handed up to the page, which owns the dialog — a ban also arrives by two other roads. */
+  onBanned?: (notice: BanNotice) => void
 }
 
-export function AuthForm({ isLogin, onSignupSuccess }: Props) {
+export function AuthForm({ isLogin, onSignupSuccess, onBanned }: Props) {
   const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState("")
@@ -50,7 +52,11 @@ export function AuthForm({ isLogin, onSignupSuccess }: Props) {
         onSignupSuccess?.()
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Something went wrong")
+      // A ban is the one failure here that is not a retry, so it goes to the dialog rather than to
+      // the toast that says "Invalid email or password" and fades.
+      const ban = banNotice(err)
+      if (ban) onBanned?.(ban)
+      else toast.error(err instanceof Error ? err.message : "Something went wrong")
     } finally {
       setIsSubmitting(false)
     }

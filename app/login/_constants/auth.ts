@@ -35,3 +35,20 @@ export const OAUTH_ERROR_MESSAGES: Record<string, string> = {
 
 /** Shown for every other `#error=` code: nothing the user did, so the only advice is to try again. */
 export const OAUTH_ERROR_FALLBACK = "Google sign-in failed. Please try again."
+
+/**
+ * The `#error=` code a ban arrives under, from the OAuth callback and from `lib/api.ts` when a
+ * session is cut off mid-use. Deliberately absent from `OAUTH_ERROR_MESSAGES` above: every code in
+ * that map becomes a toast, and a ban is the one refusal that gets a dialog instead.
+ */
+export const BANNED_ERROR = "banned"
+
+export const BAN_TITLE = "Account banned"
+
+/**
+ * Both facts come from the server: the address is the account that was refused, and the contact is
+ * backend config the browser holds no copy of.
+ */
+export function banMessage({ email, contactEmail }: { email: string; contactEmail: string }): string {
+  return `You have been banned from using HabitFlow under the account ${email}. Please contact the admin via ${contactEmail} for any enquiries or clarification.`
+}

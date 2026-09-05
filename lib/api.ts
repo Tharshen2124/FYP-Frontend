@@ -35,7 +35,13 @@ function timeZone(): string {
 export class ApiError extends Error {
   constructor(
     message: string,
-    readonly status: number
+    readonly status: number,
+    /**
+     * Set only when the refusal is a ban. The status is 403, which in this API already means two
+     * other things — not an administrator, and a checkout session belonging to somebody else — so
+     * the server sends a `code` beside it and this is what survives of it.
+     */
+    readonly ban?: BanNotice
   ) {
     super(message)
     this.name = "ApiError"
@@ -47,6 +53,46 @@ export const PAYMENT_REQUIRED = 402
 
 export function isPaymentRequired(error: unknown): boolean {
   return error instanceof ApiError && error.status === PAYMENT_REQUIRED
+}
+
+/** The server's own name for a ban, sent in the body because 403 alone cannot say. */
+const BANNED_CODE = "banned"
+
+/**
+ * What the login page needs to explain a ban: which account, and who to write to. Both come from
+ * the server — the contact address is backend config, and the browser has no second copy of it.
+ */
+export interface BanNotice {
+  email: string
+  contactEmail: string
+}
+
+/** The ban notice on a rejected request, or null for every other failure. */
+export function banNotice(error: unknown): BanNotice | null {
+  return error instanceof ApiError ? (error.ban ?? null) : null
+}
+
+/**
+ * A ban takes effect on the next request, wherever in the app that request came from — so it is
+ * caught here rather than in fifteen page-level error handlers that would each have had to learn
+ * about it. The session is cleared and the notice handed to `/login` in the hash, which is the
+ * same shape the OAuth callback redirects with: the login page then has one place that turns a ban
+ * into its dialog, whichever door the user arrived at.
+ *
+ * Skipped when `/login` is already the page. The form there catches its own `ApiError` and reads
+ * `.ban` off it, and assigning a URL that differs only in its fragment would change the address
+ * bar without reloading anything.
+ */
+function endBannedSession(ban: BanNotice) {
+  if (typeof window === "undefined" || window.location.pathname === "/login") return
+
+  useAuthStore.getState().logout()
+  const notice = new URLSearchParams({
+    error: BANNED_CODE,
+    email: ban.email,
+    contact: ban.contactEmail,
+  })
+  window.location.href = `/login#${notice}`
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -62,9 +108,13 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   })
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
+    const ban: BanNotice | undefined =
+      body.code === BANNED_CODE ? { email: body.email, contactEmail: body.contact_email } : undefined
+    if (ban) endBannedSession(ban)
     throw new ApiError(
       body.error ?? body.errors?.join(", ") ?? `Request failed (${res.status})`,
-      res.status
+      res.status,
+      ban
     )
   }
   return res.status === 204 ? (undefined as T) : res.json()
@@ -375,6 +425,8 @@ export interface ApiAdminUser {
   created_at: string
   is_onboarded: boolean
   is_admin: boolean
+  /** Banned accounts cannot sign in, and any session they still hold is refused on its next request. */
+  is_banned: boolean
   /** The server's own `User#premium?`, not a re-reading of the two columns beside it. */
   premium: boolean
   subscription_status: string | null
@@ -429,6 +481,8 @@ export interface ApiAdminOverview {
     /** Accounts that ticked off or rescheduled a task in the last 30 days. */
     active_recently: number
     admins: number
+    /** Accounts shut out right now — a standing state, so not windowed like the two figures above. */
+    banned: number
   }
   subscriptions: {
     premium: number
@@ -448,12 +502,19 @@ export interface ApiAdminOverview {
  * Empty and undefined values are dropped rather than sent blank, so the server sees no `q` at all
  * when the search box is empty and falls through to its unfiltered scope.
  */
-function adminQuery(params: { page?: number; perPage?: number; query?: string; status?: string }) {
+function adminQuery(params: {
+  page?: number
+  perPage?: number
+  query?: string
+  status?: string
+  access?: string
+}) {
   const search = new URLSearchParams()
   if (params.page) search.set("page", String(params.page))
   if (params.perPage) search.set("per_page", String(params.perPage))
   if (params.query?.trim()) search.set("q", params.query.trim())
   if (params.status) search.set("status", params.status)
+  if (params.access) search.set("access", params.access)
   return search.toString()
 }
 
@@ -845,10 +906,28 @@ export const api = {
    * `query` is encoded rather than interpolated: "%" is a valid thing to type into a search box and
    * an invalid escape in a URL.
    */
-  fetchAdminUsers: (params: { page?: number; perPage?: number; query?: string } = {}) =>
+  fetchAdminUsers: (
+    params: {
+      page?: number
+      perPage?: number
+      query?: string
+      /** Omitted for every account; `banned` or `active` to narrow to one side of the ban column. */
+      access?: "banned" | "active"
+    } = {}
+  ) =>
     request<{ users: ApiAdminUser[]; pagination: ApiPagination }>(
       `/admin/users?${adminQuery(params)}`
     ),
+  /**
+   * Bans or unbans one account — the only call in this app that writes to a row other than the
+   * caller's own. One function taking the state to end in rather than a ban and an unban, because
+   * the control is a toggle and an unban is the same column going the other way.
+   */
+  setAdminUserBan: (userId: number, banned: boolean) =>
+    request<{ user: { user_id: number; is_banned: boolean } }>(`/admin/users/${userId}/ban`, {
+      method: "PATCH",
+      body: JSON.stringify({ banned }),
+    }),
   /** One page of invoices, newest first, optionally narrowed to a status. */
   fetchAdminPayments: (params: { page?: number; perPage?: number; status?: "paid" | "failed" } = {}) =>
     request<{ payments: ApiAdminPayment[]; pagination: ApiPagination }>(

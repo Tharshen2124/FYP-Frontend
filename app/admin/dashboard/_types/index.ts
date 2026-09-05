@@ -12,6 +12,8 @@ export interface PagedList<T> {
   isLoading: boolean
   page: number
   setPage: (page: number) => void
+  /** Applies a write's result to the page on screen, so a toggle does not cost a refetch. */
+  setRows: (update: (rows: T[]) => T[]) => void
 }
 
 export type AdminUserRow = ApiAdminUser

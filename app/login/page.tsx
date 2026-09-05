@@ -7,16 +7,18 @@ import Link from "next/link"
 import { Sparkles } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
-import { api } from "@/lib/api"
+import { api, type BanNotice } from "@/lib/api"
 import { useAuthStore } from "@/stores/auth-store"
 import { AnimatedBackground } from "./_components/animated-background"
 import { AuthTabs } from "./_components/auth-tabs"
 import { AuthForm } from "./_components/auth-form"
+import { BanDialog } from "./_components/ban-dialog"
 import { GoogleIcon } from "./_components/google-icon"
 import {
   ONBOARDING_HREF,
   DASHBOARD_HREF,
   ADMIN_HREF,
+  BANNED_ERROR,
   OAUTH_ERROR_MESSAGES,
   OAUTH_ERROR_FALLBACK,
 } from "./_constants/auth"
@@ -24,6 +26,10 @@ import {
 export default function LoginPage() {
   const router = useRouter()
   const [isLogin, setIsLogin] = useState(true)
+  /* Set from all three doors a ban is discovered at: the password form below, the return from
+     Google, and `lib/api.ts` sending a cut-off session here. One piece of state, because it is one
+     message however it was arrived at. */
+  const [banned, setBanned] = useState<BanNotice | null>(null)
 
   // Handles the return trip from the backend's Google OAuth callback, which
   // redirects here with either `#token=...` or `#error=...` in the URL hash.
@@ -38,6 +44,16 @@ export default function LoginPage() {
       window.history.replaceState(null, "", window.location.pathname)
       const { isAdmin, isOnboarded } = useAuthStore.getState()
       router.push(isAdmin ? ADMIN_HREF : isOnboarded ? DASHBOARD_HREF : ONBOARDING_HREF)
+    } else if (error === BANNED_ERROR) {
+      /* A dialog rather than the toast every other code gets: a ban is not a retry, and it carries
+         an address the user has to be able to read at their own pace.
+         The fragment never reaches the server, so this cannot be seeded in a `useState`
+         initialiser the way render-time state normally would be — the server would render no
+         dialog and the client would render one, which is a hydration mismatch. Setting it on mount
+         is the only place the value exists. */
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setBanned({ email: params.get("email") ?? "", contactEmail: params.get("contact") ?? "" })
+      window.history.replaceState(null, "", window.location.pathname)
     } else if (error) {
       toast.error(OAUTH_ERROR_MESSAGES[error] ?? OAUTH_ERROR_FALLBACK)
       window.history.replaceState(null, "", window.location.pathname)
@@ -141,6 +157,7 @@ export default function LoginPage() {
               key={isLogin ? "login" : "signup"}
               isLogin={isLogin}
               onSignupSuccess={() => setIsLogin(true)}
+              onBanned={setBanned}
             />
 
             {/* Footer Text */}
@@ -173,6 +190,8 @@ export default function LoginPage() {
           transition={{ duration: 4, repeat: Infinity }}
         />
       </motion.div>
+
+      <BanDialog notice={banned} onDismiss={() => setBanned(null)} />
     </div>
   )
 }

@@ -1,16 +1,40 @@
 "use client"
 
-import { Loader2, Search, ShieldCheck } from "lucide-react"
+import { useState } from "react"
+import { Ban, Loader2, Search, ShieldCheck, Undo2 } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { money, planLabel, planNote, shortDate, subscriptionTone } from "../_utils/format"
 import { Pager } from "./pager"
 import { StatusBadge } from "./status-badge"
 import type { AdminUserRow, PagedList } from "../_types"
+import type { UserFilter } from "../_utils/use-admin"
+
+const FILTERS: { value: UserFilter; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "active", label: "Active" },
+  { value: "banned", label: "Banned" },
+]
 
 interface Props {
   list: PagedList<AdminUserRow>
   search: string
   onSearchChange: (value: string) => void
+  filter: UserFilter
+  onFilterChange: (filter: UserFilter) => void
+  /** Banned accounts across the whole table, from the overview — the reason to reach for the filter. */
+  bannedCount: number
+  onBanChange: (user: AdminUserRow, banned: boolean) => void
 }
 
 /**
@@ -24,8 +48,19 @@ interface Props {
  * Rows stay on screen while the next page loads and the table dims instead of emptying, so a page
  * turn does not collapse the card and bring it back.
  */
-export function UserTable({ list, search, onSearchChange }: Props) {
+export function UserTable({
+  list,
+  search,
+  onSearchChange,
+  filter,
+  onFilterChange,
+  bannedCount,
+  onBanChange,
+}: Props) {
   const { rows, pagination, isLoading, page, setPage } = list
+  /* Only a ban is confirmed. An unban gives an account something back and is undone by the button
+     that is still there, so a second click for it would be friction bought for nothing. */
+  const [confirming, setConfirming] = useState<AdminUserRow | null>(null)
 
   return (
     <section
@@ -37,7 +72,23 @@ export function UserTable({ list, search, onSearchChange }: Props) {
           <h2 className="text-lg font-bold text-foreground">Users</h2>
           <p className="text-xs text-muted-foreground font-serif mt-0.5">
             Every account, newest first
+            {bannedCount > 0 && ` · ${bannedCount} banned`}
           </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1" role="group" aria-label="Filter users by access">
+          {FILTERS.map(({ value, label }) => (
+            <Button
+              key={value}
+              size="sm"
+              variant={filter === value ? "default" : "outline"}
+              className={filter === value ? "" : "border-border text-muted-foreground"}
+              aria-pressed={filter === value}
+              onClick={() => onFilterChange(value)}
+            >
+              {label}
+            </Button>
+          ))}
         </div>
 
         <div className="relative w-full sm:w-72">
@@ -66,6 +117,7 @@ export function UserTable({ list, search, onSearchChange }: Props) {
               <th className="text-right pb-3 font-medium">Weeks</th>
               <th className="text-left pb-3 font-medium pl-4">Last planned</th>
               <th className="text-right pb-3 font-medium pl-4">Paid</th>
+              <th className="text-right pb-3 font-medium pl-4">Access</th>
             </tr>
           </thead>
           <tbody className={isLoading ? "opacity-50 transition-opacity" : "transition-opacity"}>
@@ -85,6 +137,13 @@ export function UserTable({ list, search, onSearchChange }: Props) {
                     {!user.is_onboarded && (
                       <span className="text-[10px] uppercase tracking-wider text-muted-foreground border border-border rounded-full px-1.5 py-0.5">
                         Onboarding
+                      </span>
+                    )}
+                    {/* On the row as well as on the button: the button says what clicking it would
+                        do, which is the opposite of the state, so it cannot also be the state. */}
+                    {user.is_banned && (
+                      <span className="text-[10px] uppercase tracking-wider text-destructive border border-destructive/40 rounded-full px-1.5 py-0.5">
+                        Banned
                       </span>
                     )}
                   </div>
@@ -115,6 +174,23 @@ export function UserTable({ list, search, onSearchChange }: Props) {
                 <td className="py-3 pl-4 text-right text-foreground tabular-nums whitespace-nowrap">
                   {user.paid_cents > 0 ? money(user.paid_cents, user.currency) : "—"}
                 </td>
+                <td className="py-3 pl-4 text-right whitespace-nowrap">
+                  {/* An admin is not offered the button at all: the server refuses a self-ban, and
+                      admins are granted in the console, so the console is the way back from one. */}
+                  {user.is_admin ? (
+                    <span className="text-xs text-muted-foreground">—</span>
+                  ) : user.is_banned ? (
+                    <Button variant="outline" size="xs" onClick={() => onBanChange(user, false)}>
+                      <Undo2 aria-hidden />
+                      Unban
+                    </Button>
+                  ) : (
+                    <Button variant="ghost" size="xs" onClick={() => setConfirming(user)}>
+                      <Ban aria-hidden />
+                      Ban
+                    </Button>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -129,7 +205,9 @@ export function UserTable({ list, search, onSearchChange }: Props) {
               Loading accounts…
             </>
           ) : search ? (
-            <>No account matches “{search}”.</>
+            <>No {filter === "all" ? "" : `${filter} `}account matches “{search}”.</>
+          ) : filter === "banned" ? (
+            <>No account is banned.</>
           ) : (
             <>No accounts yet.</>
           )}
@@ -137,6 +215,33 @@ export function UserTable({ list, search, onSearchChange }: Props) {
       )}
 
       <Pager pagination={pagination} page={page} isLoading={isLoading} onPageChange={setPage} />
+
+      <AlertDialog
+        open={confirming !== null}
+        onOpenChange={open => !open && setConfirming(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ban {confirming?.username}?</AlertDialogTitle>
+            <AlertDialogDescription className="font-serif">
+              {confirming?.email} will be signed out and refused at login. Their weeks, goals and
+              payments are kept, and unbanning them here puts the account straight back.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                if (confirming) onBanChange(confirming, true)
+                setConfirming(null)
+              }}
+            >
+              Ban account
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   )
 }

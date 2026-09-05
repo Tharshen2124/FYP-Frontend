@@ -62,7 +62,15 @@ export default function AdminDashboardPage() {
               <SubscriptionBreakdown overview={admin.overview} />
             </div>
 
-            <UserTable list={admin.users} search={admin.search} onSearchChange={admin.setSearch} />
+            <UserTable
+              list={admin.users}
+              search={admin.search}
+              onSearchChange={admin.setSearch}
+              filter={admin.userFilter}
+              onFilterChange={admin.setUserFilter}
+              bannedCount={admin.overview.users.banned}
+              onBanChange={admin.setUserBanned}
+            />
 
             <PaymentTable
               list={admin.payments}

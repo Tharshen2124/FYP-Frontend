@@ -100,5 +100,10 @@ export function usePagedList<T>({ enabled, filterKey, fetchPage, onError }: Opti
        the end, so page 40 of 3 comes back, and reads, as page 3. */
     page: isLoading ? requestedPage : pagination.page,
     setPage: (page: number) => setRequest(current => ({ ...current, page })),
+    /* Corrects the page already on screen after a write, rather than refetching it. A refetch would
+       re-order nothing and re-count nothing — the write changed one boolean on one row — but it
+       would dim the table and turn a toggle into a visible round trip. */
+    setRows: (update: (rows: T[]) => T[]) =>
+      setLoaded(current => (current ? { ...current, rows: update(current.rows) } : current)),
   }
 }
