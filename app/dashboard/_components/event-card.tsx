@@ -31,7 +31,7 @@ export function EventCard({ event, allItems, onSelect }: Props) {
       aria-label={`${event.title}, ${fmtTime(event.startMins)} to ${fmtTime(event.endMins)}${
         event.isCompleted ? ", completed" : ""
       }`}
-      className="absolute rounded-lg px-2 py-1 overflow-hidden select-none text-left cursor-pointer transition hover:brightness-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      className="absolute rounded-[5px] px-2 py-1 overflow-hidden select-none text-left cursor-pointer transition hover:brightness-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       style={{
         top,
         height,
