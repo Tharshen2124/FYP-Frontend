@@ -42,6 +42,13 @@ export interface ApiTask {
   is_completed: boolean
   link_kind: "goal" | "activity" | null
   link_text: string | null
+  /**
+   * Whether the goal or activity `link_text` names has been deleted since this task was scheduled.
+   * The name is still sent: a soft delete hides something from future planning, not from a week
+   * that already happened, and the task itself is untouched — deleting an activity does not delete
+   * what was scheduled against it.
+   */
+  link_deleted: boolean
   role_name: string | null
   /** The role's colour id, resolved against the palette on the client — the server stores only
    *  the id. Null for a fixed appointment or a Sharpen the Saw task. */
@@ -71,4 +78,15 @@ export interface TaskDetail {
   /** The colour the card is drawn in, so the dialog's dot matches the grid. */
   color: string
   rows: DetailRow[]
+  /** Present only when the goal or activity behind this task has been deleted. Both halves are
+   *  said out loud: what went, and that the task did not go with it. */
+  removal?: TaskRemoval
+}
+
+/** What the dialog says about a link whose goal or activity has been deleted. */
+export interface TaskRemoval {
+  /** The chip beside the task's kind: "Activity removed" / "Goal removed". */
+  label: string
+  /** The sentence under the rows, naming what went and what happens to this task. */
+  message: string
 }

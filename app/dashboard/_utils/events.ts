@@ -3,7 +3,7 @@ import { getColor } from "@/lib/role-colors"
 import { SHARPEN_THE_SAW_DIMENSIONS } from "@/lib/sharpen-the-saw-dimensions"
 import { FIXED_COLOR, WEEKLY_PRIORITY_COLOR } from "../_constants/calendar"
 import { strToMins } from "./time"
-import type { ApiTask, CalEvent, DetailRow, TaskDetail } from "../_types"
+import type { ApiTask, CalEvent, DetailRow, TaskDetail, TaskRemoval } from "../_types"
 
 /** A scheduled task with no goal and no activity behind it. The planning UI never creates one, but
  *  the schema permits it, so it is named rather than left as an untinted block. */
@@ -90,6 +90,35 @@ function kindFor(task: ApiTask): string {
 }
 
 /**
+ * What the dialog says when the goal or activity behind a task has been deleted, or undefined when
+ * nothing has.
+ *
+ * It is two statements, and the second is the one worth spelling out: **the thing this task serves
+ * is gone, and the task is not.** Deleting an activity soft-deletes that row and touches nothing
+ * else, so everything already scheduled against it stays on the week, still tickable, still
+ * counting towards what the week recorded — which is right, and is invisible unless said. Without
+ * it the reader has a task on Friday naming an activity they cannot find on `/sharpen-the-saw` and
+ * no way to tell a deletion from a bug.
+ *
+ * Named rather than hidden for the same reason `/history` flags a deleted activity instead of
+ * dropping it: a soft delete hides something from future planning, never from a week that has
+ * already been planned around it.
+ */
+function removalOf(task: ApiTask): TaskRemoval | undefined {
+  if (!task.link_deleted || !task.link_text) return undefined
+
+  const isGoal = task.link_kind === "goal"
+
+  return {
+    label: isGoal ? "Goal removed" : "Activity removed",
+    message:
+      `“${task.link_text}” is no longer one of your ` +
+      `${isGoal ? "goals" : "Sharpen the Saw activities"} — it was deleted after this task was ` +
+      "scheduled. The task stays on this week's calendar and can still be ticked off.",
+  }
+}
+
+/**
  * The same task, broken out for the detail dialog rather than for the grid.
  *
  * `toCalEvents` throws most of this away on purpose — a card has room for a title and a time — so
@@ -122,6 +151,7 @@ export function taskDetail(task: ApiTask): TaskDetail {
       isFixed: task.is_fixed_appointment,
     }),
     rows,
+    removal: removalOf(task),
   }
 }
 

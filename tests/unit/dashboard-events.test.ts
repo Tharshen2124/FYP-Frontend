@@ -22,6 +22,7 @@ function task(overrides: Partial<ApiTask> = {}): ApiTask {
     is_completed: false,
     link_kind: null,
     link_text: null,
+    link_deleted: false,
     role_name: null,
     role_color_id: null,
     dimension: null,
@@ -176,6 +177,38 @@ describe("taskDetail", () => {
       task({ link_kind: "activity", link_text: "Something", dimension: "nonsense" })
     )
     expect(rows).toContainEqual({ label: "Dimension", value: "nonsense" })
+  })
+
+  /* The dialog is the one place a deleted goal or activity is still named, and the second half of
+     what it says is the half that is invisible otherwise: deleting an activity soft-deletes that
+     row and touches nothing else, so the tasks already scheduled against it stay on the week. */
+  it("says an activity was deleted and that the task stays", () => {
+    const { rows, removal } = taskDetail(
+      task({ link_kind: "activity", link_text: "Read Outliers Book", dimension: "mental", link_deleted: true })
+    )
+    expect(rows).toEqual([
+      { label: "Activity", value: "Read Outliers Book" },
+      { label: "Dimension", value: "Mental" },
+    ])
+    expect(removal?.label).toBe("Activity removed")
+    expect(removal?.message).toContain("Read Outliers Book")
+    expect(removal?.message).toContain("Sharpen the Saw activities")
+    expect(removal?.message).toContain("stays on this week's calendar")
+  })
+
+  it("says the same of a goal dropped since, in the goal's own words", () => {
+    const { removal } = taskDetail(
+      task({ link_kind: "goal", link_text: "Ship the FYP", role_name: "Professional", link_deleted: true })
+    )
+    expect(removal?.label).toBe("Goal removed")
+    expect(removal?.message).toContain("no longer one of your goals")
+  })
+
+  it("says nothing about removal when the link is still there", () => {
+    expect(
+      taskDetail(task({ link_kind: "activity", link_text: "Go to the gym", dimension: "physical" })).removal
+    ).toBeUndefined()
+    expect(taskDetail(task({ is_fixed_appointment: true })).removal).toBeUndefined()
   })
 
   it("gives a fixed appointment no link rows", () => {

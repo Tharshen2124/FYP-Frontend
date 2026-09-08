@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Check, Loader2, Lock, Star, Undo2 } from "lucide-react"
+import { Check, Loader2, Lock, Star, Undo2, Unlink } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import {
@@ -112,6 +112,14 @@ export function TaskDetailModal({ task, date, onClose, onCompletionChange }: Pro
                     Daily Priority
                   </span>
                 )}
+                {/* Sits with the chips rather than under the rows so it is read before the name it
+                    qualifies — the reader opened this dialog because that name did not add up. */}
+                {detail.removal && (
+                  <span className="text-xs font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1 bg-muted-foreground/15 text-muted-foreground">
+                    <Unlink className="w-3 h-3" />
+                    {detail.removal.label}
+                  </span>
+                )}
               </div>
 
               {detail.rows.length > 0 && (
@@ -127,6 +135,16 @@ export function TaskDetailModal({ task, date, onClose, onCompletionChange }: Pro
                     </div>
                   ))}
                 </dl>
+              )}
+
+              {/* Both halves out loud: what was deleted, and that this task was not. Deleting an
+                  activity leaves everything scheduled against it exactly where it was, which is
+                  right and completely invisible until something says it. */}
+              {detail.removal && (
+                <div className="flex items-start gap-2.5 rounded-md border border-border bg-muted/40 px-3 py-2.5">
+                  <Unlink className="w-4 h-4 shrink-0 mt-0.5 text-muted-foreground" />
+                  <p className="text-xs text-muted-foreground font-serif">{detail.removal.message}</p>
+                </div>
               )}
 
               <div className="text-sm font-serif flex items-center gap-2">

@@ -735,6 +735,9 @@ export const api = {
           is_completed: boolean
           link_kind: "goal" | "activity" | null
           link_text: string | null
+          /** Whether the goal or activity `link_text` names has been deleted since. Still named:
+           *  a soft delete hides it from planning, not from a week that already happened. */
+          link_deleted: boolean
           role_name: string | null
           role_color_id: string | null
           dimension: string | null

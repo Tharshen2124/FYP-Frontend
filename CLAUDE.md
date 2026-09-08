@@ -166,6 +166,15 @@ one — planning the week ahead leaves all seven columns open.
   its display name) — all of which the API already sends and the card has no room for. A fixed
   appointment serves nothing, so its dialog carries the header alone: the free-text notes it used
   to show were the only reader of `tasks.description`, and that column is gone.
+  **When the goal or activity behind a task has been deleted, the dialog says so and says what
+  happened to the task** — an "Activity removed" / "Goal removed" chip beside the kind, and a line
+  under the rows naming what went and stating that the task stays on the week and can still be
+  ticked off (`link_deleted` on the task JSON, the fact `/history` flags as `is_deleted`; the
+  sentence is built in `_utils/events.ts`). The second half is the half worth saying: deleting an
+  activity soft-deletes that row and touches nothing else, so everything scheduled against it stays
+  exactly where it was — correct, and invisible until something states it. The name itself is still
+  shown unchanged, since the task did serve it. The mark is on the dialog only; a card on the grid
+  has room for a title and a time.
   Its footer toggles the task done, which is the only way besides the once-a-day check-in to
   record one, and the only way at all to record a task on a day that is not today.
   Any day of the week is tickable: a task done early can be ticked early. The dialog is the whole
