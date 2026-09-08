@@ -11,7 +11,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 import type { ModalState } from "../_types/calendar"
-import type { PlanDimension, PlanRole } from "../_types"
+import type { ActivitySource, PlanDimension, PlanRole } from "../_types"
 import { DAYS_SHORT, EMPTY_TASK_MODAL, WEEKLY_PRIORITY_COLOR } from "../_constants/calendar"
 import { strToMins } from "../_utils/time"
 import { getLinkMeta } from "../_utils/tasks"
@@ -24,10 +24,12 @@ interface Props {
   /** This week's roles with the goals they hold in it — not a standing library. */
   roles: PlanRole[]
   /**
-   * Only the Sharpen the Saw activities committed to this week, as chosen on the weekly plan's
-   * Sharpen the Saw step.
+   * The activities this week's tasks may link to: the ones committed to it on the weekly plan's
+   * Sharpen the Saw step while planning, the user's whole standing library on `/weekly-plan/edit`.
+   * `activitySource` says which, and is only read to word the empty state.
    */
   dimensions: PlanDimension[]
+  activitySource: ActivitySource
   /**
    * The column before which every day is refused, mirroring what the calendar behind the dialog
    * has already closed off; `null` when nothing is. That is today's column while planning, and
@@ -37,7 +39,7 @@ interface Props {
   blockedBefore: number | null
 }
 
-export function TaskModal({ modal, setModal, onSave, roles, dimensions, blockedBefore }: Props) {
+export function TaskModal({ modal, setModal, onSave, roles, dimensions, activitySource, blockedBefore }: Props) {
   const endTimeInvalid = strToMins(modal.endTime) <= strToMins(modal.startTime)
   const canSave        = modal.title.trim().length > 0 && !endTimeInvalid && getLinkMeta(modal, roles, dimensions) !== null
   const selectedRole   = roles.find(r => r.id === modal.selectedRoleId)
@@ -225,10 +227,14 @@ export function TaskModal({ modal, setModal, onSave, roles, dimensions, blockedB
                     )
                   })}
                 </div>
+                {/* Two different emptinesses: on the wizard the library may be full and this
+                    week's set empty, on `/weekly-plan/edit` the set is not consulted at all, so
+                    nothing on offer means there is nothing in the library to offer. */}
                 {dimensions.every(d => d.activities.length === 0) && (
                   <p className="text-xs text-muted-foreground font-serif">
-                    You haven&apos;t committed to any Sharpen the Saw activities this week — pick
-                    some on the weekly plan&apos;s Sharpen the Saw step.
+                    {activitySource === "committed"
+                      ? "You haven't committed to any Sharpen the Saw activities this week — pick some on the weekly plan's Sharpen the Saw step."
+                      : "You haven't added any Sharpen the Saw activities yet — add some on the Sharpen the Saw page first."}
                   </p>
                 )}
                 {selectedDim && (

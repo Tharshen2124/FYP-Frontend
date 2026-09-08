@@ -211,6 +211,14 @@ one — planning the week ahead leaves all seven columns open.
   on both tabs. That is the whole point of the page: a task Tuesday didn't get done is dragged to
   Thursday, and Tuesday is where it is dragged *from*. So no `PastDaysNotice`; a line saying the
   opposite sits in its place.
+  **Its link picker offers the whole Sharpen the Saw library, not the week's committed set** —
+  `activitySource="library"`, the second half of the same idea. The wizard's schedule step filters
+  to what its previous step committed, which is one click behind it; nothing sits behind this page,
+  since the wizard moves to next week as soon as this one has a plan and `/sharpen-the-saw` writes
+  the standing library without committing anything to a week. Filtering here meant an activity added
+  mid-week could not be scheduled for the rest of that week, and the picker said only that its
+  dimension was empty. The server never required the filter: `POST /weekly-plans/tasks` validates an
+  activity against the user's library and commits whatever a task is linked to.
   It takes no `?week_start=` — the current week is the only one the app treats as writable
   (`isEditableWeek`), and next week is still planned through the wizard.
   Nothing writes as you go: edits sit in local state until the sticky **Save bar**, which appears

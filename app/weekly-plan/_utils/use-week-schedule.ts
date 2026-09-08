@@ -5,7 +5,7 @@ import { toast } from "sonner"
 import { api } from "@/lib/api"
 import { getColor } from "@/lib/role-colors"
 import { toPlanDimensions } from "./dimensions"
-import type { PlanDimension, PlanRole } from "../_types"
+import type { ActivitySource, PlanDimension, PlanRole } from "../_types"
 import type { Appt, Task } from "../_types/calendar"
 import { fromApiAppointment, fromApiTask, isScheduleDirty, toAppointmentsPayload, toTasksPayload } from "./tasks"
 
@@ -34,11 +34,16 @@ export interface WeekSchedule {
  * are the same.
  *
  * Five things are needed to draw the week: its appointments and tasks, the roles holding this
- * week's goals, the standing activity library, and which of those activities the previous step
- * committed to. The link picker offers only the committed ones — otherwise choosing them would
- * have been decoration.
+ * week's goals, the standing activity library, and — while planning — which of those activities
+ * the previous step committed to. `activitySource` is which of the last two the link picker
+ * offers: `"committed"` on the wizard's schedule step, where anything wider would make its
+ * previous step decoration, and `"library"` on `/weekly-plan/edit`, which has no step in front of
+ * it to go back to. See `ActivitySource`.
  */
-export function useWeekSchedule(weekStart: string): WeekSchedule {
+export function useWeekSchedule(
+  weekStart: string,
+  activitySource: ActivitySource = "committed"
+): WeekSchedule {
   const [appts, setAppts] = useState<Appt[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
   const [roles, setRoles] = useState<PlanRole[]>([])
@@ -63,7 +68,9 @@ export function useWeekSchedule(weekStart: string): WeekSchedule {
         api.fetchPlanAppointments(week),
         api.fetchStandingRoles(week),
         api.fetchSharpenTheSawActivities(),
-        api.fetchWeekActivities(week),
+        // Not asked for at all in `"library"` mode: nothing would read the answer, and the week's
+        // committed set is not a thing that page can change.
+        activitySource === "committed" ? api.fetchWeekActivities(week) : null,
         api.fetchPlanTasks(week),
       ])
 
@@ -78,7 +85,7 @@ export function useWeekSchedule(weekStart: string): WeekSchedule {
         })),
       }))
 
-      const committed = new Set(committedRes.activity_ids.map(String))
+      const committed = committedRes ? new Set(committedRes.activity_ids.map(String)) : undefined
       const planDimensions = toPlanDimensions(libraryRes.activities, committed)
 
       const loadedAppts = apptsRes.appointments.map(fromApiAppointment)
@@ -95,7 +102,7 @@ export function useWeekSchedule(weekStart: string): WeekSchedule {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [activitySource])
 
   useEffect(() => {
     if (weekStart) load(weekStart)

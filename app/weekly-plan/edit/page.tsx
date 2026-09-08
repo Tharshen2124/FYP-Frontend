@@ -29,6 +29,15 @@ import { LeaveUnsavedDialog } from "./_components/leave-unsaved-dialog"
  * never be done, but rearranging a week in progress is the case that rule was never about — so
  * both tabs are handed `pastDays="open"` and neither draws a `PastDaysNotice`.
  *
+ * **The whole Sharpen the Saw library is on offer here too**, for the same shape of reason:
+ * `activitySource="library"`. The wizard's schedule step shows only what its previous step
+ * committed to the week, and that step is one click behind it. This page has nothing behind it —
+ * once a week has a plan the wizard moves on to the next one, and `/sharpen-the-saw` writes the
+ * standing library without committing anything to a week — so filtering here left an activity
+ * added mid-week impossible to schedule for the rest of it, with nothing on screen to say why.
+ * Scheduling one commits it: `POST /weekly-plans/tasks` has always validated against the user's
+ * library rather than the week's set, and adds a row for whatever a task is linked to.
+ *
  * The week is always the current one, with no `?week_start=`: this is reached from `/dashboard`,
  * which only ever shows the week the user is standing in, and that is the only week the app treats
  * as writable (`isEditableWeek` in `lib/date.ts`). Next week is still planned through the wizard.
@@ -40,7 +49,7 @@ export default function WeeklyPlanEditPage() {
   const current = useCurrentWeek()
   const weekStart = current ? localDateParam(current.dayDates[0]) : ""
 
-  const schedule = useWeekSchedule(weekStart)
+  const schedule = useWeekSchedule(weekStart, "library")
   const [leaveOpen, setLeaveOpen] = useState(false)
 
   const leave = () => router.push("/dashboard")
@@ -146,6 +155,7 @@ export default function WeeklyPlanEditPage() {
                   dimensions={schedule.dimensions}
                   weekStart={weekStart}
                   pastDays="open"
+                  activitySource="library"
                 />
               </TabsContent>
 

@@ -8,7 +8,7 @@ import { TaskCard } from "./task-card"
 import { TaskModal } from "./task-modal"
 import { CalendarLegend } from "./calendar-legend"
 import type { Task, Appt, CalItem, ModalState, PastDayPolicy, PendingTaskAction } from "../_types/calendar"
-import type { PlanDimension, PlanRole } from "../_types"
+import type { ActivitySource, PlanDimension, PlanRole } from "../_types"
 import { DAYS_FULL, CAL_START, CAL_END, TOTAL_HRS, HR_PX, FIXED_COLOR, EMPTY_TASK_MODAL } from "../_constants/calendar"
 import { CalendarDayHeader } from "./calendar-day-header"
 import { usePlanWeekDays } from "../_utils/use-plan-week"
@@ -30,9 +30,18 @@ interface Props {
    * rule; `"open"` is `/weekly-plan/edit`, whose whole job is moving work off a day that is behind.
    */
   pastDays?: PastDayPolicy
+  /**
+   * Where `dimensions` came from — only so the link picker can say the right thing when it has
+   * nothing to offer: on the wizard that means the previous step chose none, on
+   * `/weekly-plan/edit` it means the library itself is empty. It does not filter anything here.
+   */
+  activitySource?: ActivitySource
 }
 
-export function TasksTab({ appts, tasks, setTasks, roles, dimensions, weekStart, pastDays = "block" }: Props) {
+export function TasksTab({
+  appts, tasks, setTasks, roles, dimensions, weekStart,
+  pastDays = "block", activitySource = "committed",
+}: Props) {
   const [modal, setModal]                = useState<ModalState>(EMPTY_TASK_MODAL)
   const [pendingAction, setPendingAction] = useState<PendingTaskAction | null>(null)
   const [clashWarning, setClashWarning]  = useState<{ open: boolean; conflictingTitle: string }>({ open: false, conflictingTitle: "" })
@@ -303,6 +312,7 @@ export function TasksTab({ appts, tasks, setTasks, roles, dimensions, weekStart,
         onSave={handleSave}
         roles={roles}
         dimensions={dimensions}
+        activitySource={activitySource}
         blockedBefore={blockedBefore}
       />
 
