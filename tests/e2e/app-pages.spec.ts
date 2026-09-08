@@ -40,8 +40,9 @@ test.describe("roles management", () => {
     await expect(page.getByRole("heading", { name: "Professional" })).toBeVisible()
   })
 
-  // Removing a goal is always reversible, which is why there is no hard delete anywhere.
-  test("removes a goal and puts it back with Undo", async ({ page }) => {
+  // The confirmation dialog is the only guard, so the reload is what proves the removal reached
+  // the API rather than only leaving the list.
+  test("removes a goal", async ({ page }) => {
     const goal = "Mentor junior team member"
     const row = page.locator("div.group").filter({ hasText: goal }).first()
     await row.hover()
@@ -51,8 +52,8 @@ test.describe("roles management", () => {
     await page.getByRole("button", { name: "Remove Goal", exact: true }).click()
     await expect(page.getByText(goal)).toHaveCount(0)
 
-    await page.getByRole("button", { name: "Undo" }).click()
-    await expect(page.getByText(goal)).toBeVisible()
+    await page.reload()
+    await expect(page.getByText(goal)).toHaveCount(0)
   })
 
   test("adds a role and a goal, and they survive a reload", async ({ page }) => {

@@ -127,32 +127,16 @@ export function useRoles() {
 
   /**
    * Removing a goal never erases what was already done under it: completed tasks stay on the
-   * calendar and keep counting. Undo is what covers a mistake, so there is no hard delete.
+   * calendar and keep counting, which is why the row is dropped rather than deleted. The
+   * confirmation dialog is what covers a mistake.
    */
   const archiveGoal = async (roleId: string, goal: Goal) => {
-    const index = roles.find(r => r.id === roleId)?.goals.findIndex(g => g.id === goal.id) ?? -1
     try {
       const { archived } = await api.archiveGoal(Number(goal.id))
       patchRole(roleId, r => ({ ...r, goals: r.goals.filter(g => g.id !== goal.id) }))
-      toast.success("Goal removed", {
-        description: archiveSummary(fromApiPreview(archived)),
-        action: { label: "Undo", onClick: () => { void restoreGoal(roleId, goal, index) } },
-      })
+      toast.success("Goal removed", { description: archiveSummary(fromApiPreview(archived)) })
     } catch {
       toast.error("Couldn't remove that goal — please try again.")
-    }
-  }
-
-  const restoreGoal = async (roleId: string, goal: Goal, index: number) => {
-    try {
-      await api.restoreGoal(Number(goal.id))
-      patchRole(roleId, r => {
-        const goals = [...r.goals]
-        goals.splice(index < 0 ? goals.length : index, 0, goal)
-        return { ...r, goals }
-      })
-    } catch {
-      toast.error("Couldn't undo that — please try again.")
     }
   }
 

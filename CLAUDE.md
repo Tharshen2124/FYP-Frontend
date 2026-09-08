@@ -196,7 +196,7 @@ one — planning the week ahead leaves all seven columns open.
 - `/roles` — Standing role & goal management (sidebar layout), API-backed. Roles are long-lived;
   the goals shown are **this week's**. Deleting is archiving: a confirmation dialog states how many
   of this week's goals go, how many unfinished tasks come off the calendar, and how many completed
-  tasks are kept. Archived roles list below with a Restore button, and removing a goal offers Undo.
+  tasks are kept. Archived roles list below with a Restore button.
 - `/sharpen-the-saw` — Standing Sharpen the Saw activity management (sidebar layout), with a
   delete confirmation.
 - `/weekly-plan/goals` — API-backed. Carry forward the unfinished goals of the last week that was

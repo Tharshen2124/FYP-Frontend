@@ -645,9 +645,6 @@ export const api = {
     }),
   archiveGoal: (id: number) =>
     request<{ archived: ApiArchivePreview }>(weekScoped(`/goals/${id}`), { method: "DELETE" }),
-  /** Backs the Undo action on the remove-goal toast. Only valid within the goal's own week. */
-  restoreGoal: (id: number) =>
-    request<{ goal: ApiRoleGoal }>(weekScoped(`/goals/${id}/restore`), { method: "POST" }),
   fetchCarryForwardCandidates: (weekStart?: string) =>
     request<{ candidates: ApiCarryForwardCandidate[] }>(weekScoped("/goals/carry-forward-candidates", weekStart)),
   carryForwardGoals: (goalIds: number[], weekStart?: string) =>
