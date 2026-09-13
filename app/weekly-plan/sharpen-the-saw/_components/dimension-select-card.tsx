@@ -1,15 +1,29 @@
 "use client"
 
-import { Check } from "lucide-react"
+import { Check, Plus } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import type { PlanDimension } from "../../_types"
 
 interface Props {
   dimension: PlanDimension
   selectedActivityIds: Set<string>
+  input: string
+  isAdding: boolean
   onToggleActivity: (activityId: string) => void
+  onInputChange: (value: string) => void
+  onAddActivity: () => void
 }
 
-export function DimensionSelectCard({ dimension, selectedActivityIds, onToggleActivity }: Props) {
+export function DimensionSelectCard({
+  dimension,
+  selectedActivityIds,
+  input,
+  isAdding,
+  onToggleActivity,
+  onInputChange,
+  onAddActivity,
+}: Props) {
   const Icon = dimension.icon
 
   return (
@@ -60,6 +74,38 @@ export function DimensionSelectCard({ dimension, selectedActivityIds, onToggleAc
             </button>
           )
         })}
+
+        {dimension.activities.length === 0 && (
+          <p className="text-sm text-muted-foreground font-serif py-2">
+            Nothing in this dimension yet — add one below.
+          </p>
+        )}
+      </div>
+
+      {/*
+        Adding writes the standing library, never this week: the week only ever holds a commitment
+        to an activity, which is what keeps an activity from belonging to one. It is offered here
+        because this step now asks for a selection in every dimension, and a dimension can be empty
+        by the time a user reaches it — /sharpen-the-saw deletes without guarding the last activity
+        in one. Without this the requirement would be unsatisfiable from inside the flow.
+      */}
+      <div className="flex gap-2 mt-4">
+        <Input
+          placeholder={`Add a ${dimension.label.toLowerCase()} activity...`}
+          value={input}
+          disabled={isAdding}
+          onChange={e => onInputChange(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") onAddActivity() }}
+          className="bg-muted border-border text-foreground placeholder:text-muted-foreground"
+        />
+        <Button
+          onClick={onAddActivity}
+          disabled={isAdding}
+          aria-label={`Add ${dimension.label} activity`}
+          className="bg-secondary hover:bg-secondary/80 text-secondary-foreground"
+        >
+          <Plus className="w-4 h-4" />
+        </Button>
       </div>
     </div>
   )

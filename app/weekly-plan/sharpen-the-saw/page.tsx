@@ -6,6 +6,7 @@ import { toast } from "sonner"
 import { AppNav } from "@/components/app-nav"
 import { api } from "@/lib/api"
 import { DimensionSelectCard } from "./_components/dimension-select-card"
+import { dimensionsMissingSelection, formatDimensionList } from "./_utils/dimensions"
 import { useTargetWeek } from "../_utils/use-target-week"
 import { toPlanDimensions } from "../_utils/dimensions"
 import type { PlanDimension } from "../_types"
@@ -17,6 +18,8 @@ export default function WeeklyPlanSharpenTheSawPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [selectedActivityIds, setSelectedActivityIds] = useState<Set<string>>(new Set())
+  const [inputs, setInputs] = useState<Record<string, string>>({})
+  const [addingDimensionIds, setAddingDimensionIds] = useState<Set<string>>(new Set())
 
   // The library is standing and belongs to the user; the committed set belongs to the week, so
   // coming back to this step shows what was already chosen rather than a blank slate.
@@ -50,6 +53,54 @@ export default function WeeklyPlanSharpenTheSawPage() {
     })
   }
 
+  /**
+   * Writes the new activity to the standing library, then commits it to this week.
+   *
+   * Those stay two rows and two acts — the week holds a link to an activity, never the activity —
+   * but a user who types one while choosing the week's set has already said what it is for, and
+   * leaving it unticked would ask them to say it twice. `/weekly-plan/edit` reads the same
+   * intent the same way: scheduling an activity there commits it.
+   *
+   * The library write lands immediately rather than being staged for Next, because it is not this
+   * week's to stage: the activity outlives the week, and abandoning the wizard afterwards should
+   * still leave it on `/sharpen-the-saw`.
+   */
+  const addActivity = async (dimId: string) => {
+    const text = (inputs[dimId] || "").trim()
+    if (!text) return
+
+    setInputs(prev => ({ ...prev, [dimId]: "" }))
+    setAddingDimensionIds(prev => new Set(prev).add(dimId))
+
+    try {
+      const { activity } = await api.createSharpenTheSawActivity({
+        dimension: dimId,
+        activity_description: text,
+      })
+      const activityId = String(activity.sharpen_the_saw_activity_id)
+
+      setDimensions(prev =>
+        prev.map(d =>
+          d.id === dimId
+            ? { ...d, activities: [...d.activities, { id: activityId, text: activity.activity_description }] }
+            : d
+        )
+      )
+      setSelectedActivityIds(prev => new Set(prev).add(activityId))
+    } catch {
+      toast.error("Couldn't add that activity — please try again.")
+      // Handed back rather than dropped: what the user typed is the one thing a retry cannot
+      // recover for them. Anything typed since takes precedence — they have moved on.
+      setInputs(prev => ({ ...prev, [dimId]: prev[dimId] || text }))
+    } finally {
+      setAddingDimensionIds(prev => {
+        const next = new Set(prev)
+        next.delete(dimId)
+        return next
+      })
+    }
+  }
+
   const handleNext = async () => {
     setIsSaving(true)
     try {
@@ -61,7 +112,11 @@ export default function WeeklyPlanSharpenTheSawPage() {
     }
   }
 
-  const canProceed = selectedActivityIds.size > 0
+  const missingDimensions = dimensionsMissingSelection(dimensions, selectedActivityIds)
+  // An activity still being created is a selection the user has already made, so Next waits for it
+  // rather than saving a week that is about to gain one.
+  const canProceed =
+    dimensions.length > 0 && missingDimensions.length === 0 && addingDimensionIds.size === 0
 
   return (
     <div className="min-h-screen bg-background">
@@ -79,7 +134,8 @@ export default function WeeklyPlanSharpenTheSawPage() {
               This Week&apos;s Sharpen the <span className="text-primary">Saw</span>
             </h1>
             <p className="text-muted-foreground font-serif text-lg">
-              Choose which activities you&apos;re committing to this week across all four dimensions.
+              Choose at least one activity in each of the four dimensions to commit to this week,
+              or add a new one where you need it.
             </p>
           </div>
 
@@ -93,14 +149,18 @@ export default function WeeklyPlanSharpenTheSawPage() {
                     key={dim.id}
                     dimension={dim}
                     selectedActivityIds={selectedActivityIds}
+                    input={inputs[dim.id] || ""}
+                    isAdding={addingDimensionIds.has(dim.id)}
                     onToggleActivity={toggleActivity}
+                    onInputChange={value => setInputs(prev => ({ ...prev, [dim.id]: value }))}
+                    onAddActivity={() => addActivity(dim.id)}
                   />
                 ))}
               </div>
 
-              {!canProceed && (
+              {missingDimensions.length > 0 && (
                 <p className="text-center text-muted-foreground font-serif mt-8">
-                  Select at least one activity or add a new one to continue.
+                  Choose or add an activity for {formatDimensionList(missingDimensions)} to continue.
                 </p>
               )}
             </>

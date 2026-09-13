@@ -5,6 +5,7 @@ import {
   schedulableColumn,
   completeOnboarding,
   fillEveryDimension,
+  selectEveryDimension,
   seedNextWeekPlan,
   seedWeeklyPlan,
 } from "./helpers"
@@ -116,7 +117,7 @@ test.describe("weekly plan target week", () => {
     await nextButton(page).click()
     await page.waitForURL(new RegExp(`/weekly-plan/sharpen-the-saw\\?week_start=${nextWeek}`))
 
-    await page.getByRole("button", { name: /Physical activity/ }).click()
+    await selectEveryDimension(page)
     await nextButton(page).click()
     await page.waitForURL(new RegExp(`/weekly-plan/schedule\\?week_start=${nextWeek}`))
   })
@@ -140,7 +141,7 @@ test.describe("planning the upcoming week", () => {
     await nextButton(page).click()
     await page.waitForURL(new RegExp(`/weekly-plan/sharpen-the-saw\\?week_start=${nextWeek}`))
 
-    await page.getByRole("button", { name: /Physical activity/ }).click()
+    await selectEveryDimension(page)
     await nextButton(page).click()
     await page.waitForURL(new RegExp(`/weekly-plan/schedule\\?week_start=${nextWeek}`))
 
@@ -233,14 +234,47 @@ test.describe("weekly plan Sharpen the Saw step", () => {
     await page.waitForURL(/\/onboarding\/fixed-appointments$/)
   })
 
-  test("gates Next until an activity is selected", async ({ page }) => {
+  // The step used to unlock on one activity anywhere, which made the weekly bar looser than the
+  // onboarding one for the same four-dimension framework.
+  test("gates Next until every dimension has a selection", async ({ page }) => {
     await page.goto("/weekly-plan/sharpen-the-saw")
 
     await expect(nextButton(page)).toBeDisabled()
-    await expect(page.getByText("Select at least one activity")).toBeVisible()
+    await expect(page.getByText(/Choose or add an activity for/)).toBeVisible()
 
-    await page.getByRole("button", { name: /Physical activity/ }).click()
+    await page.getByRole("button", { name: "Physical activity", exact: true }).click()
+    await expect(nextButton(page)).toBeDisabled()
+    // The message names what is left rather than only saying something is missing.
+    await expect(
+      page.getByText("Choose or add an activity for Spiritual, Mental and Social / Emotional to continue.")
+    ).toBeVisible()
+
+    await page.getByRole("button", { name: "Spiritual activity", exact: true }).click()
+    await page.getByRole("button", { name: "Mental activity", exact: true }).click()
+    await page.getByRole("button", { name: "Social / Emotional activity", exact: true }).click()
     await expect(nextButton(page)).toBeEnabled()
+  })
+
+  /*
+   * Creating writes the standing library and commits the result to this week in one motion. It is
+   * offered here because the step now asks for a selection in every dimension, and a dimension can
+   * be empty by the time a user reaches it -- /sharpen-the-saw does not guard the last activity in
+   * one, so without this the requirement would be unsatisfiable from inside the flow.
+   */
+  test("adds a new activity to a dimension and commits it to the week", async ({ page }) => {
+    await page.goto("/weekly-plan/sharpen-the-saw")
+
+    await page.getByPlaceholder("Add a mental activity...").fill("Read 20 pages")
+    await page.getByRole("button", { name: "Add Mental activity" }).click()
+
+    const added = page.getByRole("button", { name: "Read 20 pages", exact: true })
+    await expect(added).toBeVisible()
+    // Ticked on arrival: it was typed while choosing this week's set, so the intent is already said.
+    await expect(added).toHaveAttribute("aria-pressed", "true")
+
+    // It is a library activity, not this week's, so it outlives the wizard.
+    await page.goto("/sharpen-the-saw")
+    await expect(page.getByText("Read 20 pages")).toBeVisible()
   })
 
   test("shows all four dimensions with their activities", async ({ page }) => {
@@ -249,19 +283,21 @@ test.describe("weekly plan Sharpen the Saw step", () => {
     for (const dim of ["Physical", "Spiritual", "Mental", "Social / Emotional"]) {
       await expect(page.getByRole("heading", { name: dim })).toBeVisible()
     }
-    await expect(page.getByRole("button", { name: /Physical activity/ })).toBeVisible()
+    await expect(page.getByRole("button", { name: "Physical activity", exact: true })).toBeVisible()
   })
 
   // The step used to throw the selection away on Next, so coming back showed a blank slate.
   test("remembers the week's committed activities on a return visit", async ({ page }) => {
     await page.goto("/weekly-plan/sharpen-the-saw")
-    await page.getByRole("button", { name: /Physical activity/ }).click()
+    await selectEveryDimension(page)
     await nextButton(page).click()
     await page.waitForURL(/\/weekly-plan\/schedule/)
 
     await page.goBack()
     await expect(nextButton(page)).toBeEnabled()
-    await expect(page.getByRole("button", { name: /Physical activity/ })).toHaveAttribute("aria-pressed", "true")
+    await expect(
+      page.getByRole("button", { name: "Physical activity", exact: true })
+    ).toHaveAttribute("aria-pressed", "true")
   })
 })
 

@@ -85,8 +85,10 @@ back from. See its entry under Current pages.
 
 The weekly-plan sub-flow (`/weekly-plan/*`) is the repeatable version of onboarding steps 1–4:
 `/weekly-plan/goals` → `/weekly-plan/sharpen-the-saw` → `/weekly-plan/schedule` → `/dashboard`.
-Unlike onboarding it *selects* from existing roles/goals and activities rather than creating them,
-and it merges fixed appointments and tasks into one tabbed calendar page.
+Unlike onboarding it *selects* from existing roles and goals rather than creating them, and it
+merges fixed appointments and tasks into one tabbed calendar page. Sharpen the Saw activities are
+the exception: that step both selects and creates, because it asks for a selection in every
+dimension and a dimension can be empty by the time a user reaches it.
 
 **`/weekly-plan/edit` is not one of those steps.** It shares the segment, the layout gate and every
 calendar component, but it is a single surface with its own Save bar reached from `/dashboard`, not
@@ -208,6 +210,18 @@ one — planning the week ahead leaves all seven columns open.
   no colour picker — that lives on `/roles` and `/onboarding/roles`.
 - `/weekly-plan/sharpen-the-saw` — API-backed. Pick which Sharpen the Saw activities to commit to the week;
   `PUT /weekly-plans/sharpen-the-saw` replaces the week's set on Next, and revisiting prefills it.
+  **Next waits for a selection in every dimension**, the same bar `/onboarding/sharpen-the-saw`
+  sets: Habit 7 is the four dimensions together, and gating on one activity anywhere made the
+  weekly bar the looser of the two for the same framework. The message names the dimensions still
+  missing rather than only saying one is.
+  Each card also **creates**, through `POST /sharpen-the-saw-activities` — the write that
+  `/sharpen-the-saw` makes, landing immediately rather than staged for Next, since the activity
+  outlives the week and should survive an abandoned wizard. The new activity is ticked on arrival:
+  typing it while choosing the week's set already says what it is for, which is how
+  `/weekly-plan/edit` reads scheduling one. The week still only ever holds a *commitment* — the
+  bridge row — so an activity is never owned by a week. It is offered here because a dimension can
+  be emptied on `/sharpen-the-saw` after onboarding filled it (nothing guards the last activity in
+  one), and the all-four rule would otherwise be unsatisfiable from inside the flow.
 - `/weekly-plan/schedule` — API-backed. Tabbed calendar: "Fixed Appointments" and "Scheduled Tasks"
   share one `appts` state so clash detection spans both tabs. Saves both tabs on Next, sending
   `task_id` for anything the server already holds so an edit updates in place.

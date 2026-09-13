@@ -23,6 +23,24 @@ import type { ApiWeeklyPlan } from "./_types"
 type LoadState = "loading" | "ready" | "error"
 
 /**
+ * Demo switch. Set to `true` and the End-of-Day check-in opens on every load of this page,
+ * whatever the clock says and whether or not tonight has already been dealt with.
+ *
+ * It exists because this is the one thing on the dashboard that cannot be shown on request. The
+ * prompt is due once a day, after a time the user set on `/settings`, and the `check_ins` row
+ * either way out of it writes is what stops it asking again — so showing it to someone at 2pm, or
+ * twice in one evening, is not something the real conditions allow.
+ *
+ * It only forces the modal *open*. Everything the modal does is unchanged, so a dismissal still
+ * writes a `skipped` row and a save still writes tonight's reflection and completions for real.
+ * A week with no plan still shows `NoPlanCard` and no prompt, since the server refuses a
+ * reflection for a week that was never planned.
+ *
+ * Leave it `false`.
+ */
+const FORCE_EOD_CHECK_IN = true
+
+/**
  * Whether tonight's check-in should open.
  *
  * Everything the decision needs arrives on the one response the page already waits for: the time
@@ -39,6 +57,7 @@ type LoadState = "loading" | "ready" | "error"
  */
 function isEodPromptDue(plan: ApiWeeklyPlan | null, eodTime: string | null): boolean {
   if (plan === null) return false
+  if (FORCE_EOD_CHECK_IN) return true
   if (plan.check_ins.some(c => c.day_of_week === getDayIndex())) return false
 
   return isCheckInDue(new Date(), eodTime)

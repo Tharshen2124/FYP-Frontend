@@ -67,6 +67,20 @@ export async function fillEveryDimension(page: Page) {
 }
 
 /**
+ * Commits one activity in each of the four dimensions on `/weekly-plan/sharpen-the-saw`.
+ *
+ * That step's Next waits for all four, the same bar `/onboarding/sharpen-the-saw` sets when the
+ * library is built — renewal is Habit 7's four dimensions together. The names are the ones
+ * `fillEveryDimension` created, and they are matched exactly: the step also renders an
+ * "Add Physical activity" button per dimension, which a loose match would collide with.
+ */
+export async function selectEveryDimension(page: Page) {
+  for (const label of ["Physical", "Spiritual", "Mental", "Social / Emotional"]) {
+    await page.getByRole("button", { name: `${label} activity`, exact: true }).click()
+  }
+}
+
+/**
  * A day column of the *current* week that still accepts new items, 0 = Monday … 6 = Sunday.
  *
  * The calendars block every day that has already passed, so a hard-coded column would make these
