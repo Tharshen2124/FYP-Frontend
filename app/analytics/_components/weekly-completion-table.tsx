@@ -13,7 +13,13 @@ import { MetricInfo } from "./metric-info"
 import type { WeeklyCompletion } from "../_types"
 
 interface TooltipPayload {
-  payload: { shortLabel: string; pct: number | null; completed: number; total: number }
+  payload: {
+    shortLabel: string
+    pct: number | null
+    completed: number
+    total: number
+    fixed: WeeklyCompletion["fixed"]
+  }
 }
 
 function CustomTooltip({ active, payload }: { active?: boolean; payload?: TooltipPayload[] }) {
@@ -25,6 +31,9 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Toolti
       <p className="text-muted-foreground">
         {d.pct === null ? "No tasks scheduled" : `${d.completed}/${d.total} tasks — ${d.pct}%`}
       </p>
+      {d.fixed.total > 0 && (
+        <p className="text-muted-foreground">{d.fixed.completed}/{d.fixed.total} fixed appointments</p>
+      )}
     </div>
   )
 }
@@ -42,6 +51,7 @@ export function WeeklyCompletionTable({ weeks }: { weeks: WeeklyCompletion[] }) 
     pct: percent(w),
     completed: w.completed,
     total: w.total,
+    fixed: w.fixed,
   }))
 
   // The newest week the page holds, which is the most recent one that has finished.
@@ -106,8 +116,9 @@ export function WeeklyCompletionTable({ weeks }: { weeks: WeeklyCompletion[] }) 
               <tr>
                 <th className="text-left text-xs uppercase tracking-wider text-muted-foreground pb-2 font-medium">Week</th>
                 <th className="text-left text-xs uppercase tracking-wider text-muted-foreground pb-2 font-medium">Progress</th>
-                <th className="text-right text-xs uppercase tracking-wider text-muted-foreground pb-2 font-medium">Done</th>
+                <th className="text-right text-xs uppercase tracking-wider text-muted-foreground pb-2 font-medium">Tasks</th>
                 <th className="text-right text-xs uppercase tracking-wider text-muted-foreground pb-2 font-medium pl-3">%</th>
+                <th className="text-right text-xs uppercase tracking-wider text-muted-foreground pb-2 font-medium pl-3">Fixed</th>
               </tr>
             </thead>
             <tbody>
@@ -131,6 +142,11 @@ export function WeeklyCompletionTable({ weeks }: { weeks: WeeklyCompletion[] }) 
                     </td>
                     <td className="py-2 text-right pl-3 font-bold text-foreground whitespace-nowrap text-xs">
                       {pct === null ? "—" : `${pct}%`}
+                    </td>
+                    {/* Beside the rate rather than in it: pooled, a week with more lectures would
+                        read better with nothing else different. */}
+                    <td className="py-2 text-right pl-3 text-muted-foreground whitespace-nowrap text-xs">
+                      {week.fixed.total > 0 ? `${week.fixed.completed}/${week.fixed.total}` : "—"}
                     </td>
                   </tr>
                 )

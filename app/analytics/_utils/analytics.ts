@@ -53,6 +53,7 @@ export function toAnalyticsWeek(week: ApiAnalyticsWeek): AnalyticsWeek {
       total: d.total,
     })),
     tasks: week.tasks,
+    fixedAppointments: week.fixed_appointments,
   }
 }
 
@@ -270,5 +271,6 @@ export function getWeeklyCompletions(
     label: formatWeekRange(week.weekStart),
     completed: week.tasks.completed,
     total: week.tasks.total,
+    fixed: week.fixedAppointments,
   }))
 }

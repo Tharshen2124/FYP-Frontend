@@ -35,6 +35,7 @@ const API_WEEKS: ApiAnalyticsWeek[] = [
       { day_of_week: 2, completed: 1, total: 2 },
     ],
     tasks: { completed: 31, total: 47 },
+    fixed_appointments: { completed: 14, total: 15 },
   },
   {
     week_start: "2026-08-03",
@@ -49,6 +50,7 @@ const API_WEEKS: ApiAnalyticsWeek[] = [
     roles: [{ role_id: 1, name: "Programmer", color_id: "primary", completed: 12, total: 18 }],
     daily_priorities: [{ day_of_week: 6, completed: 0, total: 1 }],
     tasks: { completed: 20, total: 27 },
+    fixed_appointments: { completed: 15, total: 15 },
   },
   {
     week_start: "2026-07-27",
@@ -57,6 +59,7 @@ const API_WEEKS: ApiAnalyticsWeek[] = [
     roles: [{ role_id: 3, name: "Reader", color_id: null, completed: 4, total: 4 }],
     daily_priorities: [],
     tasks: { completed: 4, total: 4 },
+    fixed_appointments: { completed: 0, total: 0 },
   },
 ]
 
@@ -158,6 +161,7 @@ describe("getSharpenData", () => {
         roles: [],
         daily_priorities: [],
         tasks: { completed: 0, total: 0 },
+        fixed_appointments: { completed: 0, total: 0 },
       },
     ].map(toAnalyticsWeek)
 
@@ -295,12 +299,13 @@ describe("getDailyPriority / getWeekLabel", () => {
 })
 
 describe("getWeeklyCompletions", () => {
-  it("reports tasks completed out of scheduled", () => {
+  it("reports tasks completed out of scheduled, with fixed appointments beside the ratio", () => {
     expect(getWeeklyCompletions(weeks)[0]).toEqual({
       id: "2026-08-10",
       label: "Mon 10 – Sun 16 Aug",
       completed: 31,
       total: 47,
+      fixed: { completed: 14, total: 15 },
     })
   })
 

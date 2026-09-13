@@ -329,7 +329,7 @@ one — planning the week ahead leaves all seven columns open.
   copy in `_constants/analytics.ts`): a click-to-open panel rather than a hover tooltip, since the
   explanations run to several sentences and a hover target is no use on a touch screen. Each says
   what its big number is *and* what it leaves out — a share is not a completion rate and a fixed
-  appointment is not a task, neither of which a new user has any reason to guess.
+  appointment is not in the task rate, neither of which a new user has any reason to guess.
   The radar is a **distribution, not four completion rates**: each dimension's figure is its share
   of the Sharpen the Saw tasks completed across the range, so the four add up to 100 and an even 25% each is
   a balanced week — which is what Habit 7 is actually asking. A completion rate could not say that,
@@ -340,9 +340,12 @@ one — planning the week ahead leaves all seven columns open.
   averaged, so a quiet week does not weigh as much as a busy one.
   The completion card counts **tasks**, not goals: a week holds a handful of goals, so a goal rate
   moves in 20-point jumps a trend line has nothing to say about, where dozens of tasks give it a
-  shape. It counts every scheduled task whatever it serves and leaves fixed appointments out — the
-  same line `/history`'s task count draws, since a lecture is attended rather than completed. A
-  planned week with nothing scheduled is a gap in the line and a dash in the table, never 0%.
+  shape. It counts every scheduled task whatever it serves, and puts **fixed appointments in a
+  column of their own rather than into the rate** — though the check-in asks about both. They recur
+  and are nearly always kept, so a pooled rate would move with how many a week held rather than
+  with anything the user did: the same follow-through reads higher in a week with more lectures.
+  Apart, each figure is about one thing, the split `/history`'s stats row already makes. A planned
+  week with no tasks is a gap in the line and a dash in the table, never 0%.
 - `/admin/dashboard` — API-backed, and the whole of the admin area: **an admin account has exactly
   one page.** It reads other people's accounts, which nothing else in this app does.
   It has **its own `<AdminHeader>` rather than the `<Sidebar>`**, and `proxy.ts` redirects an admin

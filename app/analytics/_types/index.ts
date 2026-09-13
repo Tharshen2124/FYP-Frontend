@@ -21,6 +21,7 @@ export interface AnalyticsWeek {
   roles: { roleId: string; name: string; color: string; completed: number; total: number }[]
   dailyPriorities: { dayOfWeek: number; completed: number; total: number }[]
   tasks: { completed: number; total: number }
+  fixedAppointments: { completed: number; total: number }
 }
 
 export interface SharpenDimension {
@@ -67,4 +68,6 @@ export interface WeeklyCompletion {
    * nothing scheduled, which has no rate at all — the card shows a gap there rather than 0%.
    */
   total: number
+  /** Reported beside the task rate, never inside it — see `ApiAnalyticsWeek.fixed_appointments`. */
+  fixed: { completed: number; total: number }
 }

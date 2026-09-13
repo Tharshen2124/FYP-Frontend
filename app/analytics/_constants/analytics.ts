@@ -38,7 +38,7 @@ export const DEFAULT_RANGE_WEEKS = 4
  * Kept together rather than inside the four components so they read as one voice, and so the
  * wording can be corrected in one place when a metric changes. Every card measures something a
  * new user has no reason to guess — a share is not a completion rate, and a fixed appointment is
- * not a task — so each explains what its big number is *and* what it deliberately leaves out.
+ * not in the task rate — so each explains what its big number is *and* what it deliberately leaves out.
  */
 export const CARD_INFO = {
   sharpen: [
@@ -58,7 +58,7 @@ export const CARD_INFO = {
   ],
   completions: [
     "Every task you schedule counts here, whether it serves a goal, a Sharpen the Saw activity or nothing at all. This card lists your five most recent planned weeks and how many of each week's tasks you ticked off.",
-    "Fixed appointments are left out. A lecture or a shift is something you attend rather than set out to complete, and counting it would pad your rate. A week you planned but scheduled nothing in shows a dash rather than 0%, and the line breaks there instead of dropping to the floor.",
+    "Fixed appointments get their own column instead of a share of the percentage. Things like lectures and shifts repeat every week and almost always happen, so adding them in would make a week with more of them look better even if the rest of your plan went the same. A week you planned but scheduled no tasks in shows a dash rather than 0%, and the line breaks there instead of dropping to the floor.",
     "The big number is last week's rate.",
   ],
 }

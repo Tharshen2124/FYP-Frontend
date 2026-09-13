@@ -301,8 +301,11 @@ export interface ApiAnalyticsWeek {
   /** Tasks resolved through `task -> goal -> role`. A since-archived role still appears here. */
   roles: { role_id: number; name: string; color_id: string | null; completed: number; total: number }[]
   daily_priorities: { day_of_week: number; completed: number; total: number }[]
-  /** Every scheduled task, whatever it serves. Fixed appointments are left out: attended, not completed. */
+  /** Every scheduled task, whatever it serves. Fixed appointments are counted apart, below. */
   tasks: { completed: number; total: number }
+  /** Kept out of `tasks`: they recur and are nearly always kept, so pooling them would make the task
+   *  rate move with how many a week held rather than with anything the user did. */
+  fixed_appointments: { completed: number; total: number }
 }
 
 export interface ApiHistoryWeekMeta {
