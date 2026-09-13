@@ -49,7 +49,7 @@ export default function AnalyticsPage() {
              would show, not a bounce to somewhere else. */
           <PremiumLock
             title="Analytics"
-            description="See your patterns over time rather than one week at a time — how evenly you sharpen the saw, which roles your tasks actually go to, which days your priorities land on, and how your goal completion moves week to week."
+            description="See your patterns over time rather than one week at a time — how evenly you sharpen the saw, which roles your tasks actually go to, which days your priorities land on, and how much of each week's plan you actually get done."
           />
         ) : !analytics.hasWeeks ? (
           /* One message for the whole page rather than four empty charts. Analytics only reads

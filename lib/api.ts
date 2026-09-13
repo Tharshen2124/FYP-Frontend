@@ -301,8 +301,8 @@ export interface ApiAnalyticsWeek {
   /** Tasks resolved through `task -> goal -> role`. A since-archived role still appears here. */
   roles: { role_id: number; name: string; color_id: string | null; completed: number; total: number }[]
   daily_priorities: { day_of_week: number; completed: number; total: number }[]
-  /** Active goals only, so a dropped goal cannot sit in the denominator; it is reported beside it. */
-  goals: { achieved: number; total: number; dropped: number }
+  /** Every scheduled task, whatever it serves. Fixed appointments are left out: attended, not completed. */
+  tasks: { completed: number; total: number }
 }
 
 export interface ApiHistoryWeekMeta {

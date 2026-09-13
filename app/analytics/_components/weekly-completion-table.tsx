@@ -4,6 +4,7 @@ import {
   AreaChart,
   Area,
   XAxis,
+  YAxis,
   Tooltip,
   ResponsiveContainer,
 } from "recharts"
@@ -12,7 +13,7 @@ import { MetricInfo } from "./metric-info"
 import type { WeeklyCompletion } from "../_types"
 
 interface TooltipPayload {
-  payload: { shortLabel: string; pct: number; completed: number; total: number }
+  payload: { shortLabel: string; pct: number | null; completed: number; total: number }
 }
 
 function CustomTooltip({ active, payload }: { active?: boolean; payload?: TooltipPayload[] }) {
@@ -21,13 +22,16 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Toolti
   return (
     <div className="bg-card border border-border rounded-xl px-3 py-2 text-sm text-foreground shadow-lg">
       <p className="font-medium mb-0.5">{d.shortLabel}</p>
-      <p className="text-muted-foreground">{d.completed}/{d.total} goals — {d.pct}%</p>
+      <p className="text-muted-foreground">
+        {d.pct === null ? "No tasks scheduled" : `${d.completed}/${d.total} tasks — ${d.pct}%`}
+      </p>
     </div>
   )
 }
 
-function percent(week: WeeklyCompletion): number {
-  return week.total > 0 ? Math.round((week.completed / week.total) * 100) : 0
+/** `null` for a week with nothing scheduled: 0 of 0 is not 0%, and the line breaks there rather than diving. */
+function percent(week: WeeklyCompletion): number | null {
+  return week.total > 0 ? Math.round((week.completed / week.total) * 100) : null
 }
 
 export function WeeklyCompletionTable({ weeks }: { weeks: WeeklyCompletion[] }) {
@@ -42,18 +46,19 @@ export function WeeklyCompletionTable({ weeks }: { weeks: WeeklyCompletion[] }) 
 
   // The newest week the page holds, which is the most recent one that has finished.
   const latest = weeks[0]
+  const latestPct = latest ? percent(latest) : null
 
   return (
     <div className="p-6 rounded-2xl bg-card border-2 border-border h-full">
       <div className="flex items-start justify-between mb-3">
         <div>
-          <h2 className="text-lg font-bold text-foreground">Weekly Goal Completion</h2>
+          <h2 className="text-lg font-bold text-foreground">Weekly Task Completion</h2>
           <p className="text-xs text-muted-foreground font-serif mt-0.5">
-            {COMPLETION_WEEKS_SHOWN}-week goal completion trend
+            {COMPLETION_WEEKS_SHOWN}-week task completion trend
           </p>
         </div>
         <div className="text-right shrink-0 ml-4">
-          <p className="text-2xl font-bold text-primary">{latest ? `${percent(latest)}%` : "—"}</p>
+          <p className="text-2xl font-bold text-primary">{latestPct === null ? "—" : `${latestPct}%`}</p>
           <p className="text-xs text-muted-foreground">last week</p>
         </div>
       </div>
@@ -77,6 +82,9 @@ export function WeeklyCompletionTable({ weeks }: { weeks: WeeklyCompletion[] }) 
                 axisLine={false}
                 tickLine={false}
               />
+              {/* Pinned to 0–100 rather than fitted to the data, so a week moving from 80% to 85%
+                  looks like the small step it is instead of filling the card. */}
+              <YAxis domain={[0, 100]} hide />
               <Tooltip content={<CustomTooltip />} cursor={{ stroke: "#471396", strokeWidth: 1 }} />
               <Area
                 type="monotone"
@@ -99,7 +107,6 @@ export function WeeklyCompletionTable({ weeks }: { weeks: WeeklyCompletion[] }) 
                 <th className="text-left text-xs uppercase tracking-wider text-muted-foreground pb-2 font-medium">Week</th>
                 <th className="text-left text-xs uppercase tracking-wider text-muted-foreground pb-2 font-medium">Progress</th>
                 <th className="text-right text-xs uppercase tracking-wider text-muted-foreground pb-2 font-medium">Done</th>
-                <th className="text-right text-xs uppercase tracking-wider text-muted-foreground pb-2 font-medium pl-3">Removed</th>
                 <th className="text-right text-xs uppercase tracking-wider text-muted-foreground pb-2 font-medium pl-3">%</th>
               </tr>
             </thead>
@@ -115,19 +122,15 @@ export function WeeklyCompletionTable({ weeks }: { weeks: WeeklyCompletion[] }) 
                       <div className="h-1.5 rounded-full bg-muted min-w-[60px]">
                         <div
                           className="h-1.5 rounded-full"
-                          style={{ width: `${pct}%`, backgroundColor: "#B13BFF" }}
+                          style={{ width: `${pct ?? 0}%`, backgroundColor: "#B13BFF" }}
                         />
                       </div>
                     </td>
                     <td className="py-2 text-right text-muted-foreground whitespace-nowrap text-xs">
                       {week.completed}/{week.total}
                     </td>
-                    {/* Dropped goals sit outside the ratio rather than counting as misses. */}
-                    <td className="py-2 text-right pl-3 text-muted-foreground whitespace-nowrap text-xs">
-                      {week.dropped > 0 ? week.dropped : "—"}
-                    </td>
                     <td className="py-2 text-right pl-3 font-bold text-foreground whitespace-nowrap text-xs">
-                      {pct}%
+                      {pct === null ? "—" : `${pct}%`}
                     </td>
                   </tr>
                 )

@@ -316,7 +316,7 @@ one — planning the week ahead leaves all seven columns open.
   its own heading and renders `<PremiumLock>` where the grid would be instead of bouncing anywhere.
   It is the one gated surface with no `premium` flag to read, because its only request is the one
   being refused. 2×2 grid: sharpen-the-saw radar, role task table, daily priority bar
-  chart, weekly goal completion trend. Like `/history` it reads **finished weeks only**, so the
+  chart, weekly task completion trend. Like `/history` it reads **finished weeks only**, so the
   newest week it knows about is last week and the completion card's corner figure is labelled "last
   week"; the week in progress belongs to `/dashboard`. The whole window — up to 52 finished weeks —
   is fetched **once** by `_utils/use-analytics.ts`, and every card filters it in the browser, so
@@ -328,8 +328,8 @@ one — planning the week ahead leaves all seven columns open.
   Every card carries a **"How does this work?"** disclosure (`_components/metric-info.tsx`,
   copy in `_constants/analytics.ts`): a click-to-open panel rather than a hover tooltip, since the
   explanations run to several sentences and a hover target is no use on a touch screen. Each says
-  what its big number is *and* what it leaves out — a share is not a completion rate and a dropped
-  goal is not a missed one, neither of which a new user has any reason to guess.
+  what its big number is *and* what it leaves out — a share is not a completion rate and a fixed
+  appointment is not a task, neither of which a new user has any reason to guess.
   The radar is a **distribution, not four completion rates**: each dimension's figure is its share
   of the Sharpen the Saw tasks completed across the range, so the four add up to 100 and an even 25% each is
   a balanced week — which is what Habit 7 is actually asking. A completion rate could not say that,
@@ -338,8 +338,11 @@ one — planning the week ahead leaves all seven columns open.
   scaled so covering k of the four dimensions evenly scores (k − 1) / 3 — one dimension 0%, two 33%,
   three 67%, all four 100%. Counts are pooled across the range rather than the weeks' shares
   averaged, so a quiet week does not weigh as much as a busy one.
-  The completion card counts **goals**, not tasks, which is what makes its "Removed" column mean
-  something: dropped goals sit outside the ratio, the same rule `/history` follows.
+  The completion card counts **tasks**, not goals: a week holds a handful of goals, so a goal rate
+  moves in 20-point jumps a trend line has nothing to say about, where dozens of tasks give it a
+  shape. It counts every scheduled task whatever it serves and leaves fixed appointments out — the
+  same line `/history`'s task count draws, since a lecture is attended rather than completed. A
+  planned week with nothing scheduled is a gap in the line and a dash in the table, never 0%.
 - `/admin/dashboard` — API-backed, and the whole of the admin area: **an admin account has exactly
   one page.** It reads other people's accounts, which nothing else in this app does.
   It has **its own `<AdminHeader>` rather than the `<Sidebar>`**, and `proxy.ts` redirects an admin

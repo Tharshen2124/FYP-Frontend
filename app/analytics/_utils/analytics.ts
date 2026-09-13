@@ -52,7 +52,7 @@ export function toAnalyticsWeek(week: ApiAnalyticsWeek): AnalyticsWeek {
       completed: d.completed,
       total: d.total,
     })),
-    goals: week.goals,
+    tasks: week.tasks,
   }
 }
 
@@ -257,9 +257,9 @@ export function getWeekLabel(weeks: AnalyticsWeek[], date: DateSelection): strin
 }
 
 /**
- * The most recent planned weeks, newest first. Unplanned weeks are skipped rather than shown as
- * 0/0: a week the user never planned is not a week they failed, and a run of zeroes would drag the
- * trend line through the floor.
+ * Tasks completed out of scheduled for the most recent planned weeks, newest first. Unplanned weeks
+ * are skipped rather than shown as 0/0: a week the user never planned is not a week they failed,
+ * and a run of zeroes would drag the trend line through the floor.
  */
 export function getWeeklyCompletions(
   weeks: AnalyticsWeek[],
@@ -268,8 +268,7 @@ export function getWeeklyCompletions(
   return weeks.slice(0, count).map(week => ({
     id: week.weekStart,
     label: formatWeekRange(week.weekStart),
-    completed: week.goals.achieved,
-    total: week.goals.total,
-    dropped: week.goals.dropped,
+    completed: week.tasks.completed,
+    total: week.tasks.total,
   }))
 }

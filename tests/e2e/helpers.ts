@@ -201,7 +201,7 @@ export async function seedPastWeek(page: Page) {
     const { roles } = await call("GET", `/roles?week_start=${weekStart}`)
     const roleId = roles[0].role_id
 
-    // Two goals, so the completion card has a ratio rather than 1/1.
+    // Two goals, one achieved and one missed, so the week is a mix rather than all or nothing.
     const { goal: achieved } = await call("POST", `/goals?week_start=${weekStart}`, {
       role_id: roleId,
       description: "Ship the past week",

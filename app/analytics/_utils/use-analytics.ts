@@ -44,7 +44,7 @@ function weekEndSelection(weekStart: string): DateSelection {
  */
 export function useAnalytics(isReady: boolean) {
   // Finished weeks only, the same line /history draws: the week in progress belongs to /dashboard,
-  // and a week still running would read low and climb all week as its goals were ticked off.
+  // and a week still running would read low and climb all week as its tasks were ticked off.
   const newest = latestPastWeekStart()
 
   /* The weeks held *and which fetch they are for*, rather than a separate loading flag. Keeping the

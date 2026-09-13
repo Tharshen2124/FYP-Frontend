@@ -559,7 +559,7 @@ test.describe("history and analytics", () => {
       )
 
     /** The same shape `seedPastWeek` produces: two physical renewals done, one mental, one
-        spiritual scheduled and missed, and two goals of which one was achieved. */
+        spiritual scheduled and missed, and six tasks of which four were ticked off. */
     const seededWeek = (week: { week_start: string; end_date: string }) => ({
       ...week,
       dimensions: [
@@ -569,7 +569,7 @@ test.describe("history and analytics", () => {
       ],
       roles: [{ role_id: 1, name: "Professional", color_id: "purple", completed: 1, total: 2 }],
       daily_priorities: [{ day_of_week: 2, completed: 1, total: 1 }],
-      goals: { achieved: 1, total: 2, dropped: 0 },
+      tasks: { completed: 4, total: 6 },
     })
 
     test("a free account is offered the upgrade in place, keeping the page's heading", async ({ page }) => {
@@ -598,10 +598,17 @@ test.describe("history and analytics", () => {
         "Sharpen the Saw (STS) Balance",
         "Tasks Completed Per Role",
         "Daily Priority Hit Rate",
-        "Weekly Goal Completion",
+        "Weekly Task Completion",
       ]) {
         await expect(page.getByRole("heading", { name: heading })).toBeVisible()
       }
+
+      // Four of the week's six tasks were done, whatever each of them served.
+      const completion = page.locator("div.rounded-2xl").filter({
+        has: page.getByRole("heading", { name: "Weekly Task Completion" }),
+      })
+      await expect(completion.getByRole("cell", { name: "4/6" })).toBeVisible()
+      await expect(completion.getByRole("cell", { name: "67%" })).toBeVisible()
 
       // Each filtered card exposes its own date selector.
       await expect(page.locator("select").first()).toBeVisible()

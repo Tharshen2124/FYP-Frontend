@@ -22,7 +22,7 @@ export const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
  */
 export const WEEKS_FETCHED = 52
 
-/** Rows in the weekly goal completion card, which has no filter of its own. */
+/** Rows in the weekly task completion card, which has no filter of its own. */
 export const COMPLETION_WEEKS_SHOWN = 5
 
 /** The span the two From/To cards open on: roughly the last month. */
@@ -37,8 +37,8 @@ export const DEFAULT_RANGE_WEEKS = 4
  *
  * Kept together rather than inside the four components so they read as one voice, and so the
  * wording can be corrected in one place when a metric changes. Every card measures something a
- * new user has no reason to guess — a share is not a completion rate, and a dropped goal is not a
- * missed one — so each explains what its big number is *and* what it deliberately leaves out.
+ * new user has no reason to guess — a share is not a completion rate, and a fixed appointment is
+ * not a task — so each explains what its big number is *and* what it deliberately leaves out.
  */
 export const CARD_INFO = {
   sharpen: [
@@ -57,8 +57,8 @@ export const CARD_INFO = {
     "The big number covers the whole week: every priority you completed, out of every one you starred.",
   ],
   completions: [
-    "Each week you set goals under your roles. This card lists your five most recent planned weeks and how many of each week's goals you achieved.",
-    "Goals you dropped part-way through a week sit in the Removed column, outside the ratio. Dropping a goal should not read as a failure, and it should not push your percentage up either.",
+    "Every task you schedule counts here, whether it serves a goal, a Sharpen the Saw activity or nothing at all. This card lists your five most recent planned weeks and how many of each week's tasks you ticked off.",
+    "Fixed appointments are left out. A lecture or a shift is something you attend rather than set out to complete, and counting it would pad your rate. A week you planned but scheduled nothing in shows a dash rather than 0%, and the line breaks there instead of dropping to the floor.",
     "The big number is last week's rate.",
   ],
 }

@@ -34,7 +34,7 @@ const API_WEEKS: ApiAnalyticsWeek[] = [
       { day_of_week: 0, completed: 3, total: 3 },
       { day_of_week: 2, completed: 1, total: 2 },
     ],
-    goals: { achieved: 5, total: 7, dropped: 1 },
+    tasks: { completed: 31, total: 47 },
   },
   {
     week_start: "2026-08-03",
@@ -48,7 +48,7 @@ const API_WEEKS: ApiAnalyticsWeek[] = [
     // No Athlete this week: a role the range only partly covers still belongs in the table.
     roles: [{ role_id: 1, name: "Programmer", color_id: "primary", completed: 12, total: 18 }],
     daily_priorities: [{ day_of_week: 6, completed: 0, total: 1 }],
-    goals: { achieved: 6, total: 6, dropped: 0 },
+    tasks: { completed: 20, total: 27 },
   },
   {
     week_start: "2026-07-27",
@@ -56,7 +56,7 @@ const API_WEEKS: ApiAnalyticsWeek[] = [
     dimensions: [],
     roles: [{ role_id: 3, name: "Reader", color_id: null, completed: 4, total: 4 }],
     daily_priorities: [],
-    goals: { achieved: 2, total: 5, dropped: 2 },
+    tasks: { completed: 4, total: 4 },
   },
 ]
 
@@ -157,7 +157,7 @@ describe("getSharpenData", () => {
         })),
         roles: [],
         daily_priorities: [],
-        goals: { achieved: 0, total: 0, dropped: 0 },
+        tasks: { completed: 0, total: 0 },
       },
     ].map(toAnalyticsWeek)
 
@@ -295,14 +295,18 @@ describe("getDailyPriority / getWeekLabel", () => {
 })
 
 describe("getWeeklyCompletions", () => {
-  it("reports goals achieved out of planned, with the dropped ones beside the ratio", () => {
+  it("reports tasks completed out of scheduled", () => {
     expect(getWeeklyCompletions(weeks)[0]).toEqual({
       id: "2026-08-10",
       label: "Mon 10 – Sun 16 Aug",
-      completed: 5,
-      total: 7,
-      dropped: 1,
+      completed: 31,
+      total: 47,
     })
+  })
+
+  it("keeps a planned week with nothing scheduled as 0/0, for the card to show as a gap", () => {
+    const empty = toAnalyticsWeek({ ...API_WEEKS[0], tasks: { completed: 0, total: 0 } })
+    expect(getWeeklyCompletions([empty])[0]).toMatchObject({ completed: 0, total: 0 })
   })
 
   it("takes the most recent weeks first, capped at the count asked for", () => {

@@ -20,7 +20,7 @@ export interface AnalyticsWeek {
   dimensions: { dimension: SharpenTheSawDimensionId; completed: number; total: number }[]
   roles: { roleId: string; name: string; color: string; completed: number; total: number }[]
   dailyPriorities: { dayOfWeek: number; completed: number; total: number }[]
-  goals: { achieved: number; total: number; dropped: number }
+  tasks: { completed: number; total: number }
 }
 
 export interface SharpenDimension {
@@ -63,10 +63,8 @@ export interface WeeklyCompletion {
   label: string
   completed: number
   /**
-   * The achieved-vs-total denominator. Goals dropped mid-week are NOT counted here — they are
-   * reported separately, so pruning a goal neither reads as a failure nor quietly inflates the
-   * percentage.
+   * Every task scheduled that week, fixed appointments aside. 0 is a week that was planned with
+   * nothing scheduled, which has no rate at all — the card shows a gap there rather than 0%.
    */
   total: number
-  dropped: number
 }
